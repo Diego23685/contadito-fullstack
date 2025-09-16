@@ -45,3 +45,4 @@ C:\Users\diego\Downloads\contadito-fullstack\backend\obj\Debug\net8.0\refint\Con
 C:\Users\diego\Downloads\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.pdb
 C:\Users\diego\Downloads\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.genruntimeconfig.cache
 C:\Users\diego\Downloads\contadito-fullstack\backend\obj\Debug\net8.0\ref\Contadito.Api.dll
+C:\Users\diego\Downloads\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.sourcelink.json
