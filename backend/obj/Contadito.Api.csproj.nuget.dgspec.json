@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\diego\\Downloads\\contadito-fullstack\\backend\\Contadito.Api.csproj": {}
+    "C:\\Users\\diego\\Downloads\\asdasdas\\contadito-fullstack\\backend\\Contadito.Api.csproj": {}
   },
   "projects": {
-    "C:\\Users\\diego\\Downloads\\contadito-fullstack\\backend\\Contadito.Api.csproj": {
+    "C:\\Users\\diego\\Downloads\\asdasdas\\contadito-fullstack\\backend\\Contadito.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\diego\\Downloads\\contadito-fullstack\\backend\\Contadito.Api.csproj",
+        "projectUniqueName": "C:\\Users\\diego\\Downloads\\asdasdas\\contadito-fullstack\\backend\\Contadito.Api.csproj",
         "projectName": "Contadito.Api",
-        "projectPath": "C:\\Users\\diego\\Downloads\\contadito-fullstack\\backend\\Contadito.Api.csproj",
+        "projectPath": "C:\\Users\\diego\\Downloads\\asdasdas\\contadito-fullstack\\backend\\Contadito.Api.csproj",
         "packagesPath": "C:\\Users\\diego\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\diego\\Downloads\\contadito-fullstack\\backend\\obj\\",
+        "outputPath": "C:\\Users\\diego\\Downloads\\asdasdas\\contadito-fullstack\\backend\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\diego\\AppData\\Roaming\\NuGet\\NuGet.Config"
