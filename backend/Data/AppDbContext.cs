@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Contadito.Api.Domain.Entities;
+using Contadito.Api.Domain.Views; // <—
 
 namespace Contadito.Api.Data
 {
@@ -14,6 +15,11 @@ namespace Contadito.Api.Data
         public DbSet<Product> Products => Set<Product>();
         public DbSet<Customer> Customers => Set<Customer>();
         public DbSet<Warehouse> Warehouses => Set<Warehouse>();   // <-- NUEVO
+        public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
+        public DbSet<SalesItem> SalesItems => Set<SalesItem>();
+        public DbSet<Payment> Payments => Set<Payment>();
+        public DbSet<AvgCostView> AvgCosts => Set<AvgCostView>();
+        public DbSet<StockView> Stocks => Set<StockView>();
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
@@ -31,6 +37,10 @@ namespace Contadito.Api.Data
 
             mb.Entity<User>()
                 .HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
+
+             // Vistas keyless
+            mb.Entity<AvgCostView>().ToView("v_avg_cost").HasNoKey();
+            mb.Entity<StockView>().ToView("v_stock").HasNoKey();
 
             base.OnModelCreating(mb);
         }

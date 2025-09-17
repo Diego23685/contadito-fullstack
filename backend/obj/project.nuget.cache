@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "Ntg45/wp1TQ=",
+  "dgSpecHash": "+KycguDRcSQ=",
   "success": true,
-  "projectFilePath": "C:\\Users\\diego\\Downloads\\asdasdas\\contadito-fullstack\\backend\\Contadito.Api.csproj",
+  "projectFilePath": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\Contadito.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\diego\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\diego\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\8.0.6\\microsoft.aspnetcore.authentication.jwtbearer.8.0.6.nupkg.sha512",
