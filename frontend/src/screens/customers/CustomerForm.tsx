@@ -1,12 +1,43 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View, Text, TextInput, Alert, StyleSheet, ScrollView,
+  Pressable, ActivityIndicator, useWindowDimensions
+} from 'react-native';
 import { api } from '../../api';
 
-type Customer = { id: number; name: string; email?: string | null; phone?: string | null; documentId?: string | null; address?: string | null; };
+type Customer = {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  documentId?: string | null;
+  address?: string | null;
+};
+
+const isEmail = (v: string) =>
+  !!v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+
+const onlyDigits = (v: string) => v.replace(/[^\d+]/g, '');
+
+const Helper = ({ children }: { children: React.ReactNode }) => (
+  <Text style={styles.helper}>{children}</Text>
+);
+
+const SectionTitle = ({ children }: { children: React.ReactNode }) => (
+  <Text style={styles.sectionTitle}>{children}</Text>
+);
+
+const Card: React.FC<{ style?: any; children: React.ReactNode }> = ({ style, children }) => (
+  <View style={[styles.card, style]}>{children}</View>
+);
+
+const Divider = () => <View style={styles.divider} />;
 
 const CustomerForm: React.FC<any> = ({ route, navigation }) => {
   const id: number | undefined = route?.params?.id;
   const isEdit = !!id;
+  const { width } = useWindowDimensions();
+  const isWide = width >= 900;
 
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
@@ -14,6 +45,8 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
   const [phone, setPhone] = useState('');
   const [documentId, setDocumentId] = useState('');
   const [address, setAddress] = useState('');
+
+  const [errors, setErrors] = useState<{ [k: string]: string | null }>({});
 
   useEffect(() => {
     if (!isEdit) return;
@@ -35,13 +68,29 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
     })();
   }, [id, isEdit]);
 
+  const validate = () => {
+    const next: typeof errors = {};
+    if (!name.trim()) next.name = 'El nombre es requerido';
+    if (email && !isEmail(email)) next.email = 'Email no válido';
+    if (phone && !/^\+?\d{7,15}$/.test(onlyDigits(phone))) next.phone = 'Teléfono inválido';
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const save = async () => {
+    if (!validate()) return;
     try {
       setLoading(true);
-      const payload = { name, email, phone, documentId, address };
+      const payload = {
+        name: name.trim(),
+        email: email.trim() || null,
+        phone: phone.trim() || null,
+        documentId: documentId.trim() || null,
+        address: address.trim() || null
+      };
       if (isEdit) await api.put(`/customers/${id}`, payload);
       else await api.post('/customers', payload);
-      Alert.alert('OK', 'Cliente guardado');
+      Alert.alert('Listo', 'Cliente guardado');
       navigation.goBack();
     } catch (e: any) {
       Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo guardar'));
@@ -50,36 +99,254 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
     }
   };
 
+  const cancel = () => navigation.goBack();
+
+  const prettyPhone = useMemo(() => {
+    const d = onlyDigits(phone);
+    // Ejemplo simple: +505 8888 8888 (no es máscara estricta)
+    if (!d) return '';
+    if (d.startsWith('+')) return d.replace(/(\+\d{1,3})(\d{4})(\d{0,4})/, '$1 $2 $3').trim();
+    return d.replace(/(\d{4})(\d{0,4})(\d{0,4})/, '$1 $2 $3').trim();
+  }, [phone]);
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{isEdit ? 'Editar cliente' : 'Nuevo cliente'}</Text>
+    <View style={styles.screen}>
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <Text style={styles.title}>{isEdit ? 'Editar cliente' : 'Nuevo cliente'}</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable onPress={cancel} style={[styles.actionBtn, styles.secondaryBtn]}>
+            <Text style={styles.actionTextSecondary}>Cancelar</Text>
+          </Pressable>
+          <Pressable
+            onPress={save}
+            disabled={loading || !name.trim()}
+            style={[
+              styles.actionBtn,
+              (!loading && name.trim() ? styles.primaryBtn : styles.disabledBtn)
+            ]}
+          >
+            {loading ? <ActivityIndicator /> : <Text style={styles.actionTextPrimary}>Guardar</Text>}
+          </Pressable>
+        </View>
+      </View>
 
-      <Text style={styles.label}>Nombre</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} />
+      <ScrollView contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
+        {/* Col izquierda */}
+        <View style={[styles.col, isWide && styles.colLeft]}>
+          <Card>
+            <SectionTitle>Datos del cliente</SectionTitle>
 
-      <Text style={styles.label}>Email</Text>
-      <TextInput style={styles.input} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+            <View style={styles.field}>
+              <Text style={styles.label}>Nombre</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Ej. María Pérez"
+              />
+              {!!errors.name && <Text style={styles.error}>{errors.name}</Text>}
+            </View>
 
-      <Text style={styles.label}>Telefono</Text>
-      <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+            <View style={styles.row2}>
+              <View style={[styles.field, styles.flex1]}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="persona@correo.com"
+                />
+                {!!errors.email && <Text style={styles.error}>{errors.email}</Text>}
+                <Helper>Usa un correo válido para enviar facturas o recibos.</Helper>
+              </View>
+              <View style={[styles.field, styles.flex1]}>
+                <Text style={styles.label}>Teléfono</Text>
+                <TextInput
+                  style={styles.input}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  placeholder="+505 8888 8888"
+                />
+                {!!errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
+                <Helper>Formato recomendado: +código país + número.</Helper>
+              </View>
+            </View>
 
-      <Text style={styles.label}>Documento</Text>
-      <TextInput style={styles.input} value={documentId} onChangeText={setDocumentId} />
+            <View style={styles.row2}>
+              <View style={[styles.field, styles.flex1]}>
+                <Text style={styles.label}>Documento</Text>
+                <TextInput
+                  style={styles.input}
+                  value={documentId}
+                  onChangeText={setDocumentId}
+                  placeholder="Cédula / RUC / NIT"
+                />
+                <Helper>Identificación fiscal o personal.</Helper>
+              </View>
+              <View style={[styles.field, styles.flex1]}>
+                <Text style={styles.label}>Dirección</Text>
+                <TextInput
+                  style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+                  multiline
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder="Barrio, calle, referencia"
+                />
+              </View>
+            </View>
+          </Card>
 
-      <Text style={styles.label}>Direccion</Text>
-      <TextInput style={[styles.input, { height: 80 }]} multiline value={address} onChangeText={setAddress} />
+          <Card>
+            <SectionTitle>Notas y preferencias</SectionTitle>
+            <Helper>Agrega información útil para el servicio: horarios, condiciones de crédito, etc.</Helper>
+            <TextInput
+              style={[styles.input, { height: 100, textAlignVertical: 'top', marginTop: 8 }]}
+              multiline
+              placeholder="Opcional"
+              // Si luego decides persistirlo, añade este campo al backend
+              onChangeText={() => {}}
+              editable
+            />
+          </Card>
+        </View>
 
-      <View style={{ height: 12 }} />
-      <Button title={loading ? 'Guardando...' : 'Guardar'} onPress={save} disabled={loading || !name} />
-    </ScrollView>
+        {/* Col derecha */}
+        <View style={[styles.col, isWide && styles.colRight]}>
+          <Card>
+            <SectionTitle>Resumen</SectionTitle>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Nombre</Text>
+              <Text style={styles.summaryValue}>{name || '—'}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Email</Text>
+              <Text style={styles.summaryValue}>{email || '—'}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Teléfono</Text>
+              <Text style={styles.summaryValue}>{prettyPhone || phone || '—'}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Documento</Text>
+              <Text style={styles.summaryValue}>{documentId || '—'}</Text>
+            </View>
+            <Divider />
+            <Helper>
+              Revisa que los datos estén correctos antes de guardar. Puedes editar luego.
+            </Helper>
+          </Card>
+
+          <Card>
+            <SectionTitle>Buenas prácticas</SectionTitle>
+            <Text style={styles.tip}>• Usa emails reales para envío de comprobantes.</Text>
+            <Text style={styles.tip}>• Estandariza el formato del teléfono (+505 #### ####).</Text>
+            <Text style={styles.tip}>• Guarda el documento fiscal para facturación.</Text>
+          </Card>
+        </View>
+      </ScrollView>
+
+      {/* Footer fijo */}
+      <View style={styles.footer}>
+        <View style={styles.footerInner}>
+          <Text style={styles.footerText}>{isEdit ? 'Editando cliente' : 'Creando nuevo cliente'}</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable onPress={cancel} style={[styles.actionBtn, styles.secondaryBtn]}>
+              <Text style={styles.actionTextSecondary}>Cancelar</Text>
+            </Pressable>
+            <Pressable
+              onPress={save}
+              disabled={loading || !name.trim()}
+              style={[
+                styles.actionBtn,
+                (!loading && name.trim() ? styles.primaryBtn : styles.disabledBtn)
+              ]}
+            >
+              {loading ? <ActivityIndicator /> : <Text style={styles.actionTextPrimary}>Guardar</Text>}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </View>
   );
 };
 
 export default CustomerForm;
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  label: { marginTop: 8, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, paddingHorizontal: 10, minHeight: 40 },
+  screen: { flex: 1, backgroundColor: '#F6F7F9' },
+
+  topBar: {
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
+  },
+  title: { fontSize: 20, fontWeight: '700' },
+
+  container: { padding: 16, gap: 16 },
+  containerWide: { maxWidth: 1200, alignSelf: 'center', width: '100%', flexDirection: 'row' },
+  col: { flex: 1, gap: 16 },
+  colLeft: { flex: 2 },
+  colRight: { flex: 1, minWidth: 320 },
+
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
+    elevation: 2,
+  },
+
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+
+  field: { marginBottom: 12 },
+  label: { marginBottom: 6, color: '#111827', fontWeight: '600' },
+  input: {
+    borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, minHeight: 42,
+    backgroundColor: '#fff'
+  },
+
+  row2: { flexDirection: 'row', gap: 12 },
+  flex1: { flex: 1 },
+
+  helper: { marginTop: 6, color: '#6B7280', fontSize: 12 },
+  error: { marginTop: 6, color: '#B91C1C', fontSize: 12 },
+
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 },
+
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  summaryLabel: { color: '#6B7280' },
+  summaryValue: { fontWeight: '700' },
+
+  tip: { color: '#374151', marginBottom: 6 },
+
+  footer: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1, borderTopColor: '#E5E7EB',
+    shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: -2 }, shadowRadius: 8,
+    elevation: 6,
+  },
+  footerInner: {
+    maxWidth: 1200, alignSelf: 'center', width: '100%',
+    paddingHorizontal: 16, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
+  },
+  footerText: { color: '#6B7280' },
+
+  actionBtn: {
+    minWidth: 110, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderRadius: 10, borderWidth: 1
+  },
+  primaryBtn: { backgroundColor: '#0EA5E9', borderColor: '#0EA5E9' },
+  secondaryBtn: { backgroundColor: '#FFFFFF', borderColor: '#D1D5DB' },
+  disabledBtn: { backgroundColor: '#93C5FD', borderColor: '#93C5FD' },
+  actionTextPrimary: { color: '#FFFFFF', fontWeight: '700' },
+  actionTextSecondary: { color: '#111827', fontWeight: '700' },
 });
