@@ -4,6 +4,7 @@ import { View, Text, TextInput, Button, Alert, StyleSheet, Platform } from 'reac
 import { api, setBaseUrl } from '../api';
 import { AuthContext } from '../providers/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth0 } from '@auth0/auth0-react';
 
 const DEFAULT_BASE = Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://127.0.0.1:5000';
 setBaseUrl(DEFAULT_BASE);
@@ -11,6 +12,8 @@ setBaseUrl(DEFAULT_BASE);
 const LoginScreen: React.FC = () => {
   const { login } = useContext(AuthContext);
   const navigation = useNavigation<any>();
+  // const { authorize } = useAuth0();
+  const { loginWithRedirect } = useAuth0();
 
   const [email, setEmail] = useState('owner@demo.com');
   const [password, setPassword] = useState('pass123');
@@ -18,6 +21,14 @@ const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    // try {
+    //   await authorize();
+    // } catch (e) {
+    //   console.log(e);
+    // }
+    
+    loginWithRedirect();
+    
     try {
       setLoading(true);
       const res = await api.post('/auth/login', { email, password });

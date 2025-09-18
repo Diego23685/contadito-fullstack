@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState, useCallback } from 're
 import { View, Text, Button, Alert, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { api } from '../api';
 import { AuthContext } from '../providers/AuthContext';
+import { useAuth0 } from '@auth0/auth0-react';
 
 type Product = { id: number; sku: string; name: string };
 
@@ -14,6 +15,8 @@ type ProductsResponse = {
 
 const HomeScreen: React.FC<any> = ({ navigation }) => {
   const { token, logout } = useContext(AuthContext);
+  // const { clearSession } = useAuth0();
+  const { logout: logoutWithAuth0 } = useAuth0();
 
   const [refreshing, setRefreshing] = useState(false);
   const [productsTotal, setProductsTotal] = useState<number | null>(null);
@@ -47,6 +50,20 @@ const HomeScreen: React.FC<any> = ({ navigation }) => {
   }, []);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  
+  
+  const handleLogout = async () => {
+    // try {
+    //   await clearSession();
+    // } catch (e) {
+    //   console.log('Log out cancelled');
+    // }
+    
+    logoutWithAuth0({ logoutParams: { returnTo: window.location.origin } });
+    
+    logout();
+  }
+  
 
   return (
     <FlatList
@@ -86,7 +103,7 @@ const HomeScreen: React.FC<any> = ({ navigation }) => {
       ListEmptyComponent={<View style={{ padding: 16 }}><Text style={{ color: '#666' }}>No hay productos para mostrar.</Text></View>}
       ListFooterComponent={
         <View style={{ padding: 16 }}>
-          <Button title="Cerrar sesion" onPress={logout} />
+          <Button title="Cerrar sesion" onPress={handleLogout} />
           <View style={{ height: 8 }} />
           <Button title="Refrescar tablero" onPress={fetchDashboard} />
         </View>

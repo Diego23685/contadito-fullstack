@@ -1,6 +1,8 @@
 import React, { useContext } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthContext } from '../providers/AuthContext';
+import { useAuth0 } from '@auth0/auth0-react';
 
 // Auth
 import LoginScreen from '../screens/LoginScreen';
@@ -19,8 +21,16 @@ const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const { token } = useContext(AuthContext);
+  const { user, isLoading } = useAuth0();
+  
+  if (isLoading) {
+    return <View style={styles.container}><Text>Loading</Text></View>;
+  }
+  
+  const loggedIn = user !== undefined && user !== null;
+  
 
-  if (!token) {
+  if (!loggedIn && !token) {
     // Stack de autenticacion
     return (
       <Stack.Navigator>
@@ -43,3 +53,13 @@ export default function RootNavigator() {
     </Stack.Navigator>
   );
 }
+
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5FCFF',
+  }
+});
