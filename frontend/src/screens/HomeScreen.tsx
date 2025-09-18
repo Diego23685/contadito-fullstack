@@ -1,5 +1,5 @@
 // src/screens/HomeScreen.tsx
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useContext } from 'react';
 import {
   Alert,
   Button,
@@ -9,8 +9,11 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
+  Pressable,
 } from 'react-native';
 import { api } from '../api';
+import { AuthContext } from '../providers/AuthContext';
 
 type Dashboard = {
   tenantName: string;
@@ -54,7 +57,54 @@ type Dashboard = {
 
 type Props = { navigation: any };
 
+// --------- UI Helpers ----------
+const Card: React.FC<{ style?: any; children: React.ReactNode; onPress?: () => void }> = ({ style, children, onPress }) => {
+  const Comp: any = onPress ? Pressable : View;
+  return (
+    <Comp
+      onPress={onPress}
+      style={[styles.card, style, onPress && { opacity: 1 }]}
+    >
+      {children}
+    </Comp>
+  );
+};
+
+const Section: React.FC<{ title: string; right?: React.ReactNode; children: React.ReactNode; style?: any }> = ({ title, right, children, style }) => (
+  <View style={[styles.section, style]}>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {right ? <View>{right}</View> : null}
+    </View>
+    {children}
+  </View>
+);
+
+const Label: React.FC<{ children: React.ReactNode; muted?: boolean; style?: any }> = ({ children, muted, style }) => (
+  <Text style={[{ color: muted ? '#6b7280' : '#111827' }, style]}>{children}</Text>
+);
+
+const Badge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Text style={styles.badge}>{children}</Text>
+);
+
+// Barra horizontal proporcional (sin libs)
+const Bar: React.FC<{ value: number; max: number }> = ({ value, max }) => {
+  const pct = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
+  return (
+    <View style={styles.barTrack}>
+      <View style={[styles.barFill, { width: `${pct * 100}%` }]} />
+    </View>
+  );
+};
+
+// --------- Pantalla ----------
 export default function HomeScreen({ navigation }: Props) {
+  const { logout } = useContext(AuthContext);
+  const { width } = useWindowDimensions();
+  const isWide = width >= 700;   // 2 columnas
+  const isXL = width >= 1000;    // grillas más anchas
+
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [search, setSearch] = useState('');
@@ -79,23 +129,33 @@ export default function HomeScreen({ navigation }: Props) {
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  const kpisHoy = useMemo(() => ([
-    { label: 'Ventas hoy', value: money(dashboard?.salesToday) },
-    { label: 'Margen hoy', value: money(dashboard?.marginToday) },
-    { label: 'Tickets hoy', value: String(dashboard?.ticketsToday ?? 0) },
-  ]), [dashboard, money]);
+  // KPIs HOY (con barras relativas entre sí)
+  const kpisHoy = useMemo(() => {
+    const vals = [
+      { label: 'Ventas hoy', value: Number(dashboard?.salesToday ?? 0), fmt: money },
+      { label: 'Margen hoy', value: Number(dashboard?.marginToday ?? 0), fmt: money },
+      { label: 'Tickets hoy', value: Number(dashboard?.ticketsToday ?? 0), fmt: (v: number) => `${v}` },
+    ];
+    const max = Math.max(...vals.map(v => v.value), 1);
+    return { items: vals, max };
+  }, [dashboard, money]);
 
-  const kpisMes = useMemo(() => ([
-    { label: 'Ventas mes', value: money(dashboard?.salesMonth) },
-    { label: 'Margen mes', value: money(dashboard?.marginMonth) },
-    { label: 'Ticket prom.', value: money(dashboard?.avgTicketMonth) },
-  ]), [dashboard, money]);
+  // KPIs MES
+  const kpisMes = useMemo(() => {
+    const vals = [
+      { label: 'Ventas mes', value: Number(dashboard?.salesMonth ?? 0), fmt: money },
+      { label: 'Margen mes', value: Number(dashboard?.marginMonth ?? 0), fmt: money },
+      { label: 'Ticket prom.', value: Number(dashboard?.avgTicketMonth ?? 0), fmt: money },
+    ];
+    const max = Math.max(...vals.map(v => v.value), 1);
+    return { items: vals, max };
+  }, [dashboard, money]);
 
   const totals = useMemo(() => ([
-    { label: 'Productos', value: String(dashboard?.productsTotal ?? '...') },
-    { label: 'Clientes', value: String(dashboard?.customersTotal ?? '...') },
-    { label: 'Almacenes', value: String(dashboard?.warehousesTotal ?? '...') },
-  ]), [dashboard]);
+    { label: 'Productos', value: String(dashboard?.productsTotal ?? '...'), to: () => navigation.navigate('ProductsList') },
+    { label: 'Clientes', value: String(dashboard?.customersTotal ?? '...'), to: () => navigation.navigate('CustomersList') },
+    { label: 'Almacenes', value: String(dashboard?.warehousesTotal ?? '...'), to: () => navigation.navigate('WarehousesList') },
+  ]), [dashboard, navigation]);
 
   const goSearch = useCallback(() => {
     if (!search?.trim()) return;
@@ -105,39 +165,40 @@ export default function HomeScreen({ navigation }: Props) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: '#fff' }}
-      contentContainerStyle={{ paddingBottom: 24 }}
+      contentContainerStyle={{ paddingBottom: 28 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchDashboard} />}
     >
-      {/* Encabezado tenant + estado */}
-      <View style={[styles.section, { paddingTop: 16 }]}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.title}>Inicio</Text>
-            <Text style={styles.meta}>
-              Empresa: <Text style={styles.bold}>{dashboard?.tenantName ?? '—'}</Text> · Plan: <Text style={styles.bold}>{dashboard?.plan ?? '—'}</Text>
-            </Text>
-          </View>
-          <View style={styles.headerBtns}>
-            <Button title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
+      {/* Header */}
+      <View style={[styles.headerWrap]}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>Inicio</Text>
+          <Text style={styles.meta}>
+            Empresa: <Text style={styles.bold}>{dashboard?.tenantName ?? '—'}</Text> · Plan: <Text style={styles.bold}>{dashboard?.plan ?? '—'}</Text>
+          </Text>
+        </View>
+        <View style={styles.headerBtns}>
+          <Button title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
+          <Button title="Cerrar sesión" color="#b91c1c" onPress={logout} />
+        </View>
+      </View>
+
+      {/* Search + Quick actions */}
+      <View style={[styles.section, { paddingTop: 0 }]}>
+        <View style={[styles.searchRow, isWide && { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
+          <TextInput
+            placeholder="Buscar productos, clientes o SKU…"
+            value={search}
+            onChangeText={setSearch}
+            onSubmitEditing={goSearch}
+            style={[styles.search, isWide && { flex: 1 }]}
+            returnKeyType="search"
+          />
+          <View style={[styles.row, { marginTop: isWide ? 0 : 8 }]}>
+            <Button title="Buscar" onPress={goSearch} />
+            <Button title="Limpiar" onPress={() => setSearch('')} />
           </View>
         </View>
 
-        {/* Buscar global */}
-        <TextInput
-          placeholder="Buscar productos, clientes o SKU…"
-          value={search}
-          onChangeText={setSearch}
-          onSubmitEditing={goSearch}
-          style={styles.search}
-          returnKeyType="search"
-        />
-        <View style={{ height: 8 }} />
-        <View style={styles.row}>
-          <Button title="Buscar" onPress={goSearch} />
-          <Button title="Limpiar" onPress={() => setSearch('')} />
-        </View>
-
-        {/* Acciones rápidas */}
         <View style={[styles.quickGrid, { marginTop: 12 }]}>
           <Button title="Venta" onPress={() => navigation.navigate('SaleCreate')} />
           <Button title="Compra" onPress={() => navigation.navigate('PurchaseCreate')} />
@@ -146,178 +207,251 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
       </View>
 
-      {/* Totales existentes (compatibles con tu UI actual) */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Resumen de entidades</Text>
-        <View style={styles.cards}>
-          {totals.map((k) => (
-            <View key={k.label} style={styles.card}>
-              <Text style={styles.cardLabel}>{k.label}</Text>
-              <Text style={styles.cardValue}>{k.value}</Text>
+      {/* MAIN GRID (dos columnas en pantallas anchas) */}
+      <View style={[styles.main, isWide && styles.mainWide]}>
+        {/* Columna izquierda */}
+        <View style={[styles.col, isWide && styles.colLeft]}>
+          {/* KPIs Hoy */}
+          <Section title="Hoy">
+            <View style={[styles.grid, isXL ? styles.cols3 : styles.cols2]}>
+              {kpisHoy.items.map(k => (
+                <Card key={k.label}>
+                  <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
+                  <Text style={styles.kpiValue}>{k.fmt(k.value)}</Text>
+                  <Bar value={k.value} max={kpisHoy.max} />
+                </Card>
+              ))}
             </View>
-          ))}
-        </View>
-        <View style={[styles.row, { marginTop: 12 }]}>
-          <Button title="Productos" onPress={() => navigation.navigate('ProductsList')} />
-          <Button title="Clientes" onPress={() => navigation.navigate('CustomersList')} />
-          <Button title="Almacenes" onPress={() => navigation.navigate('WarehousesList')} />
-        </View>
-      </View>
+          </Section>
 
-      {/* KPIs de HOY */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Hoy</Text>
-        <View style={styles.cards}>
-          {kpisHoy.map((k) => (
-            <View key={k.label} style={styles.card}>
-              <Text style={styles.cardLabel}>{k.label}</Text>
-              <Text style={styles.cardValue}>{k.value}</Text>
+          {/* KPIs Mes */}
+          <Section title="Este mes">
+            <View style={[styles.grid, isXL ? styles.cols3 : styles.cols2]}>
+              {kpisMes.items.map(k => (
+                <Card key={k.label}>
+                  <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
+                  <Text style={styles.kpiValue}>{k.fmt(k.value)}</Text>
+                  <Bar value={k.value} max={kpisMes.max} />
+                </Card>
+              ))}
             </View>
-          ))}
-        </View>
-      </View>
+          </Section>
 
-      {/* KPIs del MES */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Este mes</Text>
-        <View style={styles.cards}>
-          {kpisMes.map((k) => (
-            <View key={k.label} style={styles.card}>
-              <Text style={styles.cardLabel}>{k.label}</Text>
-              <Text style={styles.cardValue}>{k.value}</Text>
+          {/* Totales */}
+          <Section
+            title="Resumen de entidades"
+            right={<View style={styles.row}>
+              <Button title="Productos" onPress={() => navigation.navigate('ProductsList')} />
+              <Button title="Clientes" onPress={() => navigation.navigate('CustomersList')} />
+              <Button title="Almacenes" onPress={() => navigation.navigate('WarehousesList')} />
+            </View>}
+          >
+            <View style={[styles.grid, styles.cols3]}>
+              {totals.map(k => (
+                <Card key={k.label} onPress={k.to}>
+                  <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
+                  <Text style={styles.kpiValue}>{k.value}</Text>
+                </Card>
+              ))}
             </View>
-          ))}
-        </View>
-      </View>
+          </Section>
 
-      {/* Alertas */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Alertas</Text>
-
-        {/* Stock bajo */}
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Stock bajo</Text>
-          {!dashboard?.lowStock?.length ? (
-            <Text style={styles.muted}>Sin alertas de stock.</Text>
-          ) : (
-            dashboard.lowStock.map((p) => (
-              <View key={p.id} style={styles.rowBetween}>
-                <Text numberOfLines={1}>{p.sku} · {p.name}</Text>
-                <Button title="Ver" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
+          {/* Últimos productos */}
+          <Section
+            title="Últimos productos"
+            right={<Button title="Ver todos" onPress={() => navigation.navigate('ProductsList')} />}
+          >
+            {!dashboard?.latestProducts?.length ? (
+              <Label muted>No hay productos para mostrar.</Label>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {dashboard.latestProducts.slice(0, isWide ? 8 : 5).map(item => (
+                  <Card key={item.id} style={{ paddingVertical: 10 }}>
+                    <View style={styles.rowBetween}>
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <Text style={styles.itemTitle} numberOfLines={1}>{item.name}</Text>
+                        <Text style={styles.itemSub}>{item.sku}</Text>
+                      </View>
+                      <Button title="Editar" onPress={() => navigation.navigate('ProductForm', { id: item.id })} />
+                    </View>
+                  </Card>
+                ))}
               </View>
-            ))
-          )}
+            )}
+          </Section>
         </View>
 
-        {/* Por cobrar próximos a vencer */}
-        <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Por cobrar (próx. 7 días)</Text>
-          {!dashboard?.receivablesDueSoon?.length ? (
-            <Text style={styles.muted}>Sin cuentas próximas a vencer.</Text>
-          ) : (
-            dashboard.receivablesDueSoon.map((i) => (
-              <View key={i.invoice_id} style={styles.rowBetween}>
-                <Text numberOfLines={1}>
-                  #{i.number} · {i.customer_name ?? 'Cliente'} · vence en {i.due_in_days}d
+        {/* Columna derecha */}
+        <View style={[styles.col, isWide && styles.colRight]}>
+          {/* Alertas */}
+          <Section title="Alertas">
+            {/* Stock bajo */}
+            <Card style={{ marginBottom: 12 }}>
+              <Text style={styles.panelTitle}>Stock bajo</Text>
+              {!dashboard?.lowStock?.length ? (
+                <Label muted>Sin alertas de stock.</Label>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {dashboard.lowStock.slice(0, 6).map((p) => (
+                    <View key={p.id} style={styles.rowBetween}>
+                      <Text numberOfLines={1} style={{ flex: 1, paddingRight: 8 }}>{p.sku} · {p.name}</Text>
+                      <Button title="Ver" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
+                    </View>
+                  ))}
+                </View>
+              )}
+            </Card>
+
+            {/* Por cobrar */}
+            <Card>
+              <Text style={styles.panelTitle}>Por cobrar (próx. 7 días)</Text>
+              {!dashboard?.receivablesDueSoon?.length ? (
+                <Label muted>Sin cuentas próximas a vencer.</Label>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  {dashboard.receivablesDueSoon.slice(0, 6).map((i) => (
+                    <View key={i.invoice_id} style={styles.rowBetween}>
+                      <Text numberOfLines={1} style={{ flex: 1, paddingRight: 8 }}>
+                        #{i.number} · {i.customer_name ?? 'Cliente'} · vence en {i.due_in_days}d
+                      </Text>
+                      <Badge>{money(i.due_amount)}</Badge>
+                    </View>
+                  ))}
+                </View>
+              )}
+              <View style={{ marginTop: 8 }}>
+                <Button title="Ver cuentas por cobrar" onPress={() => navigation.navigate('ReceivablesList')} />
+              </View>
+            </Card>
+          </Section>
+
+          {/* Actividad */}
+          <Section title="Actividad reciente">
+            {!dashboard?.activity?.length ? (
+              <Label muted>Sin actividad reciente.</Label>
+            ) : (
+              <View style={{ gap: 8 }}>
+                {dashboard.activity.slice(0, isWide ? 10 : 6).map((a, idx) => (
+                  <Card key={`${a.kind}-${a.ref_id}-${idx}`} style={{ paddingVertical: 10 }}>
+                    <Text style={styles.itemTitle} numberOfLines={1}>{a.kind}: {a.title}</Text>
+                    <Text style={styles.itemSub}>{a.when_at}</Text>
+                  </Card>
+                ))}
+              </View>
+            )}
+          </Section>
+
+          {/* Estado / Sync */}
+          <Section title="Estado del sistema">
+            <Card>
+              <View style={styles.statusRow}>
+                <Text style={{ color: dashboard?.online ? '#065f46' : '#92400e', fontWeight: '700' }}>
+                  {dashboard?.online ? 'Conectado' : 'Sin conexión'}
                 </Text>
-                <Text style={styles.badge}>{money(i.due_amount)}</Text>
+                <Label muted>Último sync: {dashboard?.lastSync ?? '—'}</Label>
               </View>
-            ))
-          )}
-          <View style={{ marginTop: 8 }}>
-            <Button title="Ver cuentas por cobrar" onPress={() => navigation.navigate('ReceivablesList')} />
-          </View>
-        </View>
-      </View>
-
-      {/* Actividad reciente */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Actividad reciente</Text>
-        {!dashboard?.activity?.length ? (
-          <Text style={styles.muted}>Sin actividad reciente.</Text>
-        ) : (
-          dashboard.activity.slice(0, 10).map((a, idx) => (
-            <View key={`${a.kind}-${a.ref_id}-${idx}`} style={styles.activityItem}>
-              <Text style={styles.itemTitle}>{a.kind}: {a.title}</Text>
-              <Text style={styles.itemSub}>{a.when_at}</Text>
-            </View>
-          ))
-        )}
-      </View>
-
-      {/* Últimos productos */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Últimos productos</Text>
-        {!dashboard?.latestProducts?.length ? (
-          <Text style={styles.muted}>No hay productos para mostrar.</Text>
-        ) : (
-          dashboard.latestProducts.map((item) => (
-            <View key={item.id} style={styles.listItem}>
-              <Text style={styles.itemTitle}>{item.name}</Text>
-              <Text style={styles.itemSub}>{item.sku}</Text>
-              <View style={styles.rowRight}>
-                <Button title="Editar" onPress={() => navigation.navigate('ProductForm', { id: item.id })} />
+              <View style={{ marginTop: 8 }}>
+                <Button title="Refrescar tablero" onPress={fetchDashboard} />
               </View>
-            </View>
-          ))
-        )}
-      </View>
-
-      {/* Estado de conexión / sync y acciones */}
-      <View style={styles.section}>
-        <View style={styles.statusBar}>
-          <Text style={{ color: dashboard?.online ? '#065f46' : '#92400e', fontWeight: '600' }}>
-            {dashboard?.online ? 'Conectado' : 'Sin conexión'}
-          </Text>
-          <Text style={styles.muted}>Último sync: {dashboard?.lastSync ?? '—'}</Text>
-        </View>
-
-        <View style={{ marginTop: 8 }}>
-          <Button title="Refrescar tablero" onPress={fetchDashboard} />
+            </Card>
+          </Section>
         </View>
       </View>
     </ScrollView>
   );
 }
 
+// --------- Estilos ----------
 const styles = StyleSheet.create({
-  section: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff' },
-
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  // Estructura general
+  headerWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'center',
+  },
+  headerLeft: { flex: 1 },
   headerBtns: { flexDirection: 'row', gap: 8 },
 
+  section: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff' },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 8,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: '700' },
+
+  main: { paddingHorizontal: 16 },
+  mainWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  col: { flex: 1 },
+  colLeft: { flex: 7 },
+  colRight: { flex: 5 },
+
+  // Tipos
   title: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
   meta: { color: '#6b7280' },
   bold: { fontWeight: '700' },
+  itemTitle: { fontSize: 16, fontWeight: '600' },
+  itemSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
 
+  // Search / acciones
+  searchRow: { flexDirection: 'column' },
   search: {
     borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 12, minHeight: 42, marginTop: 8,
   },
-
-  row: { flexDirection: 'row', gap: 10, justifyContent: 'space-between', alignItems: 'center' },
-  rowRight: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', marginTop: 6 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, gap: 8 },
-
+  row: { flexDirection: 'row', gap: 10, justifyContent: 'flex-start', alignItems: 'center' },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' },
 
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  // Cards / grid
+  grid: { gap: 12, flexDirection: 'row', flexWrap: 'wrap' },
+  cols3: { },
+  cols2: { },
+  card: {
+    flexGrow: 1,
+    minWidth: 180,
+    backgroundColor: '#f8f9fb',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#eef0f4',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
 
-  cards: { flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
-  card: { flex: 1, backgroundColor: '#f8f9fb', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#eef0f4' },
-  cardLabel: { color: '#6b7280', marginBottom: 4 },
-  cardValue: { fontSize: 18, fontWeight: '700' },
+  // KPI
+  kpiValue: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
 
-  panel: { borderWidth: 1, borderColor: '#eef0f4', backgroundColor: '#fafafa', padding: 12, borderRadius: 10, marginBottom: 10 },
-  panelTitle: { fontWeight: '700', marginBottom: 6 },
+  // Barras
+  barTrack: { height: 8, backgroundColor: '#e5e7eb', borderRadius: 6, overflow: 'hidden' },
+  barFill: { height: '100%', backgroundColor: '#2563eb' },
 
-  muted: { color: '#6b7280' },
+  // Paneles
+  panelTitle: { fontWeight: '700', marginBottom: 8 },
 
-  activityItem: { paddingVertical: 8, borderBottomColor: '#eee', borderBottomWidth: 1 },
-  listItem: { paddingVertical: 10, borderBottomColor: '#eee', borderBottomWidth: 1 },
+  // Badges
+  badge: {
+    backgroundColor: '#eef2ff',
+    color: '#1e3a8a',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: 'hidden',
+    fontWeight: '700',
+  },
 
-  itemTitle: { fontSize: 16, fontWeight: '500' },
-  itemSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
-
-  statusBar: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  badge: { fontWeight: '700' },
+  // Estado
+  statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 });

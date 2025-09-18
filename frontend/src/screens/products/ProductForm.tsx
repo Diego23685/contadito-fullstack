@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Switch, Button, Alert, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, TextInput, Switch, Button, Alert, StyleSheet, ScrollView, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { api } from '../../api';
 
 type Product = {
@@ -11,15 +11,40 @@ type Product = {
   unit?: string | null;
   isService?: boolean;
   trackStock?: boolean;
-
-  // NUEVO
-  listPrice?: number;  // precio base
-  stdCost?: number | null; // costo estándar
+  listPrice?: number;
+  stdCost?: number | null;
 };
+
+const currency = (n: number | null | undefined) =>
+  new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(Number(n || 0));
+
+const toNumber = (raw: string) => {
+  // Permite sólo dígitos y un punto; evita NaN
+  const cleaned = raw.replace(/[^\d.]/g, '');
+  const parts = cleaned.split('.');
+  if (parts.length > 2) return Number(parts[0] + '.' + parts.slice(1).join('')); // colapsa puntos extra
+  return Number(cleaned || 0);
+};
+
+const HelperText = ({ children }: { children: React.ReactNode }) => (
+  <Text style={styles.helper}>{children}</Text>
+);
+
+const SectionTitle = ({ children }: { children: React.ReactNode }) => (
+  <Text style={styles.sectionTitle}>{children}</Text>
+);
+
+const Card: React.FC<{ children: React.ReactNode, style?: any }> = ({ children, style }) => (
+  <View style={[styles.card, style]}>{children}</View>
+);
+
+const Divider = () => <View style={styles.divider} />;
 
 const ProductForm: React.FC<any> = ({ route, navigation }) => {
   const id: number | undefined = route?.params?.id;
   const isEdit = !!id;
+  const { width } = useWindowDimensions();
+  const isWide = width >= 900;
 
   const [loading, setLoading] = useState(false);
   const [sku, setSku] = useState('');
@@ -30,6 +55,8 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
   const [trackStock, setTrackStock] = useState(true);
   const [listPrice, setListPrice] = useState<string>('0');
   const [stdCost, setStdCost] = useState<string>(''); // vacío = null
+
+  const [errors, setErrors] = useState<{ [k: string]: string | null }>({});
 
   useEffect(() => {
     if (!isEdit) return;
@@ -54,26 +81,42 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
     })();
   }, [id, isEdit]);
 
+  // Cálculos de utilidad/margen
+  const numPrice = useMemo(() => toNumber(listPrice), [listPrice]);
+  const numCost = useMemo(() => (stdCost === '' ? null : toNumber(stdCost)), [stdCost]);
+  const profit = useMemo(() => (numCost == null ? null : numPrice - numCost), [numPrice, numCost]);
+  const marginPct = useMemo(() => (numCost == null || numPrice === 0 ? null : ((numPrice - numCost) / numPrice) * 100), [numPrice, numCost]);
+
+  const validate = () => {
+    const next: typeof errors = {};
+    if (!isEdit && !sku.trim()) next.sku = 'Requerido al crear';
+    if (!name.trim()) next.name = 'Requerido';
+    if (numPrice < 0) next.listPrice = 'No puede ser negativo';
+    if (stdCost !== '' && numCost! < 0) next.stdCost = 'No puede ser negativo';
+    if (isService && trackStock) next.trackStock = 'Un servicio no debería controlar stock';
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const save = async () => {
+    if (!validate()) return;
     try {
       setLoading(true);
-
       const payload = {
-        name,
-        description,
-        unit,
+        name: name.trim(),
+        description: description.trim(),
+        unit: unit.trim(),
         isService,
-        trackStock,
-        listPrice: Number(listPrice || 0),
-        stdCost: stdCost === '' ? null : Number(stdCost),
+        trackStock: isService ? false : trackStock,
+        listPrice: numPrice,
+        stdCost: stdCost === '' ? null : numCost,
       };
-
       if (isEdit) {
         await api.put(`/products/${id}`, payload);
       } else {
-        await api.post('/products', { sku, ...payload });
+        await api.post('/products', { sku: sku.trim(), ...payload });
       }
-      Alert.alert('OK', 'Producto guardado');
+      Alert.alert('Listo', 'Producto guardado');
       navigation.goBack();
     } catch (e: any) {
       Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo guardar'));
@@ -82,61 +125,261 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
     }
   };
 
+  const cancel = () => navigation.goBack();
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{isEdit ? 'Editar producto' : 'Nuevo producto'}</Text>
-
-      <Text style={styles.label}>SKU {isEdit ? '(no editable)' : ''}</Text>
-      <TextInput style={[styles.input, isEdit && styles.disabled]} value={sku} onChangeText={setSku} editable={!isEdit} />
-
-      <Text style={styles.label}>Nombre</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} />
-
-      <Text style={styles.label}>Unidad</Text>
-      <TextInput style={styles.input} value={unit} onChangeText={setUnit} placeholder="unidad, kg, lt" />
-
-      <Text style={styles.label}>Descripción</Text>
-      <TextInput style={[styles.input, { height: 80 }]} value={description} onChangeText={setDescription} multiline />
-
-      <Text style={styles.label}>Precio de venta (C$)</Text>
-      <TextInput
-        style={styles.input}
-        keyboardType="decimal-pad"
-        value={listPrice}
-        onChangeText={setListPrice}
-      />
-
-      <Text style={styles.label}>Costo estándar (C$)</Text>
-      <TextInput
-        style={styles.input}
-        keyboardType="decimal-pad"
-        placeholder="Opcional"
-        value={stdCost}
-        onChangeText={setStdCost}
-      />
-
-      <View style={styles.row}>
-        <Text>Es servicio</Text>
-        <Switch value={isService} onValueChange={setIsService} />
-      </View>
-      <View style={styles.row}>
-        <Text>Controla stock</Text>
-        <Switch value={trackStock} onValueChange={setTrackStock} />
+    <View style={styles.screen}>
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <Text style={styles.title}>{isEdit ? 'Editar producto' : 'Nuevo producto'}</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Pressable onPress={cancel} style={[styles.actionBtn, styles.secondaryBtn]}>
+            <Text style={styles.actionTextSecondary}>Cancelar</Text>
+          </Pressable>
+          <Pressable onPress={save} disabled={loading || (!isEdit && !sku)} style={[styles.actionBtn, (!loading && (isEdit || !!sku) ? styles.primaryBtn : styles.disabledBtn)]}>
+            {loading ? <ActivityIndicator /> : <Text style={styles.actionTextPrimary}>Guardar</Text>}
+          </Pressable>
+        </View>
       </View>
 
-      <View style={{ height: 12 }} />
-      <Button title={loading ? 'Guardando...' : 'Guardar'} onPress={save} disabled={loading || (!isEdit && !sku)} />
-    </ScrollView>
+      <ScrollView contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
+        {/* Columna izquierda */}
+        <View style={[styles.col, isWide && styles.colLeft]}>
+          <Card>
+            <SectionTitle>Ficha de producto</SectionTitle>
+            <View style={styles.field}>
+              <Text style={styles.label}>SKU {isEdit ? '(no editable)' : ''}</Text>
+              <TextInput
+                style={[styles.input, isEdit && styles.disabled]}
+                value={sku}
+                onChangeText={setSku}
+                editable={!isEdit}
+                placeholder="Ej. CAF-001"
+              />
+              {!!errors.sku && <Text style={styles.error}>{errors.sku}</Text>}
+              {!isEdit && <HelperText>Identificador único dentro del tenant.</HelperText>}
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Nombre</Text>
+              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Ej. Café molido 500g" />
+              {!!errors.name && <Text style={styles.error}>{errors.name}</Text>}
+            </View>
+
+            <View style={styles.row2}>
+              <View style={[styles.field, styles.flex1]}>
+                <Text style={styles.label}>Unidad</Text>
+                <TextInput style={styles.input} value={unit} onChangeText={setUnit} placeholder="unidad, kg, lt" />
+              </View>
+              <View style={[styles.field, styles.flex1]}>
+                <Text style={styles.label}>Tipo</Text>
+                <View style={styles.pillRow}>
+                  <Pressable
+                    onPress={() => { setIsService(false); }}
+                    style={[styles.pill, !isService && styles.pillActive]}
+                  >
+                    <Text style={[styles.pillText, !isService && styles.pillTextActive]}>Producto</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => { setIsService(true); setTrackStock(false); }}
+                    style={[styles.pill, isService && styles.pillActive]}
+                  >
+                    <Text style={[styles.pillText, isService && styles.pillTextActive]}>Servicio</Text>
+                  </Pressable>
+                </View>
+                <HelperText>{isService ? 'Los servicios no manejan inventario.' : 'Los productos pueden manejar stock.'}</HelperText>
+              </View>
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Descripción</Text>
+              <TextInput
+                style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                placeholder="Notas, especificaciones, etc."
+              />
+            </View>
+
+            <Divider />
+
+            <View style={[styles.field, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+              <Text>¿Controla stock?</Text>
+              <Switch value={isService ? false : trackStock} onValueChange={setTrackStock} disabled={isService} />
+            </View>
+            {!!errors.trackStock && <Text style={styles.error}>{errors.trackStock}</Text>}
+          </Card>
+
+          <Card>
+            <SectionTitle>Precios y costos</SectionTitle>
+            <View style={styles.row2}>
+              <View style={[styles.field, styles.flex1]}>
+                <Text style={styles.label}>Precio de venta (C$)</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="decimal-pad"
+                  value={listPrice}
+                  onChangeText={setListPrice}
+                  placeholder="0.00"
+                />
+                {!!errors.listPrice && <Text style={styles.error}>{errors.listPrice}</Text>}
+                <HelperText>Precio público sugerido.</HelperText>
+              </View>
+              <View style={[styles.field, styles.flex1]}>
+                <Text style={styles.label}>Costo estándar (C$)</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="decimal-pad"
+                  placeholder="Opcional"
+                  value={stdCost}
+                  onChangeText={setStdCost}
+                />
+                {!!errors.stdCost && <Text style={styles.error}>{errors.stdCost}</Text>}
+                <HelperText>Úsalo para estimar margen. Déjalo vacío si no aplica.</HelperText>
+              </View>
+            </View>
+          </Card>
+        </View>
+
+        {/* Columna derecha (resumen) */}
+        <View style={[styles.col, isWide && styles.colRight]}>
+          <Card>
+            <SectionTitle>Resumen</SectionTitle>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Precio</Text>
+              <Text style={styles.summaryValue}>{currency(numPrice)}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Costo</Text>
+              <Text style={styles.summaryValue}>{numCost == null ? '—' : currency(numCost)}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Utilidad</Text>
+              <Text style={[styles.summaryValue, profit != null && profit < 0 && styles.negative]}>{profit == null ? '—' : currency(profit)}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Margen</Text>
+              <Text style={[styles.summaryValue, marginPct != null && marginPct < 0 && styles.negative]}>
+                {marginPct == null ? '—' : `${marginPct.toFixed(1)}%`}
+              </Text>
+            </View>
+            <Divider />
+            <HelperText>
+              El margen se calcula como (Precio − Costo) / Precio. Si dejas el costo vacío, no se calcula.
+            </HelperText>
+          </Card>
+
+          <Card>
+            <SectionTitle>Buenas prácticas</SectionTitle>
+            <Text style={styles.tip}>• Usa SKU legibles (ej. CAT-001) y consistentes.</Text>
+            <Text style={styles.tip}>• Para servicios, desactiva inventario.</Text>
+            <Text style={styles.tip}>• Revisa que el precio sea mayor al costo para evitar márgenes negativos.</Text>
+          </Card>
+        </View>
+      </ScrollView>
+
+      {/* Footer fijo con acciones (útil en scroll largo / pantallas grandes) */}
+      <View style={styles.footer}>
+        <View style={styles.footerInner}>
+          <Text style={styles.footerText}>{isEdit ? `Editando: ${name || '(sin nombre)'}` : 'Creando nuevo producto'}</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable onPress={cancel} style={[styles.actionBtn, styles.secondaryBtn]}>
+              <Text style={styles.actionTextSecondary}>Cancelar</Text>
+            </Pressable>
+            <Pressable onPress={save} disabled={loading || (!isEdit && !sku)} style={[styles.actionBtn, (!loading && (isEdit || !!sku) ? styles.primaryBtn : styles.disabledBtn)]}>
+              {loading ? <ActivityIndicator /> : <Text style={styles.actionTextPrimary}>Guardar</Text>}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </View>
   );
 };
 
 export default ProductForm;
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  label: { marginTop: 8, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, paddingHorizontal: 10, minHeight: 40 },
-  disabled: { backgroundColor: '#f3f4f6' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 8 },
+  screen: { flex: 1, backgroundColor: '#F6F7F9' },
+
+  topBar: {
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
+  },
+  title: { fontSize: 20, fontWeight: '700' },
+
+  container: { padding: 16, gap: 16 },
+  containerWide: { maxWidth: 1200, alignSelf: 'center', width: '100%', flexDirection: 'row' },
+  col: { flex: 1, gap: 16 },
+  colLeft: { flex: 2 },
+  colRight: { flex: 1, minWidth: 320 },
+
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
+    elevation: 2,
+  },
+
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  field: { marginBottom: 12 },
+  label: { marginBottom: 6, color: '#111827', fontWeight: '600' },
+  input: {
+    borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, minHeight: 42,
+    backgroundColor: '#fff'
+  },
+  disabled: { backgroundColor: '#F3F4F6' },
+
+  row2: { flexDirection: 'row', gap: 12 },
+  flex1: { flex: 1 },
+
+  pillRow: { flexDirection: 'row', gap: 8 },
+  pill: {
+    borderWidth: 1, borderColor: '#D1D5DB', paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 999, backgroundColor: '#FFF'
+  },
+  pillActive: { backgroundColor: '#0EA5E922', borderColor: '#0EA5E9' },
+  pillText: { color: '#374151', fontWeight: '600' },
+  pillTextActive: { color: '#0369A1' },
+
+  helper: { marginTop: 6, color: '#6B7280', fontSize: 12 },
+  error: { marginTop: 6, color: '#B91C1C', fontSize: 12 },
+
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 },
+
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  summaryLabel: { color: '#6B7280' },
+  summaryValue: { fontWeight: '700' },
+  negative: { color: '#B91C1C' },
+
+  tip: { color: '#374151', marginBottom: 6 },
+
+  footer: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1, borderTopColor: '#E5E7EB',
+    shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: -2 }, shadowRadius: 8,
+    elevation: 6,
+  },
+  footerInner: {
+    maxWidth: 1200, alignSelf: 'center', width: '100%',
+    paddingHorizontal: 16, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
+  },
+  footerText: { color: '#6B7280' },
+
+  actionBtn: {
+    minWidth: 110, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderRadius: 10, borderWidth: 1
+  },
+  primaryBtn: { backgroundColor: '#0EA5E9', borderColor: '#0EA5E9' },
+  secondaryBtn: { backgroundColor: '#FFFFFF', borderColor: '#D1D5DB' },
+  disabledBtn: { backgroundColor: '#93C5FD', borderColor: '#93C5FD' },
+  actionTextPrimary: { color: '#FFFFFF', fontWeight: '700' },
+  actionTextSecondary: { color: '#111827', fontWeight: '700' },
 });

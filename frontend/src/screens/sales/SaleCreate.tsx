@@ -1,5 +1,5 @@
 // src/screens/sales/SaleCreate.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Alert,
   Button,
@@ -7,8 +7,10 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { api } from '../../api';
 
@@ -16,19 +18,31 @@ type Customer = { id: number; name: string };
 type Product = { id: number; name: string; sku: string; listPrice?: number };
 
 export default function SaleCreate({ navigation }: any) {
+  const { width } = useWindowDimensions();
+  const isWide = width >= 820;   // breakpoint para 2 columnas
+  const isXL   = width >= 1100;  // más columnas para tablets muy grandes
+
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [q, setQ] = useState('');
   const [cart, setCart] = useState<Record<number, number>>({}); // productId -> qty
+
+  const money = useCallback(
+    (v?: number | null) =>
+      new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(
+        Number(v ?? 0)
+      ),
+    []
+  );
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       const custRes = await api.get('/customers', { params: { page: 1, pageSize: 50 } });
-      // customers endpoint devuelve { total, page, pageSize, items } o lista directa según tu backend
       setCustomers(custRes.data?.items ?? custRes.data ?? []);
-      const prodRes = await api.get('/products', { params: { page: 1, pageSize: 100 } });
+      const prodRes = await api.get('/products', { params: { page: 1, pageSize: 500 } });
       const list = (prodRes.data?.items ?? prodRes.data ?? []).map((p: any) => ({
         id: p.id, name: p.name, sku: p.sku, listPrice: p.listPrice ?? 0,
       }));
@@ -42,10 +56,11 @@ export default function SaleCreate({ navigation }: any) {
 
   useEffect(() => { load(); }, [load]);
 
+  // ---------- Carrito ----------
   const addToCart = (productId: number) => {
     setCart(prev => ({ ...prev, [productId]: (prev[productId] ?? 0) + 1 }));
   };
-  const removeFromCart = (productId: number) => {
+  const decFromCart = (productId: number) => {
     setCart(prev => {
       const qty = (prev[productId] ?? 0) - 1;
       if (qty <= 0) {
@@ -56,12 +71,46 @@ export default function SaleCreate({ navigation }: any) {
       return { ...prev, [productId]: qty };
     });
   };
+  const removeFromCart = (productId: number) => {
+    setCart(prev => {
+      const copy: Record<number, number> = { ...prev };
+      delete copy[productId];
+      return copy;
+    });
+  };
+  const clearCart = () => setCart({});
 
-  const subtotal = Object.entries(cart).reduce((sum, [id, qty]) => {
-    const prod = products.find(p => p.id === Number(id));
-    const price = prod?.listPrice ?? 0;
-    return sum + price * Number(qty);
-  }, 0);
+  const cartItems = useMemo(() => {
+    return Object.entries(cart).map(([id, qty]) => {
+      const prod = products.find(p => p.id === Number(id));
+      const price = prod?.listPrice ?? 0;
+      return {
+        id: Number(id),
+        name: prod?.name ?? 'Producto',
+        sku: prod?.sku ?? '',
+        qty: Number(qty),
+        price,
+        line: price * Number(qty),
+      };
+    });
+  }, [cart, products]);
+
+  const subtotal = useMemo(
+    () => cartItems.reduce((sum, it) => sum + it.line, 0),
+    [cartItems]
+  );
+
+  // ---------- Filtro y grid ----------
+  const filteredProducts = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return products;
+    return products.filter(p =>
+      p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term)
+    );
+  }, [q, products]);
+
+  // columnas responsive para el grid
+  const numColumns = isXL ? 4 : isWide ? 3 : 1;
 
   const saveSale = async () => {
     try {
@@ -89,13 +138,13 @@ export default function SaleCreate({ navigation }: any) {
         customerId: selectedCustomer.id,
         currency: 'NIO',
         items,
-        // Puedes setear tasas globales aqui si quieres:
+        // Puedes activar tasas globales si tu backend las usa:
         // taxRate: 15,
         // discountRate: 0,
       };
 
       const { data } = await api.post('/sales', payload);
-      Alert.alert('Venta guardada', `Factura ${data.number} · Total C$ ${data.total}`);
+      Alert.alert('Venta guardada', `Factura ${data.number} · Total ${money(data.total)}`);
       navigation.goBack();
     } catch (e: any) {
       Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo guardar la venta'));
@@ -104,89 +153,261 @@ export default function SaleCreate({ navigation }: any) {
     }
   };
 
+  // ---------- UI ----------
+  const renderProduct = ({ item }: { item: Product }) => {
+    const qty = cart[item.id] ?? 0;
+    return (
+      <View style={[styles.card, styles.productCard, numColumns > 1 && { flex: 1 }]}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.prodTitle} numberOfLines={2}>{item.name}</Text>
+          <Text style={styles.prodSub} numberOfLines={1}>{item.sku}</Text>
+          <Text style={styles.prodPrice}>{money(item.listPrice ?? 0)}</Text>
+        </View>
+        {qty === 0 ? (
+          <Button title="Agregar" onPress={() => addToCart(item.id)} />
+        ) : (
+          <View style={styles.stepper}>
+            <TouchableOpacity style={styles.stepBtn} onPress={() => decFromCart(item.id)}>
+              <Text style={styles.stepTxt}>−</Text>
+            </TouchableOpacity>
+            <Text style={styles.qtyTxt}>{qty}</Text>
+            <TouchableOpacity style={styles.stepBtn} onPress={() => addToCart(item.id)}>
+              <Text style={styles.stepTxt}>＋</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const keyExtractor = (p: Product) => String(p.id);
+
+  const CartPanel = () => (
+    <View style={[styles.card, styles.cartPanel]}>
+      <View style={styles.cartHeader}>
+        <Text style={styles.cartTitle}>Resumen</Text>
+        {Object.keys(cart).length > 0 && (
+          <TouchableOpacity onPress={clearCart}><Text style={styles.clearLink}>Vaciar</Text></TouchableOpacity>
+        )}
+      </View>
+
+      <View style={{ marginBottom: 8 }}>
+        <Text style={styles.sub}>Cliente</Text>
+        {!selectedCustomer ? (
+          <Text style={{ color: '#6b7280' }}>Ninguno seleccionado.</Text>
+        ) : (
+          <Text style={{ fontWeight: '700' }}>{selectedCustomer.name}</Text>
+        )}
+      </View>
+
+      <View style={{ borderTopWidth: 1, borderTopColor: '#eef0f4', paddingTop: 8, gap: 8 }}>
+        {cartItems.length === 0 ? (
+          <Text style={{ color: '#6b7280' }}>No hay productos en el carrito.</Text>
+        ) : cartItems.map(it => (
+          <View key={it.id} style={styles.cartRow}>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text numberOfLines={1} style={{ fontWeight: '600' }}>{it.name}</Text>
+              <Text style={styles.prodSub}>{it.sku}</Text>
+              <Text style={styles.linePrice}>{money(it.price)} · {money(it.line)}</Text>
+            </View>
+            <View style={styles.stepperSm}>
+              <TouchableOpacity style={styles.stepBtnSm} onPress={() => decFromCart(it.id)}>
+                <Text style={styles.stepTxt}>−</Text>
+              </TouchableOpacity>
+              <Text style={styles.qtyTxt}>{it.qty}</Text>
+              <TouchableOpacity style={styles.stepBtnSm} onPress={() => addToCart(it.id)}>
+                <Text style={styles.stepTxt}>＋</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.removeBtn} onPress={() => removeFromCart(it.id)}>
+              <Text style={styles.removeTxt}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.totals}>
+        <View style={styles.rowBetween}>
+          <Text style={{ color: '#6b7280' }}>Subtotal</Text>
+          <Text style={styles.totalNum}>{money(subtotal)}</Text>
+        </View>
+        {/* Si aplicas impuestos/descuentos, muéstralos aquí */}
+      </View>
+
+      <Button title={loading ? 'Guardando...' : 'Guardar venta'} onPress={saveSale} disabled={loading || !selectedCustomer || cartItems.length === 0} />
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Nueva venta</Text>
-
-      {/* Cliente */}
-      <Text style={styles.sub}>Selecciona cliente:</Text>
-      <FlatList
-        data={customers}
-        keyExtractor={(c) => String(c.id)}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginVertical: 8 }}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[
-              styles.customerBtn,
-              selectedCustomer?.id === item.id && styles.customerBtnSelected,
-            ]}
-            onPress={() => setSelectedCustomer(item)}
-          >
-            <Text style={{ color: selectedCustomer?.id === item.id ? '#fff' : '#111' }}>{item.name}</Text>
-          </TouchableOpacity>
-        )}
-      />
-
-      {/* Productos */}
-      <Text style={styles.sub}>Productos (toca para agregar):</Text>
-      <FlatList
-        data={products}
-        keyExtractor={(p) => String(p.id)}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-        renderItem={({ item }) => {
-          const qty = cart[item.id] ?? 0;
-          return (
-            <TouchableOpacity style={styles.productItem} onPress={() => addToCart(item.id)}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.prodTitle}>{item.name}</Text>
-                <Text style={styles.prodSub}>{item.sku} · C${item.listPrice ?? 0}</Text>
-              </View>
-              {qty > 0 && (
-                <View style={styles.qtyBox}>
-                  <Button title="-" onPress={() => removeFromCart(item.id)} />
-                  <Text style={{ marginHorizontal: 8 }}>{qty}</Text>
-                  <Button title="+" onPress={() => addToCart(item.id)} />
-                </View>
-              )}
+      {/* Header: título y clientes como chips */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Nueva venta</Text>
+        <Text style={styles.sub}>Selecciona cliente:</Text>
+        <FlatList
+          data={customers}
+          keyExtractor={(c) => String(c.id)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginVertical: 8 }}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.chip,
+                selectedCustomer?.id === item.id && styles.chipSelected,
+              ]}
+              onPress={() => setSelectedCustomer(item)}
+            >
+              <Text style={{ color: selectedCustomer?.id === item.id ? '#fff' : '#111' }}>{item.name}</Text>
             </TouchableOpacity>
-          );
-        }}
-        ListEmptyComponent={<Text style={{ color: '#666', padding: 12 }}>No hay productos.</Text>}
-        style={{ flexGrow: 0, maxHeight: 250 }}
-      />
+          )}
+          ListEmptyComponent={<Text style={{ color: '#6b7280' }}>Sin clientes.</Text>}
+        />
+      </View>
 
-      {/* Subtotal y acciones */}
-      <View style={{ marginTop: 12 }}>
-        <Text style={{ fontWeight: '700' }}>Subtotal: C${subtotal.toFixed(2)}</Text>
-        <Button title={loading ? 'Guardando...' : 'Guardar venta'} onPress={saveSale} disabled={loading} />
+      {/* Main responsive: izquierda productos, derecha carrito */}
+      <View style={[styles.main, isWide && styles.mainWide]}>
+        {/* IZQUIERDA: Búsqueda + grid de productos */}
+        <View style={[styles.leftCol, isWide && styles.leftColWide]}>
+          <View style={styles.searchRow}>
+            <TextInput
+              placeholder="Buscar por nombre o SKU…"
+              value={q}
+              onChangeText={setQ}
+              style={styles.search}
+              returnKeyType="search"
+            />
+            <View style={{ width: 8 }} />
+            <Button title="Limpiar" onPress={() => setQ('')} />
+          </View>
+
+          <FlatList
+            data={filteredProducts}
+            key={numColumns} // fuerza relayout al cambiar columnas
+            keyExtractor={keyExtractor}
+            renderItem={renderProduct}
+            numColumns={numColumns}
+            columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
+            contentContainerStyle={{ paddingVertical: 8, gap: 12 }}
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+            ListEmptyComponent={
+              <Text style={{ color: '#6b7280', padding: 12 }}>
+                {q ? 'No hay resultados para tu búsqueda.' : 'No hay productos.'}
+              </Text>
+            }
+            style={{ flex: 1 }}
+          />
+        </View>
+
+        {/* DERECHA: Resumen (sidebar). En móvil queda debajo. */}
+        <View style={[styles.rightCol, isWide && styles.rightColWide]}>
+          <CartPanel />
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 16 },
-  title: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
-  sub: { color: '#374151', marginTop: 12, marginBottom: 4, fontWeight: '600' },
-  customerBtn: {
+  // Layout
+  container: { flex: 1, backgroundColor: '#fff' },
+  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  main: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
+  mainWide: { flexDirection: 'row', gap: 16 },
+  leftCol: { flex: 1 },
+  leftColWide: { flex: 7 },
+  rightCol: { marginTop: 12 },
+  rightColWide: { flex: 5, marginTop: 0 },
+
+  // Textos
+  title: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
+  sub: { color: '#374151', marginTop: 8, marginBottom: 4, fontWeight: '600' },
+
+  // Chips cliente
+  chip: {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    borderRadius: 8,
+    borderRadius: 999,
     marginRight: 8,
+    backgroundColor: '#fff',
   },
-  customerBtnSelected: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  productItem: {
+  chipSelected: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
+
+  // Búsqueda
+  searchRow: { flexDirection: 'row', alignItems: 'center' },
+  search: {
+    flex: 1,
+    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10,
+    paddingHorizontal: 12, minHeight: 42,
+  },
+
+  // Cards
+  card: {
+    backgroundColor: '#f8f9fb',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#eef0f4',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+
+  // Producto
+  productCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    borderBottomColor: '#eee',
-    borderBottomWidth: 1,
+    gap: 10,
   },
-  prodTitle: { fontSize: 16, fontWeight: '500' },
+  prodTitle: { fontSize: 16, fontWeight: '600' },
   prodSub: { fontSize: 12, color: '#6b7280' },
-  qtyBox: { flexDirection: 'row', alignItems: 'center' },
+  prodPrice: { marginTop: 6, fontWeight: '800' },
+
+  // Stepper grande
+  stepper: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', padding: 4,
+  },
+  stepBtn: {
+    width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6',
+  },
+  stepTxt: { fontSize: 18, fontWeight: '800' },
+  qtyTxt: { minWidth: 28, textAlign: 'center', fontWeight: '700' },
+
+  // Carrito (sidebar)
+  cartPanel: { gap: 10 },
+  cartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cartTitle: { fontSize: 16, fontWeight: '800' },
+  clearLink: { color: '#b91c1c', fontWeight: '700' },
+
+  cartRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1, borderColor: '#eef0f4', backgroundColor: '#fff',
+    borderRadius: 10, padding: 8, gap: 8,
+  },
+  linePrice: { marginTop: 2, fontWeight: '600' },
+
+  // Stepper chico para carrito
+  stepperSm: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  stepBtnSm: {
+    width: 28, height: 28, borderRadius: 6, borderWidth: 1, borderColor: '#e5e7eb',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6',
+  },
+
+  removeBtn: {
+    width: 28, height: 28, borderRadius: 6,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#fee2e2',
+  },
+  removeTxt: { color: '#991b1b', fontWeight: '800' },
+
+  // Totales
+  totals: { marginTop: 8, marginBottom: 8, gap: 6 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  totalNum: { fontSize: 16, fontWeight: '800' },
 });
