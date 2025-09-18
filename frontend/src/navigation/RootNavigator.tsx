@@ -37,7 +37,7 @@ export default function RootNavigator() {
   const loggedIn = user !== undefined && user !== null;
   
 
-  if (!loggedIn && !token) {
+  if (!token) {
     return (
       <Stack.Navigator>
         <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />

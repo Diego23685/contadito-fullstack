@@ -105,7 +105,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const isWide = width >= 700;   // 2 columnas
   const isXL = width >= 1000;    // grillas más anchas
-  const { logout: logoutWithAuth0 } = useAuth0();
+  // const { logout: logoutWithAuth0 } = useAuth0();
 
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -166,7 +166,7 @@ export default function HomeScreen({ navigation }: Props) {
   
   
   const handleLogout = () => {
-    logoutWithAuth0();
+    // logoutWithAuth0();
     
     logout();
   }

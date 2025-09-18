@@ -3084,11 +3084,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\Contadito.Api.csproj",
+      "projectUniqueName": "L:\\Programming\\Visual Studio Code\\Web Development\\PapuThink\\contadito-fullstack\\backend\\Contadito.Api.csproj",
       "projectName": "Contadito.Api",
-      "projectPath": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\Contadito.Api.csproj",
-      "packagesPath": "C:\\Users\\diego\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\obj\\",
+      "projectPath": "L:\\Programming\\Visual Studio Code\\Web Development\\PapuThink\\contadito-fullstack\\backend\\Contadito.Api.csproj",
+      "packagesPath": "C:\\Users\\Liam L. Winchester\\.nuget\\packages\\",
+      "outputPath": "L:\\Programming\\Visual Studio Code\\Web Development\\PapuThink\\contadito-fullstack\\backend\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
