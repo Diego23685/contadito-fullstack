@@ -1,11 +1,1 @@
-{
-  "Version": 1,
-  "Hash": "NKz2k9Dey4WcW//ZPK84KILYfa1R0UEBFkzSXOViis8=",
-  "Source": "Contadito.Api",
-  "BasePath": "_content/Contadito.Api",
-  "Mode": "Default",
-  "ManifestType": "Build",
-  "ReferencedProjectsConfiguration": [],
-  "DiscoveryPatterns": [],
-  "Assets": []
-}
+{"Version":1,"Hash":"R5nD/rd1ldMKY8pw3GmI08lHPSqXgYNNso9wVRtYx8o=","Source":"Contadito.Api","BasePath":"_content/Contadito.Api","Mode":"Default","ManifestType":"Build","ReferencedProjectsConfiguration":[],"DiscoveryPatterns":[],"Assets":[],"Endpoints":[]}
