@@ -21,7 +21,11 @@ namespace Contadito.Api.Data
         public DbSet<AvgCostView> AvgCosts => Set<AvgCostView>();
         public DbSet<StockView> Stocks => Set<StockView>();
 
-        // NUEVO
+        // Compras
+        public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
+        public DbSet<PurchaseItem> PurchaseItems => Set<PurchaseItem>();
+
+        // Precios especiales (si los usas)
         public DbSet<SpecialPrice> SpecialPrices => Set<SpecialPrice>();
 
         protected override void OnModelCreating(ModelBuilder mb)
@@ -33,36 +37,39 @@ namespace Contadito.Api.Data
 
             // Warehouse
             mb.Entity<Warehouse>().HasKey(w => w.Id);
-            mb.Entity<Warehouse>()
-                .Property(w => w.Name).IsRequired();
-            mb.Entity<Warehouse>()
-                .HasIndex(w => new { w.TenantId, w.Name });
+            mb.Entity<Warehouse>().Property(w => w.Name).IsRequired();
+            mb.Entity<Warehouse>().HasIndex(w => new { w.TenantId, w.Name });
 
-            mb.Entity<User>()
-                .HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
+            // Users
+            mb.Entity<User>().HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
 
-            // Product: índices y tipos numéricos
-            mb.Entity<Product>()
-                .HasIndex(p => new { p.TenantId, p.Sku })
-                .IsUnique();
-
-            mb.Entity<Product>()
-                .Property(p => p.ListPrice)
-                .HasColumnType("decimal(18,2)");
-
-            mb.Entity<Product>()
-                .Property(p => p.StdCost)
-                .HasColumnType("decimal(18,6)");
+            // Product
+            mb.Entity<Product>().HasIndex(p => new { p.TenantId, p.Sku }).IsUnique();
+            mb.Entity<Product>().Property(p => p.ListPrice).HasColumnType("decimal(18,2)");
+            mb.Entity<Product>().Property(p => p.StdCost).HasColumnType("decimal(18,6)");
 
             // SpecialPrice
             mb.Entity<SpecialPrice>().HasKey(sp => sp.Id);
             mb.Entity<SpecialPrice>()
                 .HasIndex(sp => new { sp.TenantId, sp.CustomerId, sp.ProductId, sp.ActiveTo })
                 .IsUnique();
+            mb.Entity<SpecialPrice>().Property(sp => sp.Price).HasColumnType("decimal(18,2)");
 
-            mb.Entity<SpecialPrice>()
-                .Property(sp => sp.Price)
-                .HasColumnType("decimal(18,2)");
+            // ✅ Compras
+            mb.Entity<PurchaseInvoice>().HasKey(pi => pi.Id);
+            mb.Entity<PurchaseInvoice>().HasIndex(pi => new { pi.TenantId, pi.ReceivedAt });
+            mb.Entity<PurchaseInvoice>().Property(pi => pi.Subtotal).HasColumnType("decimal(18,2)");
+            mb.Entity<PurchaseInvoice>().Property(pi => pi.TaxTotal).HasColumnType("decimal(18,2)");
+            mb.Entity<PurchaseInvoice>().Property(pi => pi.DiscountTotal).HasColumnType("decimal(18,2)");
+            mb.Entity<PurchaseInvoice>().Property(pi => pi.Total).HasColumnType("decimal(18,2)");
+
+            mb.Entity<PurchaseItem>().HasKey(i => i.Id);
+            mb.Entity<PurchaseItem>().HasIndex(i => new { i.TenantId, i.InvoiceId });
+            mb.Entity<PurchaseItem>().Property(i => i.Quantity).HasColumnType("decimal(18,6)");
+            mb.Entity<PurchaseItem>().Property(i => i.UnitCost).HasColumnType("decimal(18,6)");
+            mb.Entity<PurchaseItem>().Property(i => i.TaxRate).HasColumnType("decimal(5,2)");
+            mb.Entity<PurchaseItem>().Property(i => i.DiscountRate).HasColumnType("decimal(5,2)");
+            mb.Entity<PurchaseItem>().Property(i => i.Total).HasColumnType("decimal(18,2)");
 
             // Vistas keyless
             mb.Entity<AvgCostView>().ToView("v_avg_cost").HasNoKey();
@@ -82,7 +89,8 @@ namespace Contadito.Api.Data
                 db.Tenants.Add(t);
                 db.SaveChanges();
 
-                var user = new User {
+                var user = new User
+                {
                     Id = 1, TenantId = t.Id, Name = "Owner Demo",
                     Email = "owner@demo.com",
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("pass123"),
@@ -91,11 +99,12 @@ namespace Contadito.Api.Data
                 };
                 db.Users.Add(user);
 
-                db.Products.Add(new Product{
-                    Id = 1, TenantId = t.Id, Sku="SKU-001", Name="Producto Demo",
-                    Unit="unidad", TrackStock=true,
+                db.Products.Add(new Product
+                {
+                    Id = 1, TenantId = t.Id, Sku = "SKU-001", Name = "Producto Demo",
+                    Unit = "unidad", TrackStock = true,
                     ListPrice = 250.00m, StdCost = 120.123456m,
-                    CreatedAt=DateTime.UtcNow, UpdatedAt=DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 });
 
                 db.Customers.AddRange(
