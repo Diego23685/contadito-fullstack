@@ -3,7 +3,16 @@ import { View, Text, TextInput, Button, FlatList, Alert, StyleSheet, RefreshCont
 import { api } from '../../api';
 import { AuthContext } from '../../providers/AuthContext';
 
-type Product = { id: number; sku: string; name: string; description?: string | null; unit?: string | null; isService?: boolean; trackStock?: boolean; };
+type Product = {
+  id: number;
+  sku: string;
+  name: string;
+  description?: string | null;
+  unit?: string | null;
+  isService?: boolean;
+  trackStock?: boolean;
+  listPrice?: number; // NUEVO
+};
 type ProductsResponse = { total: number; page: number; pageSize: number; items: Product[] };
 
 const PAGE_SIZE = 10;
@@ -57,6 +66,11 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
     }
   };
 
+  const money = (v?: number) => {
+    const n = Number(v ?? 0);
+    return new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(n);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       {/* Filtros / acciones */}
@@ -78,7 +92,7 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
           <View style={styles.item}>
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>{item.name}</Text>
-              <Text style={styles.sub}>{item.sku}</Text>
+              <Text style={styles.sub}>{item.sku} · {money(item.listPrice)}</Text>
             </View>
             <Button title="Editar" onPress={() => navigation.navigate('ProductForm', { id: item.id })} />
             <View style={{ width: 8 }} />

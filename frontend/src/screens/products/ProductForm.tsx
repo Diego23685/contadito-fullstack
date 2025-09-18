@@ -2,7 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Switch, Button, Alert, StyleSheet, ScrollView } from 'react-native';
 import { api } from '../../api';
 
-type Product = { id: number; tenantId: number; sku: string; name: string; description?: string | null; unit?: string | null; isService?: boolean; trackStock?: boolean; };
+type Product = {
+  id: number;
+  tenantId: number;
+  sku: string;
+  name: string;
+  description?: string | null;
+  unit?: string | null;
+  isService?: boolean;
+  trackStock?: boolean;
+
+  // NUEVO
+  listPrice?: number;  // precio base
+  stdCost?: number | null; // costo estándar
+};
 
 const ProductForm: React.FC<any> = ({ route, navigation }) => {
   const id: number | undefined = route?.params?.id;
@@ -15,6 +28,8 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
   const [description, setDescription] = useState('');
   const [isService, setIsService] = useState(false);
   const [trackStock, setTrackStock] = useState(true);
+  const [listPrice, setListPrice] = useState<string>('0');
+  const [stdCost, setStdCost] = useState<string>(''); // vacío = null
 
   useEffect(() => {
     if (!isEdit) return;
@@ -29,6 +44,8 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
         setDescription(p.description || '');
         setIsService(!!p.isService);
         setTrackStock(!!p.trackStock);
+        setListPrice(String(p.listPrice ?? 0));
+        setStdCost(p.stdCost != null ? String(p.stdCost) : '');
       } catch (e: any) {
         Alert.alert('Error', String(e?.response?.data || e?.message));
       } finally {
@@ -40,15 +57,21 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
   const save = async () => {
     try {
       setLoading(true);
+
+      const payload = {
+        name,
+        description,
+        unit,
+        isService,
+        trackStock,
+        listPrice: Number(listPrice || 0),
+        stdCost: stdCost === '' ? null : Number(stdCost),
+      };
+
       if (isEdit) {
-        // OJO: por tu backend, el Update NO acepta cambiar SKU
-        await api.put(`/products/${id}`, {
-          name, description, unit, isService, trackStock,
-        });
+        await api.put(`/products/${id}`, payload);
       } else {
-        await api.post('/products', {
-          sku, name, description, unit, isService, trackStock,
-        });
+        await api.post('/products', { sku, ...payload });
       }
       Alert.alert('OK', 'Producto guardado');
       navigation.goBack();
@@ -62,6 +85,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>{isEdit ? 'Editar producto' : 'Nuevo producto'}</Text>
+
       <Text style={styles.label}>SKU {isEdit ? '(no editable)' : ''}</Text>
       <TextInput style={[styles.input, isEdit && styles.disabled]} value={sku} onChangeText={setSku} editable={!isEdit} />
 
@@ -71,8 +95,25 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
       <Text style={styles.label}>Unidad</Text>
       <TextInput style={styles.input} value={unit} onChangeText={setUnit} placeholder="unidad, kg, lt" />
 
-      <Text style={styles.label}>Descripcion</Text>
+      <Text style={styles.label}>Descripción</Text>
       <TextInput style={[styles.input, { height: 80 }]} value={description} onChangeText={setDescription} multiline />
+
+      <Text style={styles.label}>Precio de venta (C$)</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="decimal-pad"
+        value={listPrice}
+        onChangeText={setListPrice}
+      />
+
+      <Text style={styles.label}>Costo estándar (C$)</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="decimal-pad"
+        placeholder="Opcional"
+        value={stdCost}
+        onChangeText={setStdCost}
+      />
 
       <View style={styles.row}>
         <Text>Es servicio</Text>

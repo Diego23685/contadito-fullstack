@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Contadito.Api.Domain.Entities;
-using Contadito.Api.Domain.Views; // <—
+using Contadito.Api.Domain.Views; // v_avg_cost y v_stock
 
 namespace Contadito.Api.Data
 {
@@ -14,12 +14,15 @@ namespace Contadito.Api.Data
         public DbSet<Tenant> Tenants => Set<Tenant>();
         public DbSet<Product> Products => Set<Product>();
         public DbSet<Customer> Customers => Set<Customer>();
-        public DbSet<Warehouse> Warehouses => Set<Warehouse>();   // <-- NUEVO
+        public DbSet<Warehouse> Warehouses => Set<Warehouse>();
         public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
         public DbSet<SalesItem> SalesItems => Set<SalesItem>();
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<AvgCostView> AvgCosts => Set<AvgCostView>();
         public DbSet<StockView> Stocks => Set<StockView>();
+
+        // NUEVO
+        public DbSet<SpecialPrice> SpecialPrices => Set<SpecialPrice>();
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
@@ -28,17 +31,40 @@ namespace Contadito.Api.Data
             mb.Entity<Product>().HasKey(p => p.Id);
             mb.Entity<Customer>().HasKey(c => c.Id);
 
-            // ✅ Warehouse
+            // Warehouse
             mb.Entity<Warehouse>().HasKey(w => w.Id);
             mb.Entity<Warehouse>()
                 .Property(w => w.Name).IsRequired();
             mb.Entity<Warehouse>()
-                .HasIndex(w => new { w.TenantId, w.Name }); // búsqueda rápida
+                .HasIndex(w => new { w.TenantId, w.Name });
 
             mb.Entity<User>()
                 .HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
 
-             // Vistas keyless
+            // Product: índices y tipos numéricos
+            mb.Entity<Product>()
+                .HasIndex(p => new { p.TenantId, p.Sku })
+                .IsUnique();
+
+            mb.Entity<Product>()
+                .Property(p => p.ListPrice)
+                .HasColumnType("decimal(18,2)");
+
+            mb.Entity<Product>()
+                .Property(p => p.StdCost)
+                .HasColumnType("decimal(18,6)");
+
+            // SpecialPrice
+            mb.Entity<SpecialPrice>().HasKey(sp => sp.Id);
+            mb.Entity<SpecialPrice>()
+                .HasIndex(sp => new { sp.TenantId, sp.CustomerId, sp.ProductId, sp.ActiveTo })
+                .IsUnique();
+
+            mb.Entity<SpecialPrice>()
+                .Property(sp => sp.Price)
+                .HasColumnType("decimal(18,2)");
+
+            // Vistas keyless
             mb.Entity<AvgCostView>().ToView("v_avg_cost").HasNoKey();
             mb.Entity<StockView>().ToView("v_stock").HasNoKey();
 
@@ -68,6 +94,7 @@ namespace Contadito.Api.Data
                 db.Products.Add(new Product{
                     Id = 1, TenantId = t.Id, Sku="SKU-001", Name="Producto Demo",
                     Unit="unidad", TrackStock=true,
+                    ListPrice = 250.00m, StdCost = 120.123456m,
                     CreatedAt=DateTime.UtcNow, UpdatedAt=DateTime.UtcNow
                 });
 
@@ -80,7 +107,6 @@ namespace Contadito.Api.Data
                                    CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
                 );
 
-                // ✅ Semilla de almacenes
                 db.Warehouses.AddRange(
                     new Warehouse { Id = 1, TenantId = t.Id, Name = "Principal",
                                     Code = "WH-01", Address = "Bodega central",
