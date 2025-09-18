@@ -40,6 +40,10 @@ namespace Contadito.Api.Controllers
                 .OrderByDescending(p => p.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(p => new {
+                    p.Id, p.TenantId, p.Sku, p.Name, p.Description, p.Unit, p.IsService, p.TrackStock,
+                    p.ListPrice, p.StdCost
+                })
                 .ToListAsync();
 
             return Ok(new { total, page, pageSize, items });
@@ -50,9 +54,7 @@ namespace Contadito.Api.Controllers
         public async Task<ActionResult<Product>> Create([FromBody] ProductCreateDto dto)
         {
             var exists = await _db.Products.AnyAsync(p =>
-                p.TenantId == TenantId &&
-                p.Sku == dto.Sku &&
-                p.DeletedAt == null);
+                p.TenantId == TenantId && p.Sku == dto.Sku && p.DeletedAt == null);
 
             if (exists) return Conflict("SKU already exists");
 
@@ -62,9 +64,11 @@ namespace Contadito.Api.Controllers
                 Sku = dto.Sku,
                 Name = dto.Name,
                 Description = dto.Description,
-                Unit = string.IsNullOrWhiteSpace(dto.Unit) ? "unidad" : dto.Unit,
+                Unit = string.IsNullOrWhiteSpace(dto.Unit) ? "unidad" : dto.Unit!,
                 IsService = dto.IsService,
                 TrackStock = dto.TrackStock,
+                ListPrice = dto.ListPrice,
+                StdCost = dto.StdCost,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -76,13 +80,15 @@ namespace Contadito.Api.Controllers
 
         // GET /products/{id}
         [HttpGet("{id:long}")]
-        public async Task<ActionResult<Product>> GetById([FromRoute] long id)
+        public async Task<ActionResult<object>> GetById([FromRoute] long id)
         {
             var p = await _db.Products.AsNoTracking()
-                .FirstOrDefaultAsync(x =>
-                    x.Id == id &&
-                    x.TenantId == TenantId &&
-                    x.DeletedAt == null);
+                .Where(x => x.Id == id && x.TenantId == TenantId && x.DeletedAt == null)
+                .Select(p => new {
+                    p.Id, p.TenantId, p.Sku, p.Name, p.Description, p.Unit, p.IsService, p.TrackStock,
+                    p.ListPrice, p.StdCost
+                })
+                .FirstOrDefaultAsync();
 
             if (p == null) return NotFound();
             return Ok(p);
@@ -94,17 +100,17 @@ namespace Contadito.Api.Controllers
         {
             var p = await _db.Products
                 .FirstOrDefaultAsync(x =>
-                    x.Id == id &&
-                    x.TenantId == TenantId &&
-                    x.DeletedAt == null);
+                    x.Id == id && x.TenantId == TenantId && x.DeletedAt == null);
 
             if (p == null) return NotFound();
 
             p.Name = dto.Name;
             p.Description = dto.Description;
-            p.Unit = dto.Unit;
+            p.Unit = string.IsNullOrWhiteSpace(dto.Unit) ? "unidad" : dto.Unit!;
             p.IsService = dto.IsService;
             p.TrackStock = dto.TrackStock;
+            p.ListPrice = dto.ListPrice;
+            p.StdCost = dto.StdCost;
             p.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
@@ -117,9 +123,7 @@ namespace Contadito.Api.Controllers
         {
             var p = await _db.Products
                 .FirstOrDefaultAsync(x =>
-                    x.Id == id &&
-                    x.TenantId == TenantId &&
-                    x.DeletedAt == null);
+                    x.Id == id && x.TenantId == TenantId && x.DeletedAt == null);
 
             if (p == null) return NotFound();
 
