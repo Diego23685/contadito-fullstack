@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { api } from '../api';
 import { AuthContext } from '../providers/AuthContext';
+import { useAuth0 } from '@auth0/auth0-react';
 
 type Dashboard = {
   tenantName: string;
@@ -104,6 +105,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const isWide = width >= 700;   // 2 columnas
   const isXL = width >= 1000;    // grillas más anchas
+  const { logout: logoutWithAuth0 } = useAuth0();
 
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -161,6 +163,14 @@ export default function HomeScreen({ navigation }: Props) {
     if (!search?.trim()) return;
     navigation.navigate('GlobalSearch', { q: search.trim() });
   }, [navigation, search]);
+  
+  
+  const handleLogout = () => {
+    logoutWithAuth0();
+    
+    logout();
+  }
+  
 
   return (
     <ScrollView
@@ -178,7 +188,7 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
         <View style={styles.headerBtns}>
           <Button title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
-          <Button title="Cerrar sesión" color="#b91c1c" onPress={logout} />
+          <Button title="Cerrar sesión" color="#b91c1c" onPress={handleLogout} />
         </View>
       </View>
 

@@ -12,7 +12,6 @@ setBaseUrl(DEFAULT_BASE);
 const LoginScreen: React.FC = () => {
   const { login } = useContext(AuthContext);
   const navigation = useNavigation<any>();
-  // const { authorize } = useAuth0();
   const { loginWithRedirect } = useAuth0();
 
   const [email, setEmail] = useState('owner@demo.com');
@@ -21,12 +20,6 @@ const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    // try {
-    //   await authorize();
-    // } catch (e) {
-    //   console.log(e);
-    // }
-    
     loginWithRedirect();
     
     try {
