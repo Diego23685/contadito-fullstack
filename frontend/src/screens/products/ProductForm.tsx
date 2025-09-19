@@ -19,10 +19,9 @@ const currency = (n: number | null | undefined) =>
   new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(Number(n || 0));
 
 const toNumber = (raw: string) => {
-  // Permite sólo dígitos y un punto; evita NaN
   const cleaned = raw.replace(/[^\d.]/g, '');
   const parts = cleaned.split('.');
-  if (parts.length > 2) return Number(parts[0] + '.' + parts.slice(1).join('')); // colapsa puntos extra
+  if (parts.length > 2) return Number(parts[0] + '.' + parts.slice(1).join(''));
   return Number(cleaned || 0);
 };
 
@@ -54,9 +53,28 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
   const [isService, setIsService] = useState(false);
   const [trackStock, setTrackStock] = useState(true);
   const [listPrice, setListPrice] = useState<string>('0');
-  const [stdCost, setStdCost] = useState<string>(''); // vacío = null
+  const [stdCost, setStdCost] = useState<string>('');
 
   const [errors, setErrors] = useState<{ [k: string]: string | null }>({});
+
+  // ---- Inventario (UI) ----
+  const [currentQty, setCurrentQty] = useState<number | null>(null);
+  const [inQty, setInQty] = useState<string>('');           // cantidad para IN
+  const [inCost, setInCost] = useState<string>('');         // costo unitario para IN
+  const [outQty, setOutQty] = useState<string>('');         // cantidad para OUT
+  const [warehouseId, setWarehouseId] = useState<string>(''); // opcional
+  const [reference, setReference] = useState<string>('');
+  const [reason, setReason] = useState<string>('');
+
+  const fetchStock = async () => {
+    if (!isEdit) return;
+    try {
+      const { data } = await api.get<{ productId: number; qty: number }>(`/inventory/products/${id}/stock`);
+      setCurrentQty(data.qty ?? 0);
+    } catch {
+      setCurrentQty(null);
+    }
+  };
 
   useEffect(() => {
     if (!isEdit) return;
@@ -81,7 +99,10 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
     })();
   }, [id, isEdit]);
 
-  // Cálculos de utilidad/margen
+  // trae stock al entrar / cuando cambie id
+  useEffect(() => { fetchStock(); }, [id]);
+
+  // Cálculos precios
   const numPrice = useMemo(() => toNumber(listPrice), [listPrice]);
   const numCost = useMemo(() => (stdCost === '' ? null : toNumber(stdCost)), [stdCost]);
   const profit = useMemo(() => (numCost == null ? null : numPrice - numCost), [numPrice, numCost]);
@@ -92,7 +113,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
     if (!isEdit && !sku.trim()) next.sku = 'Requerido al crear';
     if (!name.trim()) next.name = 'Requerido';
     if (numPrice < 0) next.listPrice = 'No puede ser negativo';
-    if (stdCost !== '' && numCost! < 0) next.stdCost = 'No puede ser negativo';
+    if (stdCost !== '' && (numCost ?? 0) < 0) next.stdCost = 'No puede ser negativo';
     if (isService && trackStock) next.trackStock = 'Un servicio no debería controlar stock';
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -126,6 +147,48 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
   };
 
   const cancel = () => navigation.goBack();
+
+  // ---- Handlers de inventario ----
+  const postAdjust = async (movementType: 'in' | 'out') => {
+    if (!isEdit) {
+      Alert.alert('Primero guarda el producto', 'Debes crear el producto antes de ajustar inventario.');
+      return;
+    }
+    try {
+      const qty = movementType === 'in' ? toNumber(inQty) : toNumber(outQty);
+      if (!qty || qty <= 0) {
+        Alert.alert('Cantidad inválida', 'Ingresa una cantidad mayor a cero.');
+        return;
+      }
+      const unitCost = movementType === 'in'
+        ? (inCost.trim() === '' ? null : toNumber(inCost))
+        : null;
+
+      const payload = {
+        productId: id,
+        warehouseId: warehouseId.trim() === '' ? null : Number(warehouseId),
+        movementType,
+        quantity: qty,
+        unitCost,
+        reference: reference.trim() || undefined,
+        reason: reason.trim() || undefined,
+      };
+
+      await api.post('/inventory/adjust', payload);
+      Alert.alert('Listo', movementType === 'in' ? 'Entrada registrada' : 'Salida registrada');
+
+      // limpiar inputs y refrescar stock
+      if (movementType === 'in') {
+        setInQty('');
+        setInCost('');
+      } else {
+        setOutQty('');
+      }
+      await fetchStock();
+    } catch (e: any) {
+      Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo ajustar inventario'));
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -174,16 +237,10 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
               <View style={[styles.field, styles.flex1]}>
                 <Text style={styles.label}>Tipo</Text>
                 <View style={styles.pillRow}>
-                  <Pressable
-                    onPress={() => { setIsService(false); }}
-                    style={[styles.pill, !isService && styles.pillActive]}
-                  >
+                  <Pressable onPress={() => { setIsService(false); }} style={[styles.pill, !isService && styles.pillActive]}>
                     <Text style={[styles.pillText, !isService && styles.pillTextActive]}>Producto</Text>
                   </Pressable>
-                  <Pressable
-                    onPress={() => { setIsService(true); setTrackStock(false); }}
-                    style={[styles.pill, isService && styles.pillActive]}
-                  >
+                  <Pressable onPress={() => { setIsService(true); setTrackStock(false); }} style={[styles.pill, isService && styles.pillActive]}>
                     <Text style={[styles.pillText, isService && styles.pillTextActive]}>Servicio</Text>
                   </Pressable>
                 </View>
@@ -242,7 +299,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
           </Card>
         </View>
 
-        {/* Columna derecha (resumen) */}
+        {/* Columna derecha */}
         <View style={[styles.col, isWide && styles.colRight]}>
           <Card>
             <SectionTitle>Resumen</SectionTitle>
@@ -265,10 +322,93 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
               </Text>
             </View>
             <Divider />
-            <HelperText>
-              El margen se calcula como (Precio − Costo) / Precio. Si dejas el costo vacío, no se calcula.
-            </HelperText>
+            <HelperText>El margen se calcula como (Precio − Costo) / Precio. Si dejas el costo vacío, no se calcula.</HelperText>
           </Card>
+
+          {/* ===== Inventario ===== */}
+          {isEdit && trackStock && !isService && (
+            <Card>
+              <SectionTitle>Inventario</SectionTitle>
+
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Stock actual</Text>
+                <Text style={styles.summaryValue}>{currentQty == null ? '—' : `${currentQty}`}</Text>
+              </View>
+
+              <Divider />
+
+              <Text style={[styles.label, { marginTop: 6 }]}>Almacén (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="ID de almacén (numérico) o vacío"
+                value={warehouseId}
+                onChangeText={setWarehouseId}
+                keyboardType="number-pad"
+              />
+              <HelperText>Si lo dejas vacío, se registra sin almacén específico.</HelperText>
+
+              <Text style={[styles.label, { marginTop: 12 }]}>Referencia (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ej. AJUSTE-001"
+                value={reference}
+                onChangeText={setReference}
+              />
+
+              <Text style={[styles.label, { marginTop: 12 }]}>Motivo (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Comentario del ajuste"
+                value={reason}
+                onChangeText={setReason}
+              />
+
+              <Divider />
+
+              {/* IN */}
+              <Text style={[styles.label, { marginTop: 8 }]}>Entrada</Text>
+              <View style={styles.row2}>
+                <View style={[styles.field, styles.flex1]}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Cantidad a ingresar"
+                    value={inQty}
+                    onChangeText={setInQty}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={[styles.field, styles.flex1]}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Costo unitario (opcional)"
+                    value={inCost}
+                    onChangeText={setInCost}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+              <Pressable onPress={() => postAdjust('in')} style={[styles.actionBtn, styles.primaryBtn, { marginTop: 4 }]}>
+                <Text style={styles.actionTextPrimary}>Entrar al stock</Text>
+              </Pressable>
+              <HelperText>La entrada puede incluir costo para alimentar promedio.</HelperText>
+
+              {/* OUT */}
+              <Divider />
+              <Text style={[styles.label, { marginTop: 8 }]}>Salida</Text>
+              <View style={[styles.field]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Cantidad a descontar"
+                  value={outQty}
+                  onChangeText={setOutQty}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+              <Pressable onPress={() => postAdjust('out')} style={[styles.actionBtn, styles.secondaryBtn]}>
+                <Text style={styles.actionTextSecondary}>Descontar</Text>
+              </Pressable>
+            </Card>
+          )}
 
           <Card>
             <SectionTitle>Buenas prácticas</SectionTitle>
@@ -279,7 +419,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
         </View>
       </ScrollView>
 
-      {/* Footer fijo con acciones (útil en scroll largo / pantallas grandes) */}
+      {/* Footer */}
       <View style={styles.footer}>
         <View style={styles.footerInner}>
           <Text style={styles.footerText}>{isEdit ? `Editando: ${name || '(sin nombre)'}` : 'Creando nuevo producto'}</Text>

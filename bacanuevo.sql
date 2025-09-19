@@ -129,7 +129,7 @@ CREATE TABLE `customers` (
   KEY `idx_customers_tenant_name` (`name`),
   KEY `IX_Customers_TenantId_Name` (`TenantId`,`name`),
   CONSTRAINT `FK_Customers_Tenants_TenantId` FOREIGN KEY (`TenantId`) REFERENCES `tenants` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -138,7 +138,7 @@ CREATE TABLE `customers` (
 
 LOCK TABLES `customers` WRITE;
 /*!40000 ALTER TABLE `customers` DISABLE KEYS */;
-INSERT INTO `customers` VALUES (1,'asdasdasd','asd@g.com','1234356','wdfwef','wer','2025-09-17 04:11:51.609213','2025-09-17 23:18:06.311533',NULL,5);
+INSERT INTO `customers` VALUES (1,'asdasdasd','asd@g.com','1234356','wdfwef','wer','2025-09-17 04:11:51.609213','2025-09-17 23:18:06.311533',NULL,5),(2,'Juan Lacayo','juanitolacayito@gmail.com','samsung','nose',NULL,'2025-09-18 01:27:31.928143','2025-09-18 01:27:31.928143',NULL,5);
 /*!40000 ALTER TABLE `customers` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -204,7 +204,7 @@ CREATE TABLE `inventory_movements` (
   CONSTRAINT `fk_inv_mov_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_inv_mov_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_inv_mov_warehouse` FOREIGN KEY (`warehouse_id`) REFERENCES `warehouses` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -213,7 +213,7 @@ CREATE TABLE `inventory_movements` (
 
 LOCK TABLES `inventory_movements` WRITE;
 /*!40000 ALTER TABLE `inventory_movements` DISABLE KEYS */;
-INSERT INTO `inventory_movements` VALUES (1,1,1,1,'in','SEED',100.000000,10.000000,'Stock inicial','2025-09-14 04:42:29',NULL,'2025-09-14 04:42:29');
+INSERT INTO `inventory_movements` VALUES (1,1,1,1,'in','SEED',100.000000,10.000000,'Stock inicial','2025-09-14 04:42:29',NULL,'2025-09-14 04:42:29'),(2,5,27,NULL,'in','C-20250918010252-901',2.000000,10.000000,'Compra (backfill)','2025-09-18 01:02:52',NULL,'2025-09-19 04:56:42'),(3,5,27,NULL,'in','C-20250918024638-522',43.000000,10.000000,'Compra (backfill)','2025-09-18 02:46:39',NULL,'2025-09-19 04:56:42'),(5,5,27,NULL,'out','F-20250918000905-682',2.000000,NULL,'Venta (backfill)','2025-09-18 00:09:05',NULL,'2025-09-19 04:56:42'),(6,5,27,NULL,'out','F-20250918024441-383',1.000000,NULL,'Venta (backfill)','2025-09-18 02:44:42',NULL,'2025-09-19 04:56:42'),(7,5,34,NULL,'out','F-20250918024441-383',2.000000,NULL,'Venta (backfill)','2025-09-18 02:44:42',NULL,'2025-09-19 04:56:42');
 /*!40000 ALTER TABLE `inventory_movements` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -316,7 +316,7 @@ CREATE TABLE `products` (
   KEY `fk_products_category` (`category_id`),
   CONSTRAINT `fk_products_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_products_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -325,7 +325,7 @@ CREATE TABLE `products` (
 
 LOCK TABLES `products` WRITE;
 /*!40000 ALTER TABLE `products` DISABLE KEYS */;
-INSERT INTO `products` VALUES (1,5,'SKU-001','Producto Demo',1,NULL,0.00,NULL,'unidad',NULL,0,1,'2025-09-14 04:42:29','2025-09-15 22:54:24',NULL),(12,1,'SKU-000','Camiseta Basica',NULL,'Camiseta 100% algodon',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(13,1,'SKU-002','Pantalon Denim',NULL,'Denim azul clasico',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(14,1,'SKU-003','Zapatos Urbanos',NULL,'Calzado urbano liviano',0.00,NULL,'par',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(15,1,'SKU-004','Gorra Clasica',NULL,'Gorra ajustable',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(16,1,'SKU-005','Mochila Daypack',NULL,'Mochila diaria 20L',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(17,1,'SKU-006','Cinturon Cuero',NULL,'Cinturon cuero genuino',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(18,1,'SKU-007','Calcetines Deportivos',NULL,'Pack x3',0.00,NULL,'pack',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(19,1,'SKU-008','Camisa Formal',NULL,'Camisa manga larga',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(20,1,'SKU-009','Sudadera Hoodie',NULL,'Hoodie con capucha',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(21,1,'SKU-010','Servicio de Bordado',NULL,'Personalizacion de prendas',0.00,NULL,'servicio',NULL,1,0,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(22,5,'SKU-020','Camiseta Basica',NULL,'Camiseta 100% algodon',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-15 22:54:56',NULL),(23,5,'SKU-002','Pantalon Denim',NULL,'Denim azul clasico',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-15 22:54:56',NULL),(24,5,'SKU-003','Zapatos Urbanos',NULL,'Calzado urbano liviano',0.00,NULL,'par',NULL,0,1,'2025-09-15 22:54:56','2025-09-15 22:54:56',NULL),(25,5,'SKU-004','Gorra Clasica',NULL,'Gorra ajustable',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-15 22:54:56',NULL),(26,5,'SKU-005','Mochila Daypack',NULL,'Mochila diaria 20L',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-15 22:54:56',NULL),(27,5,'SKU-006','Cinturon Cuero',NULL,'Cinturon cuero genuino',20.00,10.000000,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-18 01:02:53',NULL),(28,5,'SKU-007','Calcetines Deportivos',NULL,'Pack x3',0.00,NULL,'pack',NULL,0,1,'2025-09-15 22:54:56','2025-09-16 00:11:33','2025-09-16 06:11:34'),(29,5,'SKU-008','Camisa Formal',NULL,'Camisa manga larga',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-16 00:11:23','2025-09-16 06:11:24'),(30,5,'SKU-009','Sudadera Hoodie',NULL,'Hoodie con capucha',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-16 00:11:21','2025-09-16 06:11:21'),(31,5,'SKU-010','Servicio de Bordados',NULL,'Personalizacion de prendasiones',0.00,NULL,'servicio',NULL,1,0,'2025-09-15 22:54:56','2025-09-16 00:11:08','2025-09-16 06:11:09'),(32,6,'1','CAMISA',NULL,'',0.00,NULL,'1',NULL,0,1,'2025-09-16 06:17:02','2025-09-16 06:17:02',NULL);
+INSERT INTO `products` VALUES (1,5,'SKU-001','Producto Demo',1,NULL,0.00,NULL,'unidad',NULL,0,1,'2025-09-14 04:42:29','2025-09-15 22:54:24',NULL),(12,1,'SKU-000','Camiseta Basica',NULL,'Camiseta 100% algodon',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(13,1,'SKU-002','Pantalon Denim',NULL,'Denim azul clasico',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(14,1,'SKU-003','Zapatos Urbanos',NULL,'Calzado urbano liviano',0.00,NULL,'par',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(15,1,'SKU-004','Gorra Clasica',NULL,'Gorra ajustable',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(16,1,'SKU-005','Mochila Daypack',NULL,'Mochila diaria 20L',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(17,1,'SKU-006','Cinturon Cuero',NULL,'Cinturon cuero genuino',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(18,1,'SKU-007','Calcetines Deportivos',NULL,'Pack x3',0.00,NULL,'pack',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(19,1,'SKU-008','Camisa Formal',NULL,'Camisa manga larga',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(20,1,'SKU-009','Sudadera Hoodie',NULL,'Hoodie con capucha',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(21,1,'SKU-010','Servicio de Bordado',NULL,'Personalizacion de prendas',0.00,NULL,'servicio',NULL,1,0,'2025-09-15 22:49:05','2025-09-15 22:49:05',NULL),(22,5,'SKU-020','Camiseta Basica',NULL,'Camiseta 100% algodon',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-17 20:15:53','2025-09-18 02:15:54'),(23,5,'SKU-002','Pantalon Denim',NULL,'Denim azul clasico',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-15 22:54:56',NULL),(24,5,'SKU-003','Zapatos Urbanos',NULL,'Calzado urbano liviano',0.00,NULL,'par',NULL,0,1,'2025-09-15 22:54:56','2025-09-15 22:54:56',NULL),(25,5,'SKU-004','Gorra Clasica',NULL,'Gorra ajustable',0.00,NULL,'100',NULL,0,1,'2025-09-15 22:54:56','2025-09-19 04:57:53',NULL),(26,5,'SKU-005','Mochila Daypack',NULL,'Mochila diaria 20L',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-15 22:54:56',NULL),(27,5,'SKU-006','Cinturon Cuero',NULL,'Cinturon cuero genuino',20.00,10.000000,'1',NULL,0,1,'2025-09-15 22:54:56','2025-09-19 04:58:11',NULL),(28,5,'SKU-007','Calcetines Deportivos',NULL,'Pack x3',0.00,NULL,'pack',NULL,0,1,'2025-09-15 22:54:56','2025-09-16 00:11:33','2025-09-16 06:11:34'),(29,5,'SKU-008','Camisa Formal',NULL,'Camisa manga larga',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-16 00:11:23','2025-09-16 06:11:24'),(30,5,'SKU-009','Sudadera Hoodie',NULL,'Hoodie con capucha',0.00,NULL,'unidad',NULL,0,1,'2025-09-15 22:54:56','2025-09-16 00:11:21','2025-09-16 06:11:21'),(31,5,'SKU-010','Servicio de Bordados',NULL,'Personalizacion de prendasiones',0.00,NULL,'servicio',NULL,1,0,'2025-09-15 22:54:56','2025-09-16 00:11:08','2025-09-16 06:11:09'),(32,6,'1','CAMISA',NULL,'',0.00,NULL,'1',NULL,0,1,'2025-09-16 06:17:02','2025-09-16 06:17:02',NULL),(34,5,'CACA-002','Excremento',NULL,'',100.00,20.000000,'100',NULL,0,1,'2025-09-18 01:56:45','2025-09-19 04:57:26',NULL),(35,5,'CACA-004','Excremento number 2 type B',NULL,'El excremento mas nalgon que veras en tu vida',20.00,10.000000,'100',NULL,0,1,'2025-09-18 02:48:00','2025-09-19 04:57:12',NULL);
 /*!40000 ALTER TABLE `products` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -353,7 +353,7 @@ CREATE TABLE `purchase_invoices` (
   `deleted_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `IX_purchase_invoices_tenant_id` (`tenant_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -362,9 +362,73 @@ CREATE TABLE `purchase_invoices` (
 
 LOCK TABLES `purchase_invoices` WRITE;
 /*!40000 ALTER TABLE `purchase_invoices` DISABLE KEYS */;
-INSERT INTO `purchase_invoices` VALUES (1,5,'C-20250918010252-901',NULL,'received',20.00,0.00,0.00,20.00,'NIO','2025-09-18 01:02:52.450144','2025-09-18 01:02:52.450166','2025-09-18 01:02:52.450185',NULL);
+INSERT INTO `purchase_invoices` VALUES (1,5,'C-20250918010252-901',NULL,'received',20.00,0.00,0.00,20.00,'NIO','2025-09-18 01:02:52.450144','2025-09-18 01:02:52.450166','2025-09-18 01:02:52.450185',NULL),(2,5,'C-20250918024638-522','Papulandio','received',430.00,19.35,43.00,406.35,'NIO','2025-09-18 02:46:38.929033','2025-09-18 02:46:38.929034','2025-09-18 02:46:38.929034',NULL);
 /*!40000 ALTER TABLE `purchase_invoices` ENABLE KEYS */;
 UNLOCK TABLES;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_after_purchase_invoice_insert` AFTER INSERT ON `purchase_invoices` FOR EACH ROW BEGIN
+  IF NEW.status = 'received' THEN
+    INSERT INTO inventory_movements
+      (tenant_id, product_id, warehouse_id, movement_type, reference, quantity, unit_cost, reason, moved_at)
+    SELECT
+      pi.tenant_id,
+      pi.product_id,
+      pi.warehouse_id,
+      'in',
+      NEW.number,
+      pi.quantity,
+      pi.unit_cost,
+      'Compra',
+      NOW()
+    FROM purchase_items pi
+    WHERE pi.invoice_id = NEW.id;
+  END IF;
+END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_after_purchase_invoice_update` AFTER UPDATE ON `purchase_invoices` FOR EACH ROW BEGIN
+  IF NEW.status = 'received' AND OLD.status <> 'received' THEN
+    INSERT INTO inventory_movements
+      (tenant_id, product_id, warehouse_id, movement_type, reference, quantity, unit_cost, reason, moved_at)
+    SELECT
+      pi.tenant_id,
+      pi.product_id,
+      pi.warehouse_id,     -- si no usas almacenes aquí, quedará NULL
+      'in',
+      NEW.number,
+      pi.quantity,
+      pi.unit_cost,
+      'Compra',
+      NOW()
+    FROM purchase_items pi
+    WHERE pi.invoice_id = NEW.id;
+  END IF;
+END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 
 --
 -- Table structure for table `purchase_items`
@@ -389,7 +453,7 @@ CREATE TABLE `purchase_items` (
   PRIMARY KEY (`id`),
   KEY `IX_purchase_items_invoice_id` (`invoice_id`),
   KEY `IX_purchase_items_tenant_id` (`tenant_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -398,7 +462,7 @@ CREATE TABLE `purchase_items` (
 
 LOCK TABLES `purchase_items` WRITE;
 /*!40000 ALTER TABLE `purchase_items` DISABLE KEYS */;
-INSERT INTO `purchase_items` VALUES (1,5,1,27,'Cinturon Cuero',2.000000,10.000000,NULL,0.00,0.00,20.00,'2025-09-18 01:02:52.449626');
+INSERT INTO `purchase_items` VALUES (1,5,1,27,'Cinturon Cuero',2.000000,10.000000,NULL,0.00,0.00,20.00,'2025-09-18 01:02:52.449626'),(2,5,2,27,'Cinturon Cuero',43.000000,10.000000,NULL,5.00,10.00,406.35,'2025-09-18 02:46:38.928993');
 /*!40000 ALTER TABLE `purchase_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -440,32 +504,6 @@ LOCK TABLES `purchase_orders` WRITE;
 /*!40000 ALTER TABLE `purchase_orders` DISABLE KEYS */;
 /*!40000 ALTER TABLE `purchase_orders` ENABLE KEYS */;
 UNLOCK TABLES;
-ALTER DATABASE `contadito` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci ;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8mb4 */ ;
-/*!50003 SET character_set_results = utf8mb4 */ ;
-/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_after_po_update` AFTER UPDATE ON `purchase_orders` FOR EACH ROW BEGIN
-  IF NEW.status = 'received' AND OLD.status <> 'received' THEN
-    INSERT INTO inventory_movements
-      (tenant_id, product_id, warehouse_id, movement_type, reference, quantity, unit_cost, reason, moved_at)
-    SELECT
-      pi.tenant_id, pi.product_id, NULL, 'in', NEW.number, pi.quantity, pi.unit_cost, 'Compra', NOW()
-    FROM purchase_items pi
-    WHERE pi.purchase_id = NEW.id;
-  END IF;
-END */;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-ALTER DATABASE `contadito` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci ;
 
 --
 -- Table structure for table `sales_invoices`
@@ -499,7 +537,7 @@ CREATE TABLE `sales_invoices` (
   CONSTRAINT `fk_sales_invoices_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_sales_invoices_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_sales_invoices_user` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -508,9 +546,43 @@ CREATE TABLE `sales_invoices` (
 
 LOCK TABLES `sales_invoices` WRITE;
 /*!40000 ALTER TABLE `sales_invoices` DISABLE KEYS */;
-INSERT INTO `sales_invoices` VALUES (1,5,1,'F-20250918000905-682','issued',40.00,0.00,0.00,40.00,'NIO','2025-09-18 00:09:05',NULL,NULL,'2025-09-18 00:09:05','2025-09-18 00:09:05',NULL);
+INSERT INTO `sales_invoices` VALUES (1,5,1,'F-20250918000905-682','issued',40.00,0.00,0.00,40.00,'NIO','2025-09-18 00:09:05',NULL,NULL,'2025-09-18 00:09:05','2025-09-18 00:09:05',NULL),(2,5,2,'F-20250918024441-383','issued',220.00,0.00,0.00,220.00,'NIO','2025-09-18 02:44:42',NULL,NULL,'2025-09-18 02:44:42','2025-09-18 02:44:42',NULL);
 /*!40000 ALTER TABLE `sales_invoices` ENABLE KEYS */;
 UNLOCK TABLES;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_0900_ai_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER `trg_after_sales_invoice_insert` AFTER INSERT ON `sales_invoices` FOR EACH ROW BEGIN
+  IF NEW.status IN ('issued','paid') THEN
+    INSERT INTO inventory_movements
+      (tenant_id, product_id, warehouse_id, movement_type, reference, quantity, unit_cost, reason, moved_at, created_by)
+    SELECT
+      si.tenant_id,
+      it.product_id,
+      NULL,               -- si manejas almacén por venta, cámbialo aquí
+      'out',
+      NEW.number,
+      it.quantity,
+      NULL,               -- costo unitario opcional para OUT
+      'Venta',
+      NOW(),
+      NEW.created_by
+    FROM sales_items it
+    JOIN sales_invoices si ON si.id = it.invoice_id
+    WHERE it.invoice_id = NEW.id;
+  END IF;
+END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 ALTER DATABASE `contadito` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci ;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -565,7 +637,7 @@ CREATE TABLE `sales_items` (
   CONSTRAINT `fk_sales_items_invoice` FOREIGN KEY (`invoice_id`) REFERENCES `sales_invoices` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_sales_items_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_sales_items_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -574,7 +646,7 @@ CREATE TABLE `sales_items` (
 
 LOCK TABLES `sales_items` WRITE;
 /*!40000 ALTER TABLE `sales_items` DISABLE KEYS */;
-INSERT INTO `sales_items` VALUES (1,5,1,27,'Cinturon Cuero',2.000000,20.000000,0.00,0.00,40.00,'2025-09-18 00:09:05');
+INSERT INTO `sales_items` VALUES (1,5,1,27,'Cinturon Cuero',2.000000,20.000000,0.00,0.00,40.00,'2025-09-18 00:09:05'),(2,5,2,27,'Cinturon Cuero',1.000000,20.000000,0.00,0.00,20.00,'2025-09-18 02:44:42'),(3,5,2,34,'Excremento',2.000000,100.000000,0.00,0.00,200.00,'2025-09-18 02:44:42');
 /*!40000 ALTER TABLE `sales_items` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -822,7 +894,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,1,'Owner Demo','owner@demopyme.com','$2y$hashdeejemplo','owner','active',NULL,'2025-09-14 04:42:29','2025-09-14 04:42:29',NULL),(2,2,'Diego','diego@example.com','$2a$11$WBuoQuxCmOehJXQyxme2X.4rCl2RRHYpg00LiIVJCvm910rBRvEa2','owner','active',NULL,'2025-09-14 04:48:07','2025-09-14 04:48:07',NULL),(3,1,'Propietario ACME','owner@acme.com','$2a$11$CzQaIY6T8ZT.hqpPz8rdOe5pVYvNfJLPxH2bnZsEtJ6i.EbkmTn2G','owner','active',NULL,'2025-09-14 05:09:22','2025-09-14 05:16:22',NULL),(4,3,'Owner','owner@acme.com','$2a$11$CzQaIY6T8ZT.hqpPz8rdOe5pVYvNfJLPxH2bnZsEtJ6i.EbkmTn2G','owner','active',NULL,'2025-09-14 05:12:00','2025-09-14 05:16:22',NULL),(5,4,'Alice Owner','owner2@acme.com','$2a$11$J5f/26WPdYuiVtTFhuVF0OHvSP75uSOmH9/WdX6FrcI1WKqsw2sTS','owner','active','2025-09-14 06:23:56','2025-09-14 05:18:28','2025-09-14 00:23:55',NULL),(6,5,'Owner','owner2@demo.com','$2a$11$f7QKmZpFUqc258c7cTPbVeKnL/uWunj2woydp5Kg8ZdG630dhNXBq','owner','active','2025-09-18 01:02:46','2025-09-16 02:29:54','2025-09-17 19:02:46',NULL),(7,6,'Dueño dos','dueño@gmail.com','$2a$11$vXtNKYG7gElfw4vZ4BKcdOocEIDmrN5xk2Lm6DQgpDi/BeHUfw3Yu','owner','active','2025-09-16 06:16:26','2025-09-16 05:20:32','2025-09-16 00:16:26',NULL);
+INSERT INTO `users` VALUES (1,1,'Owner Demo','owner@demopyme.com','$2y$hashdeejemplo','owner','active',NULL,'2025-09-14 04:42:29','2025-09-14 04:42:29',NULL),(2,2,'Diego','diego@example.com','$2a$11$WBuoQuxCmOehJXQyxme2X.4rCl2RRHYpg00LiIVJCvm910rBRvEa2','owner','active',NULL,'2025-09-14 04:48:07','2025-09-14 04:48:07',NULL),(3,1,'Propietario ACME','owner@acme.com','$2a$11$CzQaIY6T8ZT.hqpPz8rdOe5pVYvNfJLPxH2bnZsEtJ6i.EbkmTn2G','owner','active',NULL,'2025-09-14 05:09:22','2025-09-14 05:16:22',NULL),(4,3,'Owner','owner@acme.com','$2a$11$CzQaIY6T8ZT.hqpPz8rdOe5pVYvNfJLPxH2bnZsEtJ6i.EbkmTn2G','owner','active',NULL,'2025-09-14 05:12:00','2025-09-14 05:16:22',NULL),(5,4,'Alice Owner','owner2@acme.com','$2a$11$J5f/26WPdYuiVtTFhuVF0OHvSP75uSOmH9/WdX6FrcI1WKqsw2sTS','owner','active','2025-09-14 06:23:56','2025-09-14 05:18:28','2025-09-14 00:23:55',NULL),(6,5,'Owner','owner2@demo.com','$2a$11$f7QKmZpFUqc258c7cTPbVeKnL/uWunj2woydp5Kg8ZdG630dhNXBq','owner','active','2025-09-19 04:37:05','2025-09-16 02:29:54','2025-09-18 22:37:04',NULL),(7,6,'Dueño dos','dueño@gmail.com','$2a$11$vXtNKYG7gElfw4vZ4BKcdOocEIDmrN5xk2Lm6DQgpDi/BeHUfw3Yu','owner','active','2025-09-18 01:19:36','2025-09-16 05:20:32','2025-09-17 19:19:36',NULL);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -876,7 +948,7 @@ CREATE TABLE `warehouses` (
   UNIQUE KEY `UQ_Warehouses_TenantId_Name` (`TenantId`,`Name`),
   KEY `IX_Warehouses_TenantId_Name` (`TenantId`,`Name`),
   CONSTRAINT `FK_Warehouses_Tenants_TenantId` FOREIGN KEY (`TenantId`) REFERENCES `tenants` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -885,7 +957,7 @@ CREATE TABLE `warehouses` (
 
 LOCK TABLES `warehouses` WRITE;
 /*!40000 ALTER TABLE `warehouses` DISABLE KEYS */;
-INSERT INTO `warehouses` VALUES (1,1,'Principal',NULL,NULL,NULL,'2025-09-16 22:22:39.656914','2025-09-16 22:25:40.939880',NULL),(2,5,'warehouse nuevo',NULL,NULL,NULL,'2025-09-17 04:30:10.523212','2025-09-17 04:30:10.523212',NULL),(3,5,'asd',NULL,NULL,NULL,'2025-09-17 04:30:15.579700','2025-09-17 04:30:15.579700',NULL);
+INSERT INTO `warehouses` VALUES (1,1,'Principal',NULL,NULL,NULL,'2025-09-16 22:22:39.656914','2025-09-16 22:25:40.939880',NULL),(2,5,'Almacen de los papus',NULL,NULL,NULL,'2025-09-17 04:30:10.523212','2025-09-18 02:48:30.802342',NULL),(3,5,'asd',NULL,NULL,NULL,'2025-09-17 04:30:15.579700','2025-09-17 20:16:05.820246','2025-09-18 02:16:05.814721'),(4,5,'Ciudad Jardin',NULL,NULL,NULL,'2025-09-18 02:30:21.146227','2025-09-18 02:30:21.146227',NULL);
 /*!40000 ALTER TABLE `warehouses` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -934,4 +1006,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-09-17 19:07:45
+-- Dump completed on 2025-09-18 22:59:09

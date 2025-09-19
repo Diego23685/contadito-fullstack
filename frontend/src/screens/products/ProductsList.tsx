@@ -15,6 +15,9 @@ type Product = {
   isService?: boolean;
   trackStock?: boolean;
   listPrice?: number;
+  // 👇 NUEVO: campos para stock
+  stockQty?: number;
+  lowStock?: boolean;
 };
 type ProductsResponse = { total: number; page: number; pageSize: number; items: Product[] };
 
@@ -57,6 +60,16 @@ const Card: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, 
   <View style={[styles.card, style]}>{children}</View>
 );
 
+// 👇 NUEVO: badge para mostrar el stock
+const StockBadge = ({ qty, unit, low }: { qty?: number; unit?: string | null; low?: boolean }) => {
+  if (qty == null) return null;
+  return (
+    <View style={[styles.badge, low ? styles.badgeDanger : styles.badgeNeutral]}>
+      <Text style={styles.badgeText}>{`Stock: ${Number(qty)}${unit ? ` ${unit}` : ''}`}</Text>
+    </View>
+  );
+};
+
 const ProductsList: React.FC<any> = ({ navigation }) => {
   const { logout } = useContext(AuthContext);
   const { width } = useWindowDimensions();
@@ -77,6 +90,9 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
 
   const debounceRef = useRef<any>(null);
 
+  // 👇 caché en memoria para no pedir stock de un producto dos veces
+  const stockCache = useRef<Map<number, number>>(new Map());
+
   const params = useMemo(() => ({
     q: q || undefined,
     kind: filter,
@@ -89,6 +105,44 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
     return { q: params.q, sort: params.sort, dir: params.dir, filter: params.kind, onlyStock: params.onlyStock };
   }, [params]);
 
+  // 👇 NUEVO: consulta /inventory/products/{id}/stock en paralelo y actualiza lista
+  const hydrateStock = useCallback(async (prods: Product[]) => {
+    const ids = prods
+      .filter(p => !p.isService && p.trackStock && !stockCache.current.has(p.id))
+      .map(p => p.id);
+
+    if (ids.length === 0) return;
+
+    try {
+      const results = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const r = await api.get<{ productId: number; qty: number }>(`/inventory/products/${id}/stock`);
+            return { id, qty: r.data?.qty ?? 0 };
+          } catch {
+            return { id, qty: undefined as unknown as number };
+          }
+        })
+      );
+
+      // guarda en caché y en pantalla
+      const incoming = new Map(results.map(x => [x.id, x.qty]));
+      results.forEach(({ id, qty }) => {
+        if (qty != null) stockCache.current.set(id, qty);
+      });
+
+      setItems(prev =>
+        prev.map(p =>
+          incoming.has(p.id)
+            ? { ...p, stockQty: incoming.get(p.id) }
+            : p
+        )
+      );
+    } catch (err) {
+      console.warn('No se pudo hidratar stock', err);
+    }
+  }, []);
+
   const load = useCallback(async (reset: boolean) => {
     if (loading) return;
     try {
@@ -97,9 +151,25 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
       const res = await api.get<ProductsResponse>('/products', {
         params: { page: nextPage, pageSize: PAGE_SIZE, ...serverParams }
       });
+
       setTotal(res.data.total || 0);
       setPage(nextPage);
-      setItems(reset ? res.data.items : [...items, ...res.data.items]);
+
+      const justLoaded = res.data.items;
+      // fusiona con lo que había
+      const merged = reset ? justLoaded : [...items, ...justLoaded];
+
+      // si hay stock en caché, úsalo de una vez
+      const withCachedStock = merged.map(p =>
+        (!p.isService && p.trackStock && stockCache.current.has(p.id))
+          ? { ...p, stockQty: stockCache.current.get(p.id) }
+          : p
+      );
+
+      setItems(withCachedStock);
+
+      // pide el stock de lo recién cargado
+      hydrateStock(justLoaded);
     } catch (e: any) {
       if (e?.response?.status === 401) logout();
       const msg = e?.response?.data || e?.message || 'Error cargando productos';
@@ -107,7 +177,7 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [loading, page, items, logout, serverParams]);
+  }, [loading, page, items, logout, serverParams, hydrateStock]);
 
   useEffect(() => { load(true); }, []); // primera carga
 
@@ -132,6 +202,8 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
       await api.delete(`/products/${id}`);
       setItems((prev) => prev.filter(p => p.id !== id));
       setTotal((t) => Math.max(0, t - 1));
+      // limpia caché de stock de ese producto
+      stockCache.current.delete(id);
     } catch (e: any) {
       Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo eliminar'));
     }
@@ -167,7 +239,14 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
                 )}
               </View>
             </View>
+
             <Text style={styles.itemSub}>{item.sku}</Text>
+
+            {/* 👇 NUEVO: Mostrar stock */}
+            {!item.isService && item.trackStock && (
+              <StockBadge qty={item.stockQty} unit={item.unit} />
+            )}
+
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text style={styles.price}>{currency(item.listPrice)}</Text>
               <View style={{ flexDirection: 'row', gap: 6 }}>
@@ -192,7 +271,11 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
             <View style={[styles.badge, styles.badgeSuccess]}><Text style={styles.badgeText}>Prod.</Text></View>
           )}
           {!item.isService && item.trackStock && (
-            <View style={[styles.badge, styles.badgeNeutral]}><Text style={styles.badgeText}>Stock</Text></View>
+            <>
+              <View style={[styles.badge, styles.badgeNeutral]}><Text style={styles.badgeText}>Stock</Text></View>
+              {/* 👇 NUEVO: Mostrar stock */}
+              <StockBadge qty={item.stockQty} unit={item.unit} />
+            </>
           )}
           <ActionBtn title="Editar" kind="secondary" onPress={() => navigation.navigate('ProductForm', { id: item.id })} />
           <ActionBtn title="Eliminar" kind="danger" onPress={() => confirmRemove(item.id)} />
@@ -306,6 +389,8 @@ const styles = StyleSheet.create({
   badgeInfo: { backgroundColor: '#3B82F6' },
   badgeSuccess: { backgroundColor: '#10B981' },
   badgeNeutral: { backgroundColor: '#6B7280' },
+  // 👇 NUEVO: para marcar stock bajo si lo usas (low=true)
+  badgeDanger: { backgroundColor: '#DC2626' },
   rowItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderBottomColor: '#E5E7EB', borderBottomWidth: 1, backgroundColor: '#fff', gap: 10 },
   rowTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
   rowSub: { color: '#6B7280', fontSize: 12 },

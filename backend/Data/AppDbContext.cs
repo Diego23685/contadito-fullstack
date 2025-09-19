@@ -20,6 +20,7 @@ namespace Contadito.Api.Data
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<AvgCostView> AvgCosts => Set<AvgCostView>();
         public DbSet<StockView> Stocks => Set<StockView>();
+        public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
 
         // Compras
         public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
@@ -70,6 +71,39 @@ namespace Contadito.Api.Data
             mb.Entity<PurchaseItem>().Property(i => i.TaxRate).HasColumnType("decimal(5,2)");
             mb.Entity<PurchaseItem>().Property(i => i.DiscountRate).HasColumnType("decimal(5,2)");
             mb.Entity<PurchaseItem>().Property(i => i.Total).HasColumnType("decimal(18,2)");
+
+            // InventoryMovement
+            mb.Entity<InventoryMovement>(e =>
+            {
+                e.ToTable("inventory_movements");
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.Id).HasColumnName("id");
+                e.Property(x => x.TenantId).HasColumnName("tenant_id");
+                e.Property(x => x.ProductId).HasColumnName("product_id");
+                e.Property(x => x.WarehouseId).HasColumnName("warehouse_id");
+
+                e.Property(x => x.MovementType).HasColumnName("movement_type").HasMaxLength(10);
+                e.Property(x => x.Reference).HasColumnName("reference");
+                e.Property(x => x.Quantity).HasColumnName("quantity").HasColumnType("decimal(18,6)");
+                e.Property(x => x.UnitCost).HasColumnName("unit_cost").HasColumnType("decimal(18,6)");
+                e.Property(x => x.Reason).HasColumnName("reason");
+                e.Property(x => x.MovedAt).HasColumnName("moved_at");
+
+                e.Property(x => x.CreatedBy).HasColumnName("created_by");
+
+                // ⚠️ Deja que MySQL ponga CURRENT_TIMESTAMP (y EF no lo envía en el INSERT)
+                e.Property(x => x.CreatedAt)
+                    .HasColumnName("created_at")
+                    .ValueGeneratedOnAdd()
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                e.HasIndex(x => new { x.TenantId, x.ProductId, x.MovedAt })
+                    .HasDatabaseName("idx_inv_mov_tenant_product");
+                e.HasIndex(x => new { x.TenantId, x.WarehouseId })
+                    .HasDatabaseName("idx_inv_mov_tenant_wh");
+            });
+
 
             // Vistas keyless
             mb.Entity<AvgCostView>().ToView("v_avg_cost").HasNoKey();

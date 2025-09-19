@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Contadito.Api.Controllers
 {
@@ -98,10 +101,10 @@ namespace Contadito.Api.Controllers
             .OrderBy(x => x.qty)
             .ThenBy(x => x.name)
             .Take(5)
-            .Select(x => new { x.id, x.sku, x.name })
+            .Select(x => new { x.id, x.sku, x.name }) // si quieres exponer qty cámbialo a: new { x.id, x.sku, x.name, x.qty }
             .ToListAsync();
 
-            // ===== Por cobrar próximos 7 días (re-escrito para traducción correcta) =====
+            // ===== Por cobrar próximos 7 días (camelCase) =====
             var dueTo = DateTime.UtcNow.AddDays(7);
 
             var receivablesDueSoon = await (
@@ -114,23 +117,23 @@ namespace Contadito.Api.Controllers
                 let paid = _db.Payments.AsNoTracking()
                               .Where(p => p.TenantId == TenantId && p.InvoiceId == si.Id)
                               .Sum(p => (decimal?)p.Amount) ?? 0m
-                let dueAmount = si.Total - paid
-                where dueAmount > 0m
+                let dueAmountCalc = si.Total - paid
+                where dueAmountCalc > 0m
                 // Subconsulta para nombre del cliente (LEFT)
-                let customerName = _db.Customers.AsNoTracking()
+                let customerNameJoin = _db.Customers.AsNoTracking()
                                        .Where(c => c.Id == si.CustomerId)
                                        .Select(c => c.Name)
                                        .FirstOrDefault()
                 orderby si.DueAt
                 select new
                 {
-                    invoice_id = si.Id,
+                    invoiceId = si.Id, // camelCase
                     number = si.Number,
-                    customer_name = customerName,
+                    customerName = customerNameJoin, // camelCase
                     total = si.Total,
-                    due_amount = dueAmount,
-                    // TIMESTAMPDIFF(DAY, NOW(), due_at) -> EF.Functions.DateDiffDay
-                    due_in_days = EF.Functions.DateDiffDay(DateTime.UtcNow, si.DueAt!.Value)
+                    dueAmount = dueAmountCalc, // camelCase
+                    // EF equivalente a TIMESTAMPDIFF(DAY, NOW(), due_at)
+                    dueInDays = EF.Functions.DateDiffDay(DateTime.UtcNow, si.DueAt!.Value) // camelCase
                 }
             )
             .Take(5)
@@ -150,32 +153,32 @@ namespace Contadito.Api.Controllers
             var actProducts = await _db.Products.AsNoTracking()
                 .Where(p => p.TenantId == TenantId)
                 .OrderByDescending(p => p.CreatedAt).Take(10)
-                .Select(p => new { kind = "Producto", ref_id = p.Id, title = p.Name, when_at = p.CreatedAt })
+                .Select(p => new { kind = "Producto", refId = p.Id, title = p.Name, whenAt = p.CreatedAt }) // camelCase
                 .ToListAsync();
             activity.AddRange(actProducts);
 
             var actCustomers = await _db.Customers.AsNoTracking()
                 .Where(c => c.TenantId == TenantId)
                 .OrderByDescending(c => c.CreatedAt).Take(10)
-                .Select(c => new { kind = "Cliente", ref_id = c.Id, title = c.Name, when_at = c.CreatedAt })
+                .Select(c => new { kind = "Cliente", refId = c.Id, title = c.Name, whenAt = c.CreatedAt }) // camelCase
                 .ToListAsync();
             activity.AddRange(actCustomers);
 
             var actWh = await _db.Warehouses.AsNoTracking()
                 .Where(w => w.TenantId == TenantId)
                 .OrderByDescending(w => w.CreatedAt).Take(10)
-                .Select(w => new { kind = "Almacen", ref_id = w.Id, title = w.Name, when_at = w.CreatedAt })
+                .Select(w => new { kind = "Almacen", refId = w.Id, title = w.Name, whenAt = w.CreatedAt }) // camelCase
                 .ToListAsync();
             activity.AddRange(actWh);
 
             var actInv = await _db.SalesInvoices.AsNoTracking()
                 .Where(si => si.TenantId == TenantId)
                 .OrderByDescending(si => si.CreatedAt).Take(10)
-                .Select(si => new { kind = "Factura", ref_id = si.Id, title = si.Number, when_at = si.CreatedAt })
+                .Select(si => new { kind = "Factura", refId = si.Id, title = si.Number, whenAt = si.CreatedAt }) // camelCase
                 .ToListAsync();
             activity.AddRange(actInv);
 
-            activity = activity.OrderByDescending(a => a.when_at).Take(10).ToList();
+            activity = activity.OrderByDescending(a => a.whenAt).Take(10).ToList();
 
             // ===== Respuesta =====
             return Ok(new
@@ -208,9 +211,9 @@ namespace Contadito.Api.Controllers
                 activity = activity.Select(a => new
                 {
                     a.kind,
-                    a.ref_id,
+                    a.refId,
                     a.title,
-                    when_at = ((DateTime)a.when_at).ToString("yyyy-MM-dd HH:mm")
+                    whenAt = ((DateTime)a.whenAt).ToString("yyyy-MM-dd HH:mm")
                 })
             });
         }
