@@ -15,11 +15,12 @@ import CustomerForm from '../screens/customers/CustomerForm';
 import WarehousesList from '../screens/warehouses/WarehousesList';
 import WarehouseForm from '../screens/warehouses/WarehouseForm';
 
-// NUEVAS PANTALLAS (placeholders funcionales)
+// Nuevas
 import GlobalSearch from '../screens/GlobalSearch';
 import SaleCreate from '../screens/sales/SaleCreate';
 import PurchaseCreate from '../screens/purchases/PurchaseCreate';
 import ReceivablesList from '../screens/finance/ReceivablesList';
+import ReceivableCreate from '../screens/finance/ReceivableCreate';
 import TenantSwitch from '../screens/tenants/TenantSwitch';
 
 const Stack = createNativeStackNavigator();
@@ -29,7 +30,10 @@ export default function RootNavigator() {
 
   if (!token) {
     return (
-      <Stack.Navigator>
+      <Stack.Navigator
+        initialRouteName="Login"
+        screenOptions={{ headerBackTitleVisible: false }}
+      >
         <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />
         <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registro' }} />
       </Stack.Navigator>
@@ -37,10 +41,13 @@ export default function RootNavigator() {
   }
 
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      initialRouteName="Home"
+      screenOptions={{ headerBackTitleVisible: false }}
+    >
       <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio' }} />
 
-      {/* CRUDs existentes */}
+      {/* CRUDs */}
       <Stack.Screen name="ProductsList" component={ProductsList} options={{ title: 'Productos' }} />
       <Stack.Screen name="ProductForm" component={ProductForm} options={{ title: 'Producto' }} />
       <Stack.Screen name="CustomersList" component={CustomersList} options={{ title: 'Clientes' }} />
@@ -48,11 +55,12 @@ export default function RootNavigator() {
       <Stack.Screen name="WarehousesList" component={WarehousesList} options={{ title: 'Almacenes' }} />
       <Stack.Screen name="WarehouseForm" component={WarehouseForm} options={{ title: 'Almacén' }} />
 
-      {/* NUEVAS rutas para que funcionen los botones del Home */}
+      {/* Extras / Finanzas */}
       <Stack.Screen name="GlobalSearch" component={GlobalSearch} options={{ title: 'Búsqueda' }} />
       <Stack.Screen name="SaleCreate" component={SaleCreate} options={{ title: 'Nueva venta' }} />
       <Stack.Screen name="PurchaseCreate" component={PurchaseCreate} options={{ title: 'Nueva compra' }} />
-      <Stack.Screen name="ReceivablesList" component={ReceivablesList} options={{ title: 'Por cobrar' }} />
+      <Stack.Screen name="ReceivablesList" component={ReceivablesList} options={{ title: 'Cuentas por cobrar' }} />
+      <Stack.Screen name="ReceivableCreate" component={ReceivableCreate} options={{ title: 'Nueva CxC' }} />
       <Stack.Screen name="TenantSwitch" component={TenantSwitch} options={{ title: 'Cambiar empresa' }} />
     </Stack.Navigator>
   );

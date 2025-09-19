@@ -89,6 +89,8 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortAsc, setSortAsc] = useState(true);
 
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
   const debounceRef = useRef<any>(null);
 
   const serverParams = useMemo(() => ({
@@ -137,20 +139,32 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
     if (!loading && items.length < total) load(false);
   };
 
+  // --- FIX: separar doRemove y manejar web vs nativo en confirmRemove ---
+
+  const doRemove = async (id: number) => {
+    try {
+      setDeletingId(id);
+      await api.delete(`/customers/${id}`);
+      setItems(prev => prev.filter(p => p.id !== id));
+      setTotal(t => Math.max(0, t - 1));
+    } catch (e: any) {
+      Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo eliminar'));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const confirmRemove = (id: number) => {
+    // En web usamos window.confirm porque Alert puede no mostrarse
+    if (Platform.OS === 'web') {
+      const ok = window.confirm('¿Seguro que deseas eliminar este cliente?');
+      if (ok) doRemove(id);
+      return;
+    }
+    // En nativo usamos Alert
     Alert.alert('Eliminar', '¿Seguro que deseas eliminar este cliente?', [
       { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar', style: 'destructive', onPress: async () => {
-          try {
-            await api.delete(`/customers/${id}`);
-            setItems((prev) => prev.filter(p => p.id !== id));
-            setTotal((t) => Math.max(0, t - 1));
-          } catch (e: any) {
-            Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo eliminar'));
-          }
-        }
-      },
+      { text: 'Eliminar', style: 'destructive', onPress: () => doRemove(id) },
     ]);
   };
 
@@ -158,6 +172,7 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
     const avatarBg = colorFrom(item.name || item.email || String(item.id));
     const inits = initials(item.name || item.email || '?');
     const phoneNice = prettyPhone(item.phone);
+    const isDeleting = deletingId === item.id;
 
     if (isGrid) {
       return (
@@ -182,7 +197,7 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
             </View>
             <View style={{ flexDirection: 'row', gap: 6 }}>
               <ActionBtn title="Editar" kind="secondary" onPress={() => navigation.navigate('CustomerForm', { id: item.id })} />
-              <ActionBtn title="Eliminar" kind="danger" onPress={() => confirmRemove(item.id)} />
+              <ActionBtn title={isDeleting ? 'Eliminando…' : 'Eliminar'} kind="danger" onPress={() => confirmRemove(item.id)} disabled={isDeleting} />
             </View>
           </View>
         </Card>
@@ -203,7 +218,7 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
           {!!item.documentId && <View style={[styles.badge, styles.badgeNeutral]}><Text style={styles.badgeText}>Doc.</Text></View>}
           {!!item.address && <View style={[styles.badge, styles.badgeInfo]}><Text style={styles.badgeText}>Dir.</Text></View>}
           <ActionBtn title="Editar" kind="secondary" onPress={() => navigation.navigate('CustomerForm', { id: item.id })} />
-          <ActionBtn title="Eliminar" kind="danger" onPress={() => confirmRemove(item.id)} />
+          <ActionBtn title={isDeleting ? 'Eliminando…' : 'Eliminar'} kind="danger" onPress={() => confirmRemove(item.id)} disabled={isDeleting} />
         </View>
       </View>
     );

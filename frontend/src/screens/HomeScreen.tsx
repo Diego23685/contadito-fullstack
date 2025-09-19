@@ -126,6 +126,14 @@ export default function HomeScreen({ navigation }: Props) {
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
+  useEffect(() => {
+  const interval = setInterval(() => {
+      fetchDashboard();
+    }, 60000); // cada 60 segundos
+    return () => clearInterval(interval);
+  }, [fetchDashboard]);
+
+
   // KPIs HOY (con barras relativas entre sí)
   const kpisHoy = useMemo(() => {
     const vals = [
