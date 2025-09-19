@@ -40,18 +40,18 @@ type Dashboard = {
   latestProducts: { id: number; sku: string; name: string }[];
   lowStock: { id: number; sku: string; name: string }[];
   receivablesDueSoon: {
-    invoice_id: number;
+    invoiceId: number;
     number: string;
-    customer_name: string | null;
+    customerName: string | null;
     total: number;
-    due_amount: number;
-    due_in_days: number;
+    dueAmount: number;
+    dueInDays: number;
   }[];
   activity: {
     kind: string;
-    ref_id: number;
+    refId: number;
     title: string;
-    when_at: string;
+    whenAt: string; // "yyyy-MM-dd HH:mm"
   }[];
 };
 
@@ -61,10 +61,7 @@ type Props = { navigation: any };
 const Card: React.FC<{ style?: any; children: React.ReactNode; onPress?: () => void }> = ({ style, children, onPress }) => {
   const Comp: any = onPress ? Pressable : View;
   return (
-    <Comp
-      onPress={onPress}
-      style={[styles.card, style, onPress && { opacity: 1 }]}
-    >
+    <Comp onPress={onPress} style={[styles.card, style, onPress && { opacity: 1 }]}>
       {children}
     </Comp>
   );
@@ -84,8 +81,8 @@ const Label: React.FC<{ children: React.ReactNode; muted?: boolean; style?: any 
   <Text style={[{ color: muted ? '#6b7280' : '#111827' }, style]}>{children}</Text>
 );
 
-const Badge: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Text style={styles.badge}>{children}</Text>
+const Badge: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => (
+  <Text style={[styles.badge, style]}>{children}</Text>
 );
 
 // Barra horizontal proporcional (sin libs)
@@ -171,7 +168,7 @@ export default function HomeScreen({ navigation }: Props) {
       {/* Header */}
       <View style={[styles.headerWrap]}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Inicio</Text>
+          <Text style={styles.title}>Contadito</Text>
           <Text style={styles.meta}>
             Empresa: <Text style={styles.bold}>{dashboard?.tenantName ?? '—'}</Text> · Plan: <Text style={styles.bold}>{dashboard?.plan ?? '—'}</Text>
           </Text>
@@ -284,41 +281,75 @@ export default function HomeScreen({ navigation }: Props) {
         {/* Columna derecha */}
         <View style={[styles.col, isWide && styles.colRight]}>
           {/* Alertas */}
-          <Section title="Alertas">
+          <Section
+            title="Alertas"
+            right={<View style={styles.row}><Button title="Refrescar" onPress={fetchDashboard} /></View>}
+          >
             {/* Stock bajo */}
             <Card style={{ marginBottom: 12 }}>
-              <Text style={styles.panelTitle}>Stock bajo</Text>
+              <View style={styles.rowBetween}>
+                <Text style={styles.panelTitle}>Stock bajo</Text>
+                <Text style={{ color: '#6b7280' }}>{dashboard?.lowStock?.length ?? 0}</Text>
+              </View>
+
               {!dashboard?.lowStock?.length ? (
                 <Label muted>Sin alertas de stock.</Label>
               ) : (
                 <View style={{ gap: 8 }}>
                   {dashboard.lowStock.slice(0, 6).map((p) => (
                     <View key={p.id} style={styles.rowBetween}>
-                      <Text numberOfLines={1} style={{ flex: 1, paddingRight: 8 }}>{p.sku} · {p.name}</Text>
+                      <Text numberOfLines={1} style={{ flex: 1, paddingRight: 8 }}>
+                        {p.sku} · {p.name}
+                      </Text>
                       <Button title="Ver" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
                     </View>
                   ))}
                 </View>
               )}
+
+              <View style={{ marginTop: 8 }}>
+                <Button title="Ver todos" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
+              </View>
             </Card>
 
             {/* Por cobrar */}
             <Card>
-              <Text style={styles.panelTitle}>Por cobrar (próx. 7 días)</Text>
+              <View style={styles.rowBetween}>
+                <Text style={styles.panelTitle}>Por cobrar (próx. 7 días)</Text>
+                <Text style={{ color: '#6b7280' }}>{dashboard?.receivablesDueSoon?.length ?? 0}</Text>
+              </View>
+
               {!dashboard?.receivablesDueSoon?.length ? (
                 <Label muted>Sin cuentas próximas a vencer.</Label>
               ) : (
                 <View style={{ gap: 8 }}>
-                  {dashboard.receivablesDueSoon.slice(0, 6).map((i) => (
-                    <View key={i.invoice_id} style={styles.rowBetween}>
-                      <Text numberOfLines={1} style={{ flex: 1, paddingRight: 8 }}>
-                        #{i.number} · {i.customer_name ?? 'Cliente'} · vence en {i.due_in_days}d
-                      </Text>
-                      <Badge>{money(i.due_amount)}</Badge>
-                    </View>
-                  ))}
+                  {dashboard.receivablesDueSoon.slice(0, 6).map((i) => {
+                    const tag =
+                      i.dueInDays < 0 ? { label: 'Vencido', style: styles.badgeDanger } :
+                      i.dueInDays === 0 ? { label: 'Hoy', style: styles.badgeWarning } :
+                      i.dueInDays <= 3 ? { label: 'Pronto', style: styles.badgeOrange } :
+                      { label: 'Esta semana', style: styles.badgeInfo };
+
+                    return (
+                      <View key={i.invoiceId} style={styles.rowBetween}>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <Text numberOfLines={1} style={styles.itemTitle}>
+                            #{i.number} · {i.customerName ?? 'Cliente'}
+                          </Text>
+                          <Text style={styles.itemSub}>
+                            vence en {i.dueInDays}d
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Badge style={tag.style}>{tag.label}</Badge>
+                          <Badge>{money(i.dueAmount)}</Badge>
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
               )}
+
               <View style={{ marginTop: 8 }}>
                 <Button title="Ver cuentas por cobrar" onPress={() => navigation.navigate('ReceivablesList')} />
               </View>
@@ -332,9 +363,9 @@ export default function HomeScreen({ navigation }: Props) {
             ) : (
               <View style={{ gap: 8 }}>
                 {dashboard.activity.slice(0, isWide ? 10 : 6).map((a, idx) => (
-                  <Card key={`${a.kind}-${a.ref_id}-${idx}`} style={{ paddingVertical: 10 }}>
+                  <Card key={`${a.kind}-${a.refId}-${idx}`} style={{ paddingVertical: 10 }}>
                     <Text style={styles.itemTitle} numberOfLines={1}>{a.kind}: {a.title}</Text>
-                    <Text style={styles.itemSub}>{a.when_at}</Text>
+                    <Text style={styles.itemSub}>{a.whenAt}</Text>
                   </Card>
                 ))}
               </View>
@@ -414,8 +445,8 @@ const styles = StyleSheet.create({
 
   // Cards / grid
   grid: { gap: 12, flexDirection: 'row', flexWrap: 'wrap' },
-  cols3: { },
-  cols2: { },
+  cols3: {},
+  cols2: {},
   card: {
     flexGrow: 1,
     minWidth: 180,
@@ -441,7 +472,7 @@ const styles = StyleSheet.create({
   // Paneles
   panelTitle: { fontWeight: '700', marginBottom: 8 },
 
-  // Badges
+  // Badges base
   badge: {
     backgroundColor: '#eef2ff',
     color: '#1e3a8a',
@@ -451,6 +482,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     fontWeight: '700',
   },
+  // Variantes de urgencia
+  badgeDanger: { backgroundColor: '#fee2e2', color: '#991b1b' },
+  badgeWarning: { backgroundColor: '#fef3c7', color: '#92400e' },
+  badgeOrange: { backgroundColor: '#ffedd5', color: '#9a3412' },
+  badgeInfo: { backgroundColor: '#dbeafe', color: '#1e40af' },
 
   // Estado
   statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
