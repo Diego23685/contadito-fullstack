@@ -1,9 +1,9 @@
-// src/screens/RegisterScreen.tsx — Estilo mock a juego con Login (degradado + formulario)
+// src/screens/RegisterScreen.tsx — Estilo mock a juego con Login (degradado + formulario) + rotación de mensajes
 // Requiere las mismas libs que Login:
 // Expo: expo install expo-linear-gradient react-native-svg
 // Bare RN: yarn add react-native-linear-gradient react-native-svg && cd ios && pod install
 
-import React, { useContext, useMemo, useState, useEffect } from 'react';
+import React, { useContext, useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,8 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   useWindowDimensions,
+  Animated,
+  Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 // Si no usas Expo:
@@ -46,6 +48,15 @@ const P = {
   danger: '#EF4444',
   white: '#FFFFFF',
 };
+
+// Mensajes que rotan en el panel izquierdo (título, subtítulo)
+const WELCOMES: Array<[string, string]> = [
+  ['Crea tu cuenta en minutos', 'Empieza gratis y configura tu negocio.'],
+  ['Crecemos contigo', 'Planes flexibles y paneles que se adaptan a tu pyme.'],
+  ['Hecho para Nicaragua y C.A.', 'Pagos locales e integraciones regionales.'],
+  ['Tu equipo, un mismo lugar', 'Ventas, inventario y finanzas conectadas.'],
+  ['Decide con confianza', 'Alertas inteligentes y métricas claras.'],
+];
 
 const SmallBtn: React.FC<{ title: string; onPress: () => void }>=({ title, onPress }) => (
   <Pressable onPress={onPress} style={styles.smallBtn} android_ripple={{ color: '#e5e7eb' }}>
@@ -77,13 +88,49 @@ export default function RegisterScreen() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // Rotación de mensajes (panel izquierdo)
+  const [welcomeIdx, setWelcomeIdx] = useState(0);
+  const fade = useRef(new Animated.Value(1)).current;
+  const float = useRef(new Animated.Value(0)).current;
+
   useEffect(() => { setBaseUrl(base); }, [base]);
 
-  // Validaciones básicas (sin URL)
+  // Animación: rotación de copys
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(fade, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start(() => {
+        setWelcomeIdx(i => (i + 1) % WELCOMES.length);
+        Animated.timing(fade, {
+          toValue: 1,
+          duration: 250,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [fade]);
+
+  // Animación: flotación sutil del panel
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(float, { toValue: 1, duration: 3500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(float, { toValue: 0, duration: 3500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      ])
+    ).start();
+  }, [float]);
+
+  // Validaciones básicas
   const emailOk = useMemo(() => /.+@.+\..+/.test(ownerEmail.trim()), [ownerEmail]);
   const passOk = useMemo(() => password.trim().length >= 3, [password]);
   const confirmOk = useMemo(() => confirm === password, [confirm, password]);
-  const formValid = tenantName.trim() && ownerName.trim() && emailOk && passOk && confirmOk;
+  const formValid = Boolean(tenantName.trim() && ownerName.trim() && emailOk && passOk && confirmOk);
 
   const handleRegister = async () => {
     if (!formValid) { setError('Revisa los campos resaltados'); return; }
@@ -109,36 +156,44 @@ export default function RegisterScreen() {
 
       <View style={[styles.split, stack && { flexDirection: 'column' }]}>
         {/* Panel izquierdo (Welcome) */}
-        <LinearGradient colors={[P.violet, P.blue, P.cyan]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.left, stack && { height: 420, flex: 0 }]}>
-          <Svg height="100%" width="100%" style={StyleSheet.absoluteFill}>
-            <Defs>
-              <SvgLinearGradient id="bubble" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
-                <Stop offset="100%" stopColor="#ffffff" stopOpacity="0.2" />
-              </SvgLinearGradient>
-            </Defs>
-            <Circle cx="18%" cy="22%" r="40" fill="url(#bubble)" opacity={0.75} />
-            <Circle cx="62%" cy="26%" r="64" fill="url(#bubble)" opacity={0.7} />
-            <Circle cx="26%" cy="72%" r="58" fill="url(#bubble)" opacity={0.7} />
-          </Svg>
+        <Animated.View
+          style={[
+            styles.leftFloat,
+            stack && { height: 420, flex: 0 },
+            { transform: [{ translateY: float.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }] },
+          ]}
+        >
+          <LinearGradient colors={[P.violet, P.blue, P.cyan]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.left}>
+            <Svg height="100%" width="100%" style={StyleSheet.absoluteFill}>
+              <Defs>
+                <SvgLinearGradient id="bubble" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+                  <Stop offset="100%" stopColor="#ffffff" stopOpacity="0.2" />
+                </SvgLinearGradient>
+              </Defs>
+              <Circle cx="18%" cy="22%" r="40" fill="url(#bubble)" opacity={0.75} />
+              <Circle cx="62%" cy="26%" r="64" fill="url(#bubble)" opacity={0.7} />
+              <Circle cx="26%" cy="72%" r="58" fill="url(#bubble)" opacity={0.7} />
+            </Svg>
 
-          <View style={styles.welcomeBox}>
-            <Text style={styles.welcomeTitle}>Create Account</Text>
-            <Text style={styles.welcomeSub}>Start your free workspace</Text>
-          </View>
-          <Text style={styles.site}>www.yoursite.com</Text>
-        </LinearGradient>
+            <Animated.View style={[styles.welcomeBox, { opacity: fade }]}>
+              <Text style={styles.welcomeTitle}>{WELCOMES[welcomeIdx][0]}</Text>
+              <Text style={styles.welcomeSub}>{WELCOMES[welcomeIdx][1]}</Text>
+            </Animated.View>
+            <Text style={styles.site}>PapuThink · Contadito</Text>
+          </LinearGradient>
+        </Animated.View>
 
         {/* Panel derecho (Formulario) */}
         <KeyboardAvoidingView style={[styles.right, stack && { flex: 1 }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" bounces={false}>
             <View style={styles.formCard}>
-              <Text style={styles.hello}>Welcome 👋</Text>
-              <Text style={styles.morning}>Create your account</Text>
+              <Text style={styles.hello}>¡Bienvenido! 👋</Text>
+              <Text style={styles.morning}>Crea tu cuenta</Text>
               <Text style={styles.lead}>Tenant + Owner</Text>
 
               {/* Tenant */}
-              <Field label="Business / Tenant Name">
+              <Field label="Nombre del negocio (Tenant)">
                 <TextInput
                   style={[styles.input, !tenantName.trim() && styles.inputErr]}
                   value={tenantName}
@@ -150,7 +205,7 @@ export default function RegisterScreen() {
               </Field>
 
               {/* Owner name */}
-              <Field label="Your Name">
+              <Field label="Tu nombre">
                 <TextInput
                   style={[styles.input, !ownerName.trim() && styles.inputErr]}
                   value={ownerName}
@@ -162,7 +217,7 @@ export default function RegisterScreen() {
               </Field>
 
               {/* Email */}
-              <Field label="Email">
+              <Field label="Correo">
                 <TextInput
                   style={[styles.input, !emailOk && styles.inputErr]}
                   value={ownerEmail}
@@ -176,7 +231,7 @@ export default function RegisterScreen() {
               </Field>
 
               {/* Password */}
-              <Field label="Password">
+              <Field label="Contraseña">
                 <View>
                   <TextInput
                     style={[styles.input, !passOk && styles.inputErr]}
@@ -192,7 +247,7 @@ export default function RegisterScreen() {
               </Field>
 
               {/* Confirm */}
-              <Field label="Confirm Password">
+              <Field label="Confirmar contraseña">
                 <View>
                   <TextInput
                     style={[styles.input, !confirmOk && styles.inputErr]}
@@ -211,15 +266,15 @@ export default function RegisterScreen() {
               {!!error && <Text style={styles.error}>{error}</Text>}
 
               {/* Submit */}
-              <Pressable onPress={handleRegister} disabled={loading || !formValid} style={[styles.submit, (!formValid||loading)&&{opacity:0.6}]}> 
+              <Pressable onPress={handleRegister} disabled={loading || !formValid} style={[styles.submit, (!formValid||loading)&&{opacity:0.6}]}>
                 <LinearGradient colors={[P.blue, P.cyan]} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.submitBG} />
                 {loading ? (
                   <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
                     <ActivityIndicator color={P.white} />
-                    <Text style={styles.submitText}>CREATE ACCOUNT</Text>
+                    <Text style={styles.submitText}>CREAR CUENTA</Text>
                   </View>
                 ) : (
-                  <Text style={styles.submitText}>CREATE ACCOUNT</Text>
+                  <Text style={styles.submitText}>CREAR CUENTA</Text>
                 )}
               </Pressable>
 
@@ -251,7 +306,10 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: P.dark },
   split: { flex: 1, flexDirection: 'row' },
 
-  left: { flex: 1.2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  // wrapper animado para el panel izquierdo (flotación)
+  leftFloat: { flex: 1.2 },
+
+  left: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   welcomeBox: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 18, paddingVertical: 18, paddingHorizontal: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
   welcomeTitle: { color: '#fff', fontSize: 28, fontWeight: '900' },
   welcomeSub: { color: 'rgba(255,255,255,0.9)', marginTop: 6 },

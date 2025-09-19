@@ -45,7 +45,7 @@ export default function RootNavigator() {
       initialRouteName="Home"
       screenOptions={{ headerBackTitleVisible: false }}
     >
-      <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio' }} />
+      <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Contadito' }} />
 
       {/* CRUDs */}
       <Stack.Screen name="ProductsList" component={ProductsList} options={{ title: 'Productos' }} />
