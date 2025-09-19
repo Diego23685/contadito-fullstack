@@ -220,7 +220,7 @@ export default function HomeScreen({ navigation }: Props) {
   }, [fetchDashboard]);
 
   useEffect(() => {
-    let interval: NodeJS.Timer | null = null;
+    let interval: NodeJS.Timeout | null = null;
     if (polling) {
       interval = setInterval(fetchDashboard, 60000); // 60s
     }
