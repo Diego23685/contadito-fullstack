@@ -2,7 +2,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  Button,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -16,6 +15,73 @@ import { api } from '../../api';
 
 type Product = { id: number; name: string; sku: string; stdCost?: number | null };
 type CartLine = { productId: number; name: string; sku: string; qty: number; unitCost: number };
+
+/** ====== APOKA THEME ====== */
+const apoka = {
+  brand: '#7C3AED',          // morado 600
+  brandStrong: '#5B21B6',    // morado 700
+  brandSoftBg: '#F5F3FF',    // morado muy claro
+  brandSoftBorder: '#DDD6FE',
+  text: '#111827',
+  muted: '#6B7280',
+  cardBg: '#FBFAFF',
+  border: '#E5E7EB',
+  neutralBg: '#F3F4F6',
+  danger: '#DC2626',
+  dangerBg: '#FEE2E2',
+};
+
+/** Helpers numéricos */
+const toNumber = (raw: string) => {
+  if (!raw) return 0;
+  const s = String(raw).trim().replace(',', '.').replace(/[^0-9.\-]/g, '');
+  const n = Number(s);
+  return isFinite(n) ? n : 0;
+};
+const toPercent = (raw: string) => {
+  const n = toNumber(raw);
+  return Math.max(-100, Math.min(1000, n));
+};
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Botón apoka */
+const AButton = ({
+  title,
+  onPress,
+  variant = 'primary',
+  disabled,
+  style,
+}: {
+  title: string;
+  onPress?: () => void;
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  disabled?: boolean;
+  style?: any;
+}) => {
+  const vStyle =
+    variant === 'secondary'
+      ? styles.btnSecondary
+      : variant === 'ghost'
+      ? styles.btnGhost
+      : variant === 'danger'
+      ? styles.btnDanger
+      : styles.btnPrimary;
+
+  const tStyle =
+    variant === 'secondary' || variant === 'ghost'
+      ? styles.btnTextDark
+      : styles.btnTextLight;
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      style={[styles.btnBase, vStyle, disabled && { opacity: 0.6 }, style]}
+    >
+      <Text style={[tStyle, { fontWeight: '800' }]}>{title}</Text>
+    </TouchableOpacity>
+  );
+};
 
 export default function PurchaseCreate({ navigation }: any) {
   const { width } = useWindowDimensions();
@@ -76,8 +142,8 @@ export default function PurchaseCreate({ navigation }: any) {
     const copy = { ...prev }; delete copy[id]; return copy;
   });
   const setCost = (id: number, v: string) => {
-    const n = Number(String(v).replace(',', '.'));
-    setCart(prev => prev[id] ? { ...prev, [id]: { ...prev[id], unitCost: isFinite(n) ? n : 0 } } : prev);
+    const n = toNumber(v);
+    setCart(prev => prev[id] ? { ...prev, [id]: { ...prev[id], unitCost: n } } : prev);
   };
   const clear = () => setCart({});
 
@@ -88,20 +154,19 @@ export default function PurchaseCreate({ navigation }: any) {
   }, [q, products]);
 
   const numColumns = isXL ? 4 : isWide ? 3 : 1;
-
   const cartItems = useMemo(() => Object.values(cart), [cart]);
 
+  // Totales (descuento -> impuesto -> total)
   const subtotal = useMemo(
-    () => cartItems.reduce((s, l) => s + l.qty * l.unitCost, 0),
+    () => round2(cartItems.reduce((s, l) => s + l.qty * l.unitCost, 0)),
     [cartItems]
   );
-  const taxRate = Number((taxRateStr || '0').replace(',', '.')) || 0;   // %
-  const discRate = Number((discRateStr || '0').replace(',', '.')) || 0; // %
-  const discountAmt = Math.round((subtotal * discRate) as number) / 100; // mostramos % directo? mejor calcular bien:
-  const _disc = Math.round((subtotal * (discRate / 100)) * 100) / 100;
-  const baseAfterDisc = subtotal - _disc;
-  const taxAmt = Math.round((baseAfterDisc * (taxRate / 100)) * 100) / 100;
-  const total = Math.round((baseAfterDisc + taxAmt) * 100) / 100;
+  const taxRate = toPercent(taxRateStr);   // %
+  const discRate = toPercent(discRateStr); // %
+  const discountAmt = round2(subtotal * (discRate / 100));
+  const baseAfterDisc = round2(subtotal - discountAmt);
+  const taxAmt = round2(baseAfterDisc * (taxRate / 100));
+  const total = round2(baseAfterDisc + taxAmt);
 
   const save = async () => {
     if (!cartItems.length) {
@@ -117,12 +182,10 @@ export default function PurchaseCreate({ navigation }: any) {
           description: l.name,
           quantity: l.qty,
           unitCost: l.unitCost,
-          // Puedes pasar por línea taxRate/discountRate si quieres sobreescribir la cabecera
         })),
       };
-      // solo enviamos tasas si el usuario escribió algo
-      if (taxRateStr.trim() !== '') payload.taxRate = Number((taxRateStr || '0').replace(',', '.'));
-      if (discRateStr.trim() !== '') payload.discountRate = Number((discRateStr || '0').replace(',', '.'));
+      if (taxRateStr.trim() !== '') payload.taxRate = taxRate;
+      if (discRateStr.trim() !== '') payload.discountRate = discRate;
 
       const { data } = await api.post('/purchases', payload);
       Alert.alert('Compra registrada', `#${data.number ?? data.Number} · Total ${money(data.total ?? data.Total)}`);
@@ -143,14 +206,14 @@ export default function PurchaseCreate({ navigation }: any) {
           <Text style={styles.prodMeta}>Costo ref.: {money(item.stdCost ?? 0)}</Text>
         </View>
         {!line ? (
-          <Button title="Agregar" onPress={() => add(item)} />
+          <AButton title="Agregar" onPress={() => add(item)} />
         ) : (
           <View style={styles.stepper}>
-            <TouchableOpacity style={styles.stepBtn} onPress={() => dec(item.id)}>
+            <TouchableOpacity accessibilityLabel="Disminuir" style={styles.stepBtn} onPress={() => dec(item.id)}>
               <Text style={styles.stepTxt}>−</Text>
             </TouchableOpacity>
             <Text style={styles.qtyTxt}>{line.qty}</Text>
-            <TouchableOpacity style={styles.stepBtn} onPress={() => add(item)}>
+            <TouchableOpacity accessibilityLabel="Aumentar" style={styles.stepBtn} onPress={() => add(item)}>
               <Text style={styles.stepTxt}>＋</Text>
             </TouchableOpacity>
           </View>
@@ -179,6 +242,7 @@ export default function PurchaseCreate({ navigation }: any) {
             value={supplierName}
             onChangeText={setSupplierName}
             placeholder="Nombre del proveedor"
+            placeholderTextColor={apoka.muted}
           />
         </View>
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -190,6 +254,7 @@ export default function PurchaseCreate({ navigation }: any) {
               value={discRateStr}
               onChangeText={setDiscRateStr}
               placeholder="0"
+              placeholderTextColor={apoka.muted}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -200,19 +265,20 @@ export default function PurchaseCreate({ navigation }: any) {
               value={taxRateStr}
               onChangeText={setTaxRateStr}
               placeholder="0"
+              placeholderTextColor={apoka.muted}
             />
           </View>
         </View>
       </View>
 
       {/* Líneas */}
-      <View style={{ borderTopWidth: 1, borderTopColor: '#eef0f4', paddingTop: 10, gap: 8 }}>
+      <View style={{ borderTopWidth: 1, borderTopColor: apoka.border, paddingTop: 10, gap: 8 }}>
         {cartItems.length === 0 ? (
-          <Text style={{ color: '#6b7280' }}>No hay productos en el carrito.</Text>
+          <Text style={{ color: apoka.muted }}>No hay productos en el carrito.</Text>
         ) : cartItems.map(l => (
           <View key={l.productId} style={styles.cartRow}>
             <View style={{ flex: 1, paddingRight: 8 }}>
-              <Text numberOfLines={1} style={{ fontWeight: '600' }}>{l.name}</Text>
+              <Text numberOfLines={1} style={{ fontWeight: '600', color: apoka.text }}>{l.name}</Text>
               <Text style={styles.prodSub}>{l.sku}</Text>
               <Text style={styles.linePrice}>{money(l.unitCost)} · {money(l.unitCost * l.qty)}</Text>
             </View>
@@ -222,7 +288,10 @@ export default function PurchaseCreate({ navigation }: any) {
                 <Text style={styles.stepTxt}>−</Text>
               </TouchableOpacity>
               <Text style={styles.qtyTxt}>{l.qty}</Text>
-              <TouchableOpacity style={styles.stepBtnSm} onPress={() => add({ id: l.productId, name: l.name, sku: l.sku, stdCost: l.unitCost })}>
+              <TouchableOpacity
+                style={styles.stepBtnSm}
+                onPress={() => add({ id: l.productId, name: l.name, sku: l.sku, stdCost: l.unitCost })}
+              >
                 <Text style={styles.stepTxt}>＋</Text>
               </TouchableOpacity>
             </View>
@@ -246,17 +315,17 @@ export default function PurchaseCreate({ navigation }: any) {
 
       {/* Totales */}
       <View style={styles.totals}>
-        <View style={styles.rowBetween}><Text style={styles.muted}>Subtotal</Text><Text style={styles.totalNum}>{money(subtotal)}</Text></View>
-        <View style={styles.rowBetween}><Text style={styles.muted}>Descuento ({discRate}%)</Text><Text style={styles.totalNum}>− {money(_disc)}</Text></View>
-        <View style={styles.rowBetween}><Text style={styles.muted}>Impuesto ({taxRate}%)</Text><Text style={styles.totalNum}>{money(taxAmt)}</Text></View>
-        <View style={[styles.rowBetween, { borderTopWidth: 1, borderTopColor: '#eef0f4', paddingTop: 8 }]}>
-          <Text style={{ fontWeight: '800' }}>Total</Text>
-          <Text style={[styles.totalNum, { fontSize: 18 }]}>{money(total)}</Text>
+        <View style={styles.rowBetween}><Text style={styles.mutedTxt}>Subtotal</Text><Text style={styles.totalNum}>{money(subtotal)}</Text></View>
+        <View style={styles.rowBetween}><Text style={styles.mutedTxt}>Descuento ({discRate}%)</Text><Text style={styles.totalNum}>− {money(discountAmt)}</Text></View>
+        <View style={styles.rowBetween}><Text style={styles.mutedTxt}>Impuesto ({taxRate}%)</Text><Text style={styles.totalNum}>{money(taxAmt)}</Text></View>
+        <View style={[styles.rowBetween, { borderTopWidth: 1, borderTopColor: apoka.border, paddingTop: 8 }]}>
+          <Text style={{ fontWeight: '800', color: apoka.text }}>Total</Text>
+          <Text style={[styles.totalNum, { fontSize: 18, color: apoka.brand }]}>{money(total)}</Text>
         </View>
       </View>
 
-      <Button
-        title={loading ? 'Guardando...' : 'Guardar compra'}
+      <AButton
+        title={loading ? 'Guardando…' : 'Guardar compra'}
         onPress={save}
         disabled={loading || cartItems.length === 0}
       />
@@ -274,10 +343,11 @@ export default function PurchaseCreate({ navigation }: any) {
             value={q}
             onChangeText={setQ}
             style={styles.search}
+            placeholderTextColor={apoka.muted}
             returnKeyType="search"
           />
           <View style={{ width: 8 }} />
-          <Button title="Limpiar" onPress={() => setQ('')} />
+          <AButton title="Limpiar" variant="secondary" onPress={() => setQ('')} />
         </View>
       </View>
 
@@ -295,7 +365,7 @@ export default function PurchaseCreate({ navigation }: any) {
             contentContainerStyle={{ paddingVertical: 8, gap: 12 }}
             refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
             ListEmptyComponent={
-              <Text style={{ color: '#6b7280', padding: 12 }}>
+              <Text style={{ color: apoka.muted, padding: 12 }}>
                 {q ? 'No hay resultados para tu búsqueda.' : 'No hay productos.'}
               </Text>
             }
@@ -324,26 +394,26 @@ const styles = StyleSheet.create({
   rightColWide: { flex: 5, marginTop: 0 },
 
   // Textos
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
-  label: { marginBottom: 6, fontWeight: '600' },
-  smallLabel: { fontSize: 12, color: '#6b7280', marginBottom: 4 },
-  muted: { color: '#6b7280' },
+  title: { fontSize: 20, fontWeight: '800', marginBottom: 8, color: apoka.text },
+  label: { marginBottom: 6, fontWeight: '600', color: apoka.text },
+  smallLabel: { fontSize: 12, color: apoka.muted, marginBottom: 4 },
+  mutedTxt: { color: apoka.muted },
 
   // Búsqueda
   searchRow: { flexDirection: 'row', alignItems: 'center' },
   search: {
     flex: 1,
-    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10,
-    paddingHorizontal: 12, minHeight: 42,
+    borderWidth: 1, borderColor: apoka.border, borderRadius: 10,
+    paddingHorizontal: 12, minHeight: 42, color: apoka.text, backgroundColor: '#fff',
   },
 
   // Cards
   card: {
-    backgroundColor: '#f8f9fb',
+    backgroundColor: apoka.cardBg,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#eef0f4',
+    borderColor: apoka.border,
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -357,56 +427,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  prodTitle: { fontSize: 16, fontWeight: '600' },
-  prodSub: { fontSize: 12, color: '#6b7280' },
+  prodTitle: { fontSize: 16, fontWeight: '600', color: apoka.text },
+  prodSub: { fontSize: 12, color: apoka.muted },
   prodMeta: { marginTop: 6, color: '#374151' },
+  linePrice: { color: apoka.text },
 
   // Stepper (grid)
   stepper: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', padding: 4,
+    backgroundColor: apoka.brandSoftBg, borderRadius: 10, borderWidth: 1, borderColor: apoka.brandSoftBorder, padding: 4,
   },
   stepBtn: {
-    width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6',
+    width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: apoka.brandSoftBorder,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff',
   },
-  stepTxt: { fontSize: 18, fontWeight: '800' },
-  qtyTxt: { minWidth: 28, textAlign: 'center', fontWeight: '700' },
+  stepTxt: { fontSize: 18, fontWeight: '800', color: apoka.brandStrong },
+  qtyTxt: { minWidth: 28, textAlign: 'center', fontWeight: '700', color: apoka.text },
 
   // Carrito (sidebar)
   cartPanel: { gap: 10 },
   cartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cartTitle: { fontSize: 16, fontWeight: '800' },
-  clearLink: { color: '#b91c1c', fontWeight: '700' },
+  cartTitle: { fontSize: 16, fontWeight: '800', color: apoka.text },
+  clearLink: { color: apoka.danger, fontWeight: '700' },
 
   cartRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1, borderColor: '#eef0f4', backgroundColor: '#fff',
+    borderWidth: 1, borderColor: apoka.border, backgroundColor: '#fff',
     borderRadius: 10, padding: 8, gap: 8,
   },
 
   // Stepper chico para carrito
   stepperSm: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   stepBtnSm: {
-    width: 28, height: 28, borderRadius: 6, borderWidth: 1, borderColor: '#e5e7eb',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6',
+    width: 28, height: 28, borderRadius: 6, borderWidth: 1, borderColor: apoka.brandSoftBorder,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: apoka.brandSoftBg,
   },
 
   removeBtn: {
     width: 28, height: 28, borderRadius: 6,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#fee2e2',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: apoka.dangerBg,
   },
   removeTxt: { color: '#991b1b', fontWeight: '800' },
 
   // Inputs
   input: {
-    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10,
-    paddingHorizontal: 10, minHeight: 40, backgroundColor: '#fff',
+    borderWidth: 1, borderColor: apoka.border, borderRadius: 10,
+    paddingHorizontal: 10, minHeight: 40, backgroundColor: '#fff', color: apoka.text,
   },
 
   // Totales
   totals: { marginTop: 8, marginBottom: 8, gap: 6 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalNum: { fontWeight: '800' },
+  totalNum: { fontWeight: '800', color: apoka.text },
+
+  // Botones
+  btnBase: {
+    minWidth: 110, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1,
+  },
+  btnPrimary: { backgroundColor: apoka.brand, borderColor: apoka.brand },
+  btnSecondary: { backgroundColor: '#FFFFFF', borderColor: apoka.border },
+  btnGhost: { backgroundColor: 'transparent', borderColor: 'transparent' },
+  btnDanger: { backgroundColor: apoka.danger, borderColor: apoka.danger },
+  btnTextLight: { color: '#FFFFFF' },
+  btnTextDark: { color: apoka.text },
 });

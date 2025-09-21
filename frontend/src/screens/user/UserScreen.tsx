@@ -1,4 +1,4 @@
-// src/screens/UserScreen.tsx — perfil responsive y pro para pantallas grandes
+// src/screens/UserScreen.tsx — perfil responsive con tema Apoka + fuente Apoka integrada como en Receivables
 import React, { useContext, useMemo, useState } from 'react';
 import {
   View,
@@ -13,8 +13,34 @@ import {
   Platform,
 } from 'react-native';
 import { useRoute, useFocusEffect } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import { AuthContext } from '../../providers/AuthContext';
 import { api } from '../../api';
+
+/** ====== Apoka Theme (colores) ====== */
+const apoka = {
+  brand: '#7C3AED',
+  brandStrong: '#5B21B6',
+  brandSoftBg: '#F5F3FF',
+  brandSoftBorder: '#DDD6FE',
+  text: '#0F172A',
+  muted: '#64748B',
+  border: '#E5E7EB',
+  card: '#FFFFFF',
+  canvas: '#F8FAFC',
+  successBg: '#ECFDF5',
+  successText: '#065F46',
+  warnBg: '#FEF3C7',
+  warnText: '#92400E',
+  dangerBg: '#FEE2E2',
+  dangerText: '#991B1B',
+};
+
+/** ====== Fuente Apoka (igual que Receivables) ====== */
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
 
 type DashboardSnap = {
   tenantName?: string;
@@ -30,7 +56,6 @@ function base64UrlDecode(input: string) {
   try {
     const pad = (s: string) => s + '==='.slice((s.length + 3) % 4);
     const b64 = pad(input).replace(/-/g, '+').replace(/_/g, '/');
-    // RN Web
     if (typeof atob === 'function') {
       return decodeURIComponent(
         Array.prototype.map
@@ -38,9 +63,10 @@ function base64UrlDecode(input: string) {
           .join('')
       );
     }
-    // RN Nativo
-    const buffer = Buffer.from(b64, 'base64');
-    return buffer.toString('utf-8');
+    // @ts-ignore
+    const buffer = typeof Buffer !== 'undefined' ? Buffer.from(b64, 'base64') : null;
+    // @ts-ignore
+    return buffer ? buffer.toString('utf-8') : '';
   } catch {
     return '';
   }
@@ -58,8 +84,8 @@ function parseJwt(token?: string | null): any | null {
   }
 }
 
-function timeFromNowUnix(expSec?: number): { label: string; expired: boolean } {
-  if (!expSec) return { label: '—', expired: false };
+function timeFromNowUnix(expSec?: number): { label: string; expired: boolean; minutesLeft: number } {
+  if (!expSec) return { label: '—', expired: false, minutesLeft: 0 };
   const nowSec = Math.floor(Date.now() / 1000);
   const diff = expSec - nowSec;
   const expired = diff <= 0;
@@ -70,7 +96,8 @@ function timeFromNowUnix(expSec?: number): { label: string; expired: boolean } {
   const label = expired
     ? `expirado hace ${d ? `${d}d ` : ''}${h ? `${h}h ` : ''}${m}m`
     : `expira en ${d ? `${d}d ` : ''}${h ? `${h}h ` : ''}${m}m`;
-  return { label, expired };
+  const minutesLeft = expired ? 0 : Math.max(0, Math.floor(diff / 60));
+  return { label, expired, minutesLeft };
 }
 
 function Row({ label, value }: { label: string; value?: string | number | null }) {
@@ -82,41 +109,57 @@ function Row({ label, value }: { label: string; value?: string | number | null }
   );
 }
 
-function Chip({ title, onPress }: { title: string; onPress: () => void }) {
+function Chip({ title, onPress, tone = 'default' as 'default' | 'brand' | 'danger' | 'ghost' }) {
+  const toneStyle =
+    tone === 'brand' ? styles.chipBrand :
+    tone === 'danger' ? styles.chipDanger :
+    tone === 'ghost' ? styles.chipGhost :
+    styles.chip;
+  const toneText =
+    tone === 'brand' ? styles.chipTextBrand :
+    tone === 'danger' ? styles.chipTextDanger :
+    tone === 'ghost' ? styles.chipTextGhost :
+    styles.chipText;
   return (
-    <Pressable onPress={onPress} style={styles.chip}>
-      <Text style={styles.chipText}>{title}</Text>
+    <Pressable onPress={onPress} style={[styles.chipBase, toneStyle]}>
+      <Text style={[styles.chipTextBase, toneText]}>{title}</Text>
     </Pressable>
   );
 }
 
-function StatTile({ label, value, hint, pill }: { label: string; value: React.ReactNode; hint?: string; pill?: boolean }) {
+function StatTile({ label, value, hint, pill, pillTone = 'neutral' as 'neutral' | 'ok' | 'warn' | 'bad' }) {
+  const pillStyle =
+    pillTone === 'ok' ? styles.pillOk :
+    pillTone === 'warn' ? styles.pillWarn :
+    pillTone === 'bad' ? styles.pillBad :
+    styles.pillNeutral;
   return (
     <View style={styles.statTile}>
       <Text style={styles.statLabel}>{label}</Text>
-      <Text style={[styles.statValue, pill && styles.statPill]}>{value as any}</Text>
+      <Text style={[styles.statValue, pill && [styles.statPill, pillStyle]]}>{value as any}</Text>
       {!!hint && <Text style={styles.statHint}>{hint}</Text>}
     </View>
   );
 }
 
 function planPillStyle(plan?: string) {
-  switch ((plan || '').toLowerCase()) {
-    case 'pro': return { backgroundColor: '#dbeafe', color: '#1e40af' };
-    case 'business': return { backgroundColor: '#dcfce7', color: '#166534' };
-    default: return { backgroundColor: '#f3f4f6', color: '#111827' };
-  }
+  const p = (plan || '').toLowerCase();
+  if (p === 'pro')      return { backgroundColor: apoka.brandSoftBg, color: apoka.brandStrong, borderColor: apoka.brandSoftBorder };
+  if (p === 'business') return { backgroundColor: apoka.successBg, color: apoka.successText, borderColor: '#D1FAE5' };
+  return { backgroundColor: '#F3F4F6', color: apoka.text, borderColor: apoka.border };
 }
 
 export default function UserScreen({ navigation }: any) {
   const { width } = useWindowDimensions();
-  const maxW = 1200; // centrado en pantallas XL
+  const maxW = 1200;
   const cols = width >= 1200 ? 3 : width >= 860 ? 2 : 1;
+
+  // Cargar fuente Apoka (igual que en Receivables)
+  useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
   const auth = useContext(AuthContext) as any;
   const route = useRoute<any>();
 
-  // Context (si existe)
   const ctxUser = auth?.user ?? null;
   const ctxEmail = ctxUser?.email ?? auth?.email ?? null;
   const ctxName = ctxUser?.name ?? null;
@@ -124,18 +167,15 @@ export default function UserScreen({ navigation }: any) {
   const ctxTenantName = auth?.tenant?.name ?? null;
   const token: string | null = auth?.token ?? null;
 
-  // JWT
   const claims = useMemo(() => parseJwt(token), [token]);
   const jwtEmail = claims?.email ?? claims?.Email ?? null;
   const jwtRole = claims?.role ?? claims?.Role ?? null;
   const jwtTenantId = claims?.tenant_id ?? claims?.tenantId ?? null;
   const jwtExp = claims?.exp as number | undefined;
-  const { label: expLabel, expired } = timeFromNowUnix(jwtExp);
+  const { label: expLabel, expired, minutesLeft } = timeFromNowUnix(jwtExp);
 
-  // Snapshot
   const snapshot: DashboardSnap | undefined = route?.params?.snapshot;
 
-  // Estado remoto /dashboard
   const [loading, setLoading] = useState<boolean>(!snapshot);
   const [dash, setDash] = useState<DashboardSnap | null>(snapshot ?? null);
 
@@ -166,7 +206,6 @@ export default function UserScreen({ navigation }: any) {
     }, [snapshot])
   );
 
-  // Final fields
   const name = ctxName ?? 'Usuario';
   const email = ctxEmail ?? jwtEmail ?? '—';
   const role = ctxRole ?? jwtRole ?? '—';
@@ -174,11 +213,10 @@ export default function UserScreen({ navigation }: any) {
   const plan = dash?.plan ?? '—';
   const planStyle = planPillStyle(plan);
 
-  // Preferencias locales (solo UI)
   const [dark, setDark] = useState(false);
   const [nio, setNio] = useState(true);
+  const [push, setPush] = useState(true);
 
-  // Avatar initials
   const initials = useMemo(() => {
     const s = (name || email || 'U').trim();
     const parts = s.split(' ').filter(Boolean);
@@ -186,9 +224,12 @@ export default function UserScreen({ navigation }: any) {
     return t.toUpperCase();
   }, [name, email]);
 
+  const sessionTone = expired ? 'bad' : minutesLeft <= 15 ? 'warn' : 'ok';
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+    <ScrollView style={{ flex: 1, backgroundColor: apoka.canvas }}>
       <View style={[styles.centerWrap, { maxWidth: maxW }]}>
+
         {/* ===== Hero Perfil ===== */}
         <View style={styles.heroCard}>
           <View style={styles.heroLeft}>
@@ -198,53 +239,52 @@ export default function UserScreen({ navigation }: any) {
             <View style={{ flex: 1 }}>
               <Text style={styles.heroTitle}>{name}</Text>
               <Text style={styles.heroSub}>{email}</Text>
+
               <View style={styles.heroBadges}>
-                <Text style={[styles.pill, { backgroundColor: '#eef2ff', color: '#1e3a8a' }]}>Rol: {String(role)}</Text>
-                <Text style={[styles.pill, planStyle]}>Plan: {String(plan)}</Text>
+                <Text style={[styles.metaPill, { backgroundColor: apoka.brandSoftBg, color: apoka.brandStrong, borderColor: apoka.brandSoftBorder }]}>
+                  Rol: {String(role)}
+                </Text>
+                <Text style={[styles.metaPill, planStyle]}>Plan: {String(plan)}</Text>
                 {jwtTenantId ? (
-                  <Text style={[styles.pill, { backgroundColor: '#ecfeff', color: '#155e75' }]}>Tenant ID: {jwtTenantId}</Text>
+                  <Text style={[styles.metaPill, { backgroundColor: '#ECFEFF', color: '#155E75', borderColor: '#BAE6FD' }]}>
+                    Tenant ID: {jwtTenantId}
+                  </Text>
                 ) : null}
               </View>
             </View>
           </View>
 
           <View style={styles.heroActions}>
-            <Chip title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
+            <Chip title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} tone="brand" />
             <Chip title="Seguridad" onPress={() => navigation.navigate('Security')} />
-            <Chip title="Volver al inicio" onPress={() => navigation.navigate('Home')} />
+            <Chip title="Volver al inicio" onPress={() => navigation.navigate('Home')} tone="ghost" />
           </View>
         </View>
 
-        {/* ===== Grid de Stats (responsive) ===== */}
+        {/* ===== Grid de Stats ===== */}
         <View style={[styles.grid, cols === 3 ? styles.cols3 : cols === 2 ? styles.cols2 : styles.cols1]}>
-          <View style={styles.card}>
-            <StatTile label="Empresa" value={tenantName} hint={dash?.online ? 'Conectado' : 'Sin conexión'} />
-          </View>
-          <View style={styles.card}>
-            <StatTile label="Productos" value={dash?.productsTotal ?? (loading ? '...' : '0')} />
-          </View>
-          <View style={styles.card}>
-            <StatTile label="Clientes" value={dash?.customersTotal ?? (loading ? '...' : '0')} />
-          </View>
-          <View style={styles.card}>
-            <StatTile label="Almacenes" value={dash?.warehousesTotal ?? (loading ? '...' : '0')} />
-          </View>
-          <View style={styles.card}>
-            <StatTile label="Último sync" value={dash?.lastSync ?? (loading ? '...' : '—')} />
-          </View>
+          <View style={styles.card}><StatTile label="Empresa" value={tenantName} hint={dash?.online ? 'Conectado' : 'Sin conexión'} /></View>
+          <View style={styles.card}><StatTile label="Productos" value={dash?.productsTotal ?? (loading ? '…' : '0')} /></View>
+          <View style={styles.card}><StatTile label="Clientes" value={dash?.customersTotal ?? (loading ? '…' : '0')} /></View>
+          <View style={styles.card}><StatTile label="Almacenes" value={dash?.warehousesTotal ?? (loading ? '…' : '0')} /></View>
+          <View style={styles.card}><StatTile label="Último sync" value={dash?.lastSync ?? (loading ? '…' : '—')} /></View>
           <View style={styles.card}>
             <StatTile
               label="Sesión (JWT)"
               value={expired ? 'Expirada' : 'Activa'}
               hint={expLabel}
               pill
+              pillTone={sessionTone as any}
             />
           </View>
         </View>
 
         {/* ===== Información Detallada ===== */}
         <View style={[styles.card, styles.block]}>
-          <Text style={styles.blockTitle}>Información</Text>
+          <View style={styles.blockHeader}>
+            <Text style={styles.blockTitle}>Información</Text>
+            <Chip title="Refrescar" onPress={load} tone="brand" />
+          </View>
 
           {loading ? (
             <View style={{ paddingVertical: 12, alignItems: 'center' }}>
@@ -274,7 +314,7 @@ export default function UserScreen({ navigation }: any) {
           <Row label="Estado JWT" value={expired ? 'Expirada' : 'Activa'} />
           <Row label="Tiempo" value={expLabel} />
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            <Chip title="Cerrar sesión" onPress={auth?.logout ?? (() => {})} />
+            <Chip title="Cerrar sesión" onPress={auth?.logout ?? (() => {})} tone="danger" />
             <Chip title="Refrescar datos" onPress={() => load()} />
           </View>
         </View>
@@ -282,10 +322,17 @@ export default function UserScreen({ navigation }: any) {
         {/* ===== Preferencias (local UI) ===== */}
         <View style={[styles.card, styles.block]}>
           <Text style={styles.blockTitle}>Preferencias</Text>
+
           <View style={styles.prefRow}>
             <Text style={styles.prefLabel}>Tema oscuro</Text>
             <Switch value={dark} onValueChange={setDark} />
           </View>
+
+          <View style={styles.prefRow}>
+            <Text style={styles.prefLabel}>Notificaciones push</Text>
+            <Switch value={push} onValueChange={setPush} />
+          </View>
+
           <View style={styles.prefRow}>
             <Text style={styles.prefLabel}>Moneda por defecto</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -297,19 +344,21 @@ export default function UserScreen({ navigation }: any) {
               </Pressable>
             </View>
           </View>
+
           <Text style={styles.prefHint}>Estas preferencias son locales a este dispositivo (solo UI).</Text>
         </View>
 
-        {/* ===== Accesos Rápidos (extra) ===== */}
+        {/* ===== Accesos Rápidos ===== */}
         <View style={[styles.card, styles.block]}>
           <Text style={styles.blockTitle}>Accesos rápidos</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            <Chip title="Productos" onPress={() => navigation.navigate('ProductsList')} />
+            <Chip title="Productos" onPress={() => navigation.navigate('ProductsList')} tone="brand" />
             <Chip title="Clientes" onPress={() => navigation.navigate('CustomersList')} />
             <Chip title="Cuentas por cobrar" onPress={() => navigation.navigate('ReceivablesList')} />
             <Chip title="Facturación" onPress={() => navigation.navigate('Billing')} />
           </View>
         </View>
+
       </View>
     </ScrollView>
   );
@@ -326,24 +375,44 @@ const styles = StyleSheet.create({
 
   // Hero
   heroCard: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1, borderColor: '#eef0f4',
-    borderRadius: 14,
+    backgroundColor: apoka.card,
+    borderWidth: 1, borderColor: apoka.brandSoftBorder,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 14,
+    marginBottom: 16,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   heroLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar: {
     width: 64, height: 64, borderRadius: 9999,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#e5e7eb', borderWidth: 1, borderColor: '#e2e8f0',
+    backgroundColor: apoka.brandSoftBg, borderWidth: 1, borderColor: apoka.brandSoftBorder,
   },
-  avatarTxt: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
-  heroTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
-  heroSub: { color: '#64748b', marginTop: 2 },
+  avatarTxt: { ...F, fontSize: 22, color: apoka.brandStrong },
+  heroTitle: { ...F, fontSize: 20, color: apoka.text },
+  heroSub: { ...F, color: apoka.muted, marginTop: 2 },
   heroBadges: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
-  pill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, fontWeight: '800', overflow: 'hidden' },
+  metaPill: {
+    ...F,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
+    overflow: 'hidden', borderWidth: 1,
+  },
   heroActions: { flexDirection: 'row', gap: 8, marginTop: 12, flexWrap: 'wrap' },
+
+  // Chips / Botones
+  chipBase: {
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1,
+  },
+  chip: { backgroundColor: apoka.card, borderColor: apoka.border },
+  chipBrand: { backgroundColor: apoka.brand, borderColor: apoka.brand },
+  chipDanger: { backgroundColor: apoka.dangerBg, borderColor: '#FCA5A5' },
+  chipGhost: { backgroundColor: apoka.card, borderColor: apoka.border },
+  chipTextBase: { ...F },
+  chipText: { ...F, color: apoka.text },
+  chipTextBrand: { ...F, color: '#fff' },
+  chipTextDanger: { ...F, color: apoka.dangerText },
+  chipTextGhost: { ...F, color: apoka.text },
 
   // Grid de stats
   grid: { gap: 12, flexDirection: 'row', flexWrap: 'wrap' },
@@ -352,43 +421,47 @@ const styles = StyleSheet.create({
   cols3: {},
   card: {
     flexGrow: 1, minWidth: 260,
-    backgroundColor: '#ffffff',
+    backgroundColor: apoka.card,
     borderRadius: 12,
     padding: 12,
-    borderWidth: 1, borderColor: '#eef0f4',
+    borderWidth: 1, borderColor: apoka.border,
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
   statTile: { gap: 6 },
-  statLabel: { color: '#64748b', fontSize: 12, fontWeight: '700' },
-  statValue: { color: '#0f172a', fontSize: 18, fontWeight: '800' },
+  statLabel: { ...F, color: apoka.muted, fontSize: 12 },
+  statValue: { ...F, color: apoka.text, fontSize: 18 },
   statPill: {
+    ...F,
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
-    alignSelf: 'flex-start', overflow: 'hidden',
-    backgroundColor: '#f1f5f9', color: '#0f172a',
+    alignSelf: 'flex-start', overflow: 'hidden', borderWidth: 1,
   },
-  statHint: { color: '#64748b', fontSize: 12 },
+  pillNeutral: { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0', color: apoka.text },
+  pillOk: { backgroundColor: apoka.successBg, borderColor: '#D1FAE5', color: apoka.successText },
+  pillWarn: { backgroundColor: apoka.warnBg, borderColor: '#FDE68A', color: apoka.warnText },
+  pillBad: { backgroundColor: apoka.dangerBg, borderColor: '#FCA5A5', color: apoka.dangerText },
+  statHint: { ...F, color: apoka.muted, fontSize: 12 },
 
   // Bloques
   block: { marginTop: 12 },
-  blockTitle: { fontWeight: '800', color: '#0f172a', fontSize: 16, marginBottom: 8 },
-  subTitle: { fontWeight: '800', color: '#0f172a', fontSize: 13, marginBottom: 4 },
+  blockHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  blockTitle: { ...F, color: apoka.text, fontSize: 16 },
+  subTitle: { ...F, color: apoka.text, fontSize: 13, marginBottom: 4 },
 
   // Rows
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  rowLabel: { width: 140, color: '#64748b', fontSize: 12 },
-  rowValue: { flex: 1, color: '#0f172a', fontWeight: '600' },
-
-  // Chips
-  chip: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#ffffff' },
-  chipText: { fontWeight: '800', color: '#0f172a' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  rowLabel: { ...F, width: 140, color: apoka.muted, fontSize: 12 },
+  rowValue: { ...F, flex: 1, color: apoka.text },
 
   // Preferencias
   prefRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
-  prefLabel: { color: '#0f172a', fontWeight: '600' },
-  prefHint: { color: '#64748b', fontSize: 12, marginTop: 6 },
-  pillBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff' },
-  pillBtnActive: { backgroundColor: '#0f172a' },
-  pillBtnTxt: { color: '#0f172a', fontWeight: '700' },
-  pillBtnTxtActive: { color: '#fff' },
+  prefLabel: { ...F, color: apoka.text },
+  prefHint: { ...F, color: apoka.muted, fontSize: 12, marginTop: 6 },
+  pillBtn: {
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999,
+    borderWidth: 1, borderColor: apoka.border, backgroundColor: apoka.card
+  },
+  pillBtnActive: { backgroundColor: apoka.brand, borderColor: apoka.brand },
+  pillBtnTxt: { ...F, color: apoka.text },
+  pillBtnTxtActive: { ...F, color: '#fff' },
 });

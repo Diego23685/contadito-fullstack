@@ -1,8 +1,10 @@
+// src/screens/products/ProductsList.tsx
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, FlatList, Alert, StyleSheet, RefreshControl,
   ActivityIndicator, Pressable, useWindowDimensions, Platform
 } from 'react-native';
+import { useFonts } from 'expo-font';
 import { api } from '../../api';
 import { AuthContext } from '../../providers/AuthContext';
 
@@ -15,7 +17,6 @@ type Product = {
   isService?: boolean;
   trackStock?: boolean;
   listPrice?: number;
-  // 👇 NUEVO: campos para stock
   stockQty?: number;
   lowStock?: boolean;
 };
@@ -28,6 +29,12 @@ type SortKey = 'name' | 'price';
 
 const currency = (v?: number) =>
   new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(Number(v ?? 0));
+
+// ===== Tipografía Apoka =====
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
 
 const Chip = ({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) => (
   <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
@@ -60,7 +67,7 @@ const Card: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, 
   <View style={[styles.card, style]}>{children}</View>
 );
 
-// 👇 NUEVO: badge para mostrar el stock
+// Badge de stock
 const StockBadge = ({ qty, unit, low }: { qty?: number; unit?: string | null; low?: boolean }) => {
   if (qty == null) return null;
   return (
@@ -71,6 +78,9 @@ const StockBadge = ({ qty, unit, low }: { qty?: number; unit?: string | null; lo
 };
 
 const ProductsList: React.FC<any> = ({ navigation }) => {
+  // Cargar fuente Apoka (no bloqueamos render)
+  useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
+
   const { logout } = useContext(AuthContext);
   const { width } = useWindowDimensions();
   const columns = width >= 1280 ? 3 : width >= 900 ? 2 : 1;
@@ -90,7 +100,7 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
 
   const debounceRef = useRef<any>(null);
 
-  // 👇 caché en memoria para no pedir stock de un producto dos veces
+  // caché de stock
   const stockCache = useRef<Map<number, number>>(new Map());
 
   const params = useMemo(() => ({
@@ -105,7 +115,6 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
     return { q: params.q, sort: params.sort, dir: params.dir, filter: params.kind, onlyStock: params.onlyStock };
   }, [params]);
 
-  // 👇 NUEVO: consulta /inventory/products/{id}/stock en paralelo y actualiza lista
   const hydrateStock = useCallback(async (prods: Product[]) => {
     const ids = prods
       .filter(p => !p.isService && p.trackStock && !stockCache.current.has(p.id))
@@ -125,7 +134,6 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
         })
       );
 
-      // guarda en caché y en pantalla
       const incoming = new Map(results.map(x => [x.id, x.qty]));
       results.forEach(({ id, qty }) => {
         if (qty != null) stockCache.current.set(id, qty);
@@ -134,7 +142,7 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
       setItems(prev =>
         prev.map(p =>
           incoming.has(p.id)
-            ? { ...p, stockQty: incoming.get(p.id) }
+            ? { ...p, stockQty: incoming.get(p.id) as number }
             : p
         )
       );
@@ -156,10 +164,8 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
       setPage(nextPage);
 
       const justLoaded = res.data.items;
-      // fusiona con lo que había
       const merged = reset ? justLoaded : [...items, ...justLoaded];
 
-      // si hay stock en caché, úsalo de una vez
       const withCachedStock = merged.map(p =>
         (!p.isService && p.trackStock && stockCache.current.has(p.id))
           ? { ...p, stockQty: stockCache.current.get(p.id) }
@@ -167,8 +173,6 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
       );
 
       setItems(withCachedStock);
-
-      // pide el stock de lo recién cargado
       hydrateStock(justLoaded);
     } catch (e: any) {
       if (e?.response?.status === 401) logout();
@@ -202,7 +206,6 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
       await api.delete(`/products/${id}`);
       setItems((prev) => prev.filter(p => p.id !== id));
       setTotal((t) => Math.max(0, t - 1));
-      // limpia caché de stock de ese producto
       stockCache.current.delete(id);
     } catch (e: any) {
       Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo eliminar'));
@@ -242,7 +245,6 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
 
             <Text style={styles.itemSub}>{item.sku}</Text>
 
-            {/* 👇 NUEVO: Mostrar stock */}
             {!item.isService && item.trackStock && (
               <StockBadge qty={item.stockQty} unit={item.unit} />
             )}
@@ -273,7 +275,6 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
           {!item.isService && item.trackStock && (
             <>
               <View style={[styles.badge, styles.badgeNeutral]}><Text style={styles.badgeText}>Stock</Text></View>
-              {/* 👇 NUEVO: Mostrar stock */}
               <StockBadge qty={item.stockQty} unit={item.unit} />
             </>
           )}
@@ -362,42 +363,59 @@ export default ProductsList;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F6F7F9' },
+
   toolbarContainer: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10, backgroundColor: '#F6F7F9' },
   toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  toolbarLabel: { color: '#6B7280' },
+  toolbarLabel: { color: '#6B7280', ...F },
+
   searchBox: { position: 'relative', flex: 1 },
-  searchInput: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, height: 42, backgroundColor: '#fff' },
+  searchInput: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, height: 42, backgroundColor: '#fff', ...F },
   clearBtn: { position: 'absolute', right: 8, top: 6, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: '#EEF2FF' },
-  clearText: { fontSize: 18, lineHeight: 18, color: '#374151' },
+  clearText: { fontSize: 18, lineHeight: 18, color: '#374151', ...F },
+
   chip: { borderWidth: 1, borderColor: '#D1D5DB', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFF' },
   chipActive: { backgroundColor: '#0EA5E922', borderColor: '#0EA5E9' },
-  chipText: { color: '#374151', fontWeight: '600' },
-  chipTextActive: { color: '#0369A1' },
+  chipText: { color: '#374151', fontWeight: '600', ...F },
+  chipTextActive: { color: '#0369A1', ...F },
+
   btn: { minWidth: 96, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0EA5E9' },
   btnSecondary: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB' },
   btnDanger: { backgroundColor: '#DC2626' },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#FFFFFF', fontWeight: '700' },
-  btnTextPrimary: { color: '#FFFFFF', fontWeight: '700' },
-  btnTextSecondary: { color: '#111827', fontWeight: '700' },
-  card: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: Platform.select({ android: 2, default: 0 }) },
-  itemTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  itemSub: { color: '#6B7280', fontSize: 12 },
-  price: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  btnText: { color: '#FFFFFF', fontWeight: '700', ...F },
+  btnTextPrimary: { color: '#FFFFFF', fontWeight: '700', ...F },
+  btnTextSecondary: { color: '#111827', fontWeight: '700', ...F },
+
+  card: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
+    elevation: Platform.select({ android: 2, default: 0 }),
+  },
+
+  itemTitle: { fontSize: 16, fontWeight: '700', color: '#111827', ...F },
+  itemSub: { color: '#6B7280', fontSize: 12, ...F },
+  price: { fontSize: 16, fontWeight: '800', color: '#111827', ...F },
+
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
-  badgeText: { fontSize: 11, color: '#fff', fontWeight: '700' },
+  badgeText: { fontSize: 11, color: '#fff', fontWeight: '700', ...F },
   badgeInfo: { backgroundColor: '#3B82F6' },
   badgeSuccess: { backgroundColor: '#10B981' },
   badgeNeutral: { backgroundColor: '#6B7280' },
-  // 👇 NUEVO: para marcar stock bajo si lo usas (low=true)
   badgeDanger: { backgroundColor: '#DC2626' },
+
   rowItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderBottomColor: '#E5E7EB', borderBottomWidth: 1, backgroundColor: '#fff', gap: 10 },
-  rowTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  rowSub: { color: '#6B7280', fontSize: 12 },
+  rowTitle: { fontSize: 16, fontWeight: '600', color: '#111827', ...F },
+  rowSub: { color: '#6B7280', fontSize: 12, ...F },
+
   metaRow: { paddingHorizontal: 12, paddingBottom: 8 },
-  metaText: { color: '#6B7280' },
+  metaText: { color: '#6B7280', ...F },
+
   empty: { alignItems: 'center', padding: 32, gap: 6 },
   emptyEmoji: { fontSize: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '700' },
-  emptyText: { color: '#6B7280', textAlign: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', ...F },
+  emptyText: { color: '#6B7280', textAlign: 'center', ...F },
 });

@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Alert,
-  Button,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -16,6 +15,60 @@ import { api } from '../../api';
 
 type Customer = { id: number; name: string };
 type Product = { id: number; name: string; sku: string; listPrice?: number };
+
+/** ====== APOKA THEME ====== */
+const apoka = {
+  brand: '#7C3AED',          // morado 600
+  brandStrong: '#5B21B6',    // morado 700
+  brandSoftBg: '#F5F3FF',    // morado muy claro
+  brandSoftBorder: '#DDD6FE',
+  text: '#111827',
+  muted: '#6B7280',
+  cardBg: '#FBFAFF',
+  border: '#E5E7EB',
+  neutralBg: '#F3F4F6',
+  danger: '#DC2626',
+  dangerBg: '#FEE2E2',
+};
+
+/** Botón apoka */
+const AButton = ({
+  title,
+  onPress,
+  variant = 'primary',
+  disabled,
+  style,
+}: {
+  title: string;
+  onPress?: () => void;
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  disabled?: boolean;
+  style?: any;
+}) => {
+  const vStyle =
+    variant === 'secondary'
+      ? styles.btnSecondary
+      : variant === 'ghost'
+      ? styles.btnGhost
+      : variant === 'danger'
+      ? styles.btnDanger
+      : styles.btnPrimary;
+
+  const tStyle =
+    variant === 'secondary' || variant === 'ghost'
+      ? styles.btnTextDark
+      : styles.btnTextLight;
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      style={[styles.btnBase, vStyle, disabled && { opacity: 0.6 }, style]}
+    >
+      <Text style={[tStyle, { fontWeight: '800' }]}>{title}</Text>
+    </TouchableOpacity>
+  );
+};
 
 export default function SaleCreate({ navigation }: any) {
   const { width } = useWindowDimensions();
@@ -138,9 +191,7 @@ export default function SaleCreate({ navigation }: any) {
         customerId: selectedCustomer.id,
         currency: 'NIO',
         items,
-        // Puedes activar tasas globales si tu backend las usa:
-        // taxRate: 15,
-        // discountRate: 0,
+        // taxRate / discountRate si tu backend los usa
       };
 
       const { data } = await api.post('/sales', payload);
@@ -164,7 +215,7 @@ export default function SaleCreate({ navigation }: any) {
           <Text style={styles.prodPrice}>{money(item.listPrice ?? 0)}</Text>
         </View>
         {qty === 0 ? (
-          <Button title="Agregar" onPress={() => addToCart(item.id)} />
+          <AButton title="Agregar" onPress={() => addToCart(item.id)} />
         ) : (
           <View style={styles.stepper}>
             <TouchableOpacity style={styles.stepBtn} onPress={() => decFromCart(item.id)}>
@@ -194,19 +245,19 @@ export default function SaleCreate({ navigation }: any) {
       <View style={{ marginBottom: 8 }}>
         <Text style={styles.sub}>Cliente</Text>
         {!selectedCustomer ? (
-          <Text style={{ color: '#6b7280' }}>Ninguno seleccionado.</Text>
+          <Text style={{ color: apoka.muted }}>Ninguno seleccionado.</Text>
         ) : (
-          <Text style={{ fontWeight: '700' }}>{selectedCustomer.name}</Text>
+          <Text style={{ fontWeight: '700', color: apoka.text }}>{selectedCustomer.name}</Text>
         )}
       </View>
 
-      <View style={{ borderTopWidth: 1, borderTopColor: '#eef0f4', paddingTop: 8, gap: 8 }}>
+      <View style={{ borderTopWidth: 1, borderTopColor: apoka.border, paddingTop: 8, gap: 8 }}>
         {cartItems.length === 0 ? (
-          <Text style={{ color: '#6b7280' }}>No hay productos en el carrito.</Text>
+          <Text style={{ color: apoka.muted }}>No hay productos en el carrito.</Text>
         ) : cartItems.map(it => (
           <View key={it.id} style={styles.cartRow}>
             <View style={{ flex: 1, paddingRight: 8 }}>
-              <Text numberOfLines={1} style={{ fontWeight: '600' }}>{it.name}</Text>
+              <Text numberOfLines={1} style={{ fontWeight: '600', color: apoka.text }}>{it.name}</Text>
               <Text style={styles.prodSub}>{it.sku}</Text>
               <Text style={styles.linePrice}>{money(it.price)} · {money(it.line)}</Text>
             </View>
@@ -228,13 +279,17 @@ export default function SaleCreate({ navigation }: any) {
 
       <View style={styles.totals}>
         <View style={styles.rowBetween}>
-          <Text style={{ color: '#6b7280' }}>Subtotal</Text>
+          <Text style={{ color: apoka.muted }}>Subtotal</Text>
           <Text style={styles.totalNum}>{money(subtotal)}</Text>
         </View>
-        {/* Si aplicas impuestos/descuentos, muéstralos aquí */}
+        {/* Impuestos/descuentos aquí si aplica */}
       </View>
 
-      <Button title={loading ? 'Guardando...' : 'Guardar venta'} onPress={saveSale} disabled={loading || !selectedCustomer || cartItems.length === 0} />
+      <AButton
+        title={loading ? 'Guardando…' : 'Guardar venta'}
+        onPress={saveSale}
+        disabled={loading || !selectedCustomer || cartItems.length === 0}
+      />
     </View>
   );
 
@@ -250,18 +305,18 @@ export default function SaleCreate({ navigation }: any) {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ marginVertical: 8 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[
-                styles.chip,
-                selectedCustomer?.id === item.id && styles.chipSelected,
-              ]}
-              onPress={() => setSelectedCustomer(item)}
-            >
-              <Text style={{ color: selectedCustomer?.id === item.id ? '#fff' : '#111' }}>{item.name}</Text>
-            </TouchableOpacity>
-          )}
-          ListEmptyComponent={<Text style={{ color: '#6b7280' }}>Sin clientes.</Text>}
+          renderItem={({ item }) => {
+            const active = selectedCustomer?.id === item.id;
+            return (
+              <TouchableOpacity
+                style={[styles.chip, active && styles.chipSelected]}
+                onPress={() => setSelectedCustomer(item)}
+              >
+                <Text style={{ color: active ? '#fff' : apoka.text }}>{item.name}</Text>
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={<Text style={{ color: apoka.muted }}>Sin clientes.</Text>}
         />
       </View>
 
@@ -275,10 +330,11 @@ export default function SaleCreate({ navigation }: any) {
               value={q}
               onChangeText={setQ}
               style={styles.search}
+              placeholderTextColor={apoka.muted}
               returnKeyType="search"
             />
             <View style={{ width: 8 }} />
-            <Button title="Limpiar" onPress={() => setQ('')} />
+            <AButton title="Limpiar" variant="secondary" onPress={() => setQ('')} />
           </View>
 
           <FlatList
@@ -291,7 +347,7 @@ export default function SaleCreate({ navigation }: any) {
             contentContainerStyle={{ paddingVertical: 8, gap: 12 }}
             refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
             ListEmptyComponent={
-              <Text style={{ color: '#6b7280', padding: 12 }}>
+              <Text style={{ color: apoka.muted, padding: 12 }}>
                 {q ? 'No hay resultados para tu búsqueda.' : 'No hay productos.'}
               </Text>
             }
@@ -320,7 +376,7 @@ const styles = StyleSheet.create({
   rightColWide: { flex: 5, marginTop: 0 },
 
   // Textos
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
+  title: { fontSize: 20, fontWeight: '800', marginBottom: 8, color: apoka.text },
   sub: { color: '#374151', marginTop: 8, marginBottom: 4, fontWeight: '600' },
 
   // Chips cliente
@@ -328,28 +384,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: apoka.border,
     borderRadius: 999,
     marginRight: 8,
     backgroundColor: '#fff',
   },
-  chipSelected: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
+  chipSelected: { backgroundColor: apoka.brand, borderColor: apoka.brand },
 
   // Búsqueda
   searchRow: { flexDirection: 'row', alignItems: 'center' },
   search: {
     flex: 1,
-    borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10,
-    paddingHorizontal: 12, minHeight: 42,
+    borderWidth: 1, borderColor: apoka.border, borderRadius: 10,
+    paddingHorizontal: 12, minHeight: 42, color: apoka.text, backgroundColor: '#fff',
   },
 
   // Cards
   card: {
-    backgroundColor: '#f8f9fb',
+    backgroundColor: apoka.cardBg,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#eef0f4',
+    borderColor: apoka.border,
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -363,51 +419,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  prodTitle: { fontSize: 16, fontWeight: '600' },
-  prodSub: { fontSize: 12, color: '#6b7280' },
-  prodPrice: { marginTop: 6, fontWeight: '800' },
+  prodTitle: { fontSize: 16, fontWeight: '600', color: apoka.text },
+  prodSub: { fontSize: 12, color: apoka.muted },
+  prodPrice: { marginTop: 6, fontWeight: '800', color: apoka.text },
 
   // Stepper grande
   stepper: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', padding: 4,
+    backgroundColor: apoka.brandSoftBg, borderRadius: 10, borderWidth: 1, borderColor: apoka.brandSoftBorder, padding: 4,
   },
   stepBtn: {
-    width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6',
+    width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: apoka.brandSoftBorder,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff',
   },
-  stepTxt: { fontSize: 18, fontWeight: '800' },
-  qtyTxt: { minWidth: 28, textAlign: 'center', fontWeight: '700' },
+  stepTxt: { fontSize: 18, fontWeight: '800', color: apoka.brandStrong },
+  qtyTxt: { minWidth: 28, textAlign: 'center', fontWeight: '700', color: apoka.text },
 
   // Carrito (sidebar)
   cartPanel: { gap: 10 },
   cartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cartTitle: { fontSize: 16, fontWeight: '800' },
-  clearLink: { color: '#b91c1c', fontWeight: '700' },
+  cartTitle: { fontSize: 16, fontWeight: '800', color: apoka.text },
+  clearLink: { color: apoka.danger, fontWeight: '700' },
 
   cartRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1, borderColor: '#eef0f4', backgroundColor: '#fff',
+    borderWidth: 1, borderColor: apoka.border, backgroundColor: '#fff',
     borderRadius: 10, padding: 8, gap: 8,
   },
-  linePrice: { marginTop: 2, fontWeight: '600' },
+  linePrice: { marginTop: 2, fontWeight: '600', color: apoka.text },
 
   // Stepper chico para carrito
   stepperSm: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   stepBtnSm: {
-    width: 28, height: 28, borderRadius: 6, borderWidth: 1, borderColor: '#e5e7eb',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6',
+    width: 28, height: 28, borderRadius: 6, borderWidth: 1, borderColor: apoka.brandSoftBorder,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: apoka.brandSoftBg,
   },
 
   removeBtn: {
     width: 28, height: 28, borderRadius: 6,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#fee2e2',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: apoka.dangerBg,
   },
   removeTxt: { color: '#991b1b', fontWeight: '800' },
 
   // Totales
   totals: { marginTop: 8, marginBottom: 8, gap: 6 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalNum: { fontSize: 16, fontWeight: '800' },
+  totalNum: { fontSize: 16, fontWeight: '800', color: apoka.text },
+
+  // Botones
+  btnBase: {
+    minWidth: 110, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1,
+  },
+  btnPrimary: { backgroundColor: apoka.brand, borderColor: apoka.brand },
+  btnSecondary: { backgroundColor: '#FFFFFF', borderColor: apoka.border },
+  btnGhost: { backgroundColor: 'transparent', borderColor: 'transparent' },
+  btnDanger: { backgroundColor: apoka.danger, borderColor: apoka.danger },
+  btnTextLight: { color: '#FFFFFF' },
+  btnTextDark: { color: apoka.text },
 });

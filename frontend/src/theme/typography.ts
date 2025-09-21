@@ -1,31 +1,33 @@
 // src/theme/typography.ts
-import { Text as RNText, TextInput as RNTextInput } from 'react-native';
+import { Text, TextInput, Platform } from 'react-native';
 import * as Font from 'expo-font';
 
-let patched = false;
+let ready = false;
 
-export async function loadApoka() {
+export async function loadApokaAndSetDefaults() {
+  if (ready) return;
   await Font.loadAsync({
     Apoka: require('../../assets/fonts/apokaregular.ttf'),
   });
-}
 
-export function patchGlobalFont() {
-  if (patched) return;
-  patched = true;
+  const base = Platform.select({
+    ios:   { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+    default: { fontFamily: 'Apoka' },
+  });
 
-  const base = [{ fontFamily: 'Apoka' }];
+  // Text
+  (Text as any).defaultProps = (Text as any).defaultProps || {};
+  (Text as any).defaultProps.style = [
+    base,
+    (Text as any).defaultProps.style,
+  ];
 
-  const prevTextRender = RNText.render;
-  (RNText as any).render = function (...args: any[]) {
-    const origin = prevTextRender.call(this, ...args);
-    return (origin ? { ...origin, props: { ...origin.props, style: [base, origin.props?.style] } } : origin);
-  };
+  // TextInput
+  (TextInput as any).defaultProps = (TextInput as any).defaultProps || {};
+  (TextInput as any).defaultProps.style = [
+    base,
+    (TextInput as any).defaultProps.style,
+  ];
 
-  const origTI = RNTextInput.prototype.render;
-  RNTextInput.prototype.render = function (...args: any[]) {
-    // @ts-ignore
-    const origin = origTI.apply(this, args);
-    return (origin ? { ...origin, props: { ...origin.props, style: [base, origin.props?.style] } } : origin);
-  };
+  ready = true;
 }

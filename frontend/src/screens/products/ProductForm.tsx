@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, Switch, Button, Alert, StyleSheet, ScrollView, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
+import {
+  View, Text, TextInput, Switch, Button, Alert, StyleSheet, ScrollView,
+  Pressable, ActivityIndicator, useWindowDimensions, Platform
+} from 'react-native';
+import { useFonts } from 'expo-font';
 import { api } from '../../api';
 
 type Product = {
@@ -40,6 +44,13 @@ const Card: React.FC<{ children: React.ReactNode, style?: any }> = ({ children, 
 const Divider = () => <View style={styles.divider} />;
 
 const ProductForm: React.FC<any> = ({ route, navigation }) => {
+  // Carga de fuente (no bloquea; se aplica cuando lista)
+  useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
+  const F = Platform.select({
+    ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+    default: { fontFamily: 'Apoka' },
+  });
+
   const id: number | undefined = route?.params?.id;
   const isEdit = !!id;
   const { width } = useWindowDimensions();
@@ -262,7 +273,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
             <Divider />
 
             <View style={[styles.field, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
-              <Text>¿Controla stock?</Text>
+              <Text style={styles.label}>¿Controla stock?</Text>
               <Switch value={isService ? false : trackStock} onValueChange={setTrackStock} disabled={isService} />
             </View>
             {!!errors.trackStock && <Text style={styles.error}>{errors.trackStock}</Text>}
@@ -439,6 +450,11 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
 
 export default ProductForm;
 
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F6F7F9' },
 
@@ -448,7 +464,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
   },
-  title: { fontSize: 20, fontWeight: '700' },
+  title: { ...F, fontSize: 20, fontWeight: '700' },
 
   container: { padding: 16, gap: 16 },
   containerWide: { maxWidth: 1200, alignSelf: 'center', width: '100%', flexDirection: 'row' },
@@ -465,10 +481,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  sectionTitle: { ...F, fontSize: 16, fontWeight: '700', marginBottom: 8 },
   field: { marginBottom: 12 },
-  label: { marginBottom: 6, color: '#111827', fontWeight: '600' },
+  label: { ...F, marginBottom: 6, color: '#111827', fontWeight: '600' },
   input: {
+    ...F,
     borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, minHeight: 42,
     backgroundColor: '#fff'
   },
@@ -483,20 +500,20 @@ const styles = StyleSheet.create({
     borderRadius: 999, backgroundColor: '#FFF'
   },
   pillActive: { backgroundColor: '#0EA5E922', borderColor: '#0EA5E9' },
-  pillText: { color: '#374151', fontWeight: '600' },
-  pillTextActive: { color: '#0369A1' },
+  pillText: { ...F, color: '#374151', fontWeight: '600' },
+  pillTextActive: { ...F, color: '#0369A1', fontWeight: '600' },
 
-  helper: { marginTop: 6, color: '#6B7280', fontSize: 12 },
-  error: { marginTop: 6, color: '#B91C1C', fontSize: 12 },
+  helper: { ...F, marginTop: 6, color: '#6B7280', fontSize: 12 },
+  error: { ...F, marginTop: 6, color: '#B91C1C', fontSize: 12 },
 
   divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 },
 
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  summaryLabel: { color: '#6B7280' },
-  summaryValue: { fontWeight: '700' },
+  summaryLabel: { ...F, color: '#6B7280' },
+  summaryValue: { ...F, fontWeight: '700' },
   negative: { color: '#B91C1C' },
 
-  tip: { color: '#374151', marginBottom: 6 },
+  tip: { ...F, color: '#374151', marginBottom: 6 },
 
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -510,7 +527,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
   },
-  footerText: { color: '#6B7280' },
+  footerText: { ...F, color: '#6B7280' },
 
   actionBtn: {
     minWidth: 110, alignItems: 'center', justifyContent: 'center',
@@ -520,6 +537,6 @@ const styles = StyleSheet.create({
   primaryBtn: { backgroundColor: '#0EA5E9', borderColor: '#0EA5E9' },
   secondaryBtn: { backgroundColor: '#FFFFFF', borderColor: '#D1D5DB' },
   disabledBtn: { backgroundColor: '#93C5FD', borderColor: '#93C5FD' },
-  actionTextPrimary: { color: '#FFFFFF', fontWeight: '700' },
-  actionTextSecondary: { color: '#111827', fontWeight: '700' },
+  actionTextPrimary: { ...F, color: '#FFFFFF', fontWeight: '700' },
+  actionTextSecondary: { ...F, color: '#111827', fontWeight: '700' },
 });

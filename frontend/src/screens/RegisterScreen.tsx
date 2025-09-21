@@ -1,7 +1,6 @@
-// src/screens/RegisterScreen.tsx — Estilo mock a juego con Login (degradado + formulario) + rotación de mensajes
-// Requiere las mismas libs que Login:
-// Expo: expo install expo-linear-gradient react-native-svg
-// Bare RN: yarn add react-native-linear-gradient react-native-svg && cd ios && pod install
+// src/screens/RegisterScreen.tsx
+// Estilo mock a juego con Login + Apoka manual
+// Requiere: expo-linear-gradient, react-native-svg, expo-font
 
 import React, { useContext, useMemo, useState, useEffect, useRef } from 'react';
 import {
@@ -23,9 +22,8 @@ import {
   Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-// Si no usas Expo:
-// import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Circle } from 'react-native-svg';
+import { useFonts } from 'expo-font';
 
 import { api, setBaseUrl } from '../api';
 import { AuthContext } from '../providers/AuthContext';
@@ -36,7 +34,6 @@ const LOOPBACK = 'http://127.0.0.1:5000';
 const DEFAULT_BASE = Platform.OS === 'android' ? ANDROID_LOCALHOST : LOOPBACK;
 setBaseUrl(DEFAULT_BASE);
 
-// Paleta compartida
 const P = {
   violet: '#7C3AED',
   blue: '#2563EB',
@@ -49,7 +46,7 @@ const P = {
   white: '#FFFFFF',
 };
 
-// Mensajes que rotan en el panel izquierdo (título, subtítulo)
+// Mensajes que rotan
 const WELCOMES: Array<[string, string]> = [
   ['Crea tu cuenta en minutos', 'Empieza gratis y configura tu negocio.'],
   ['Crecemos contigo', 'Planes flexibles y paneles que se adaptan a tu pyme.'],
@@ -76,6 +73,11 @@ export default function RegisterScreen() {
   const { width } = useWindowDimensions();
   const stack = width < 1024;
 
+  // Fuente Apoka
+  const [_fontsLoaded] = useFonts({
+    Apoka: require('../../assets/fonts/apokaregular.ttf'),
+  });
+
   const [tenantName, setTenantName] = useState('DemoPyme');
   const [ownerName, setOwnerName] = useState('Owner');
   const [ownerEmail, setOwnerEmail] = useState('owner@demo.com');
@@ -88,14 +90,13 @@ export default function RegisterScreen() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Rotación de mensajes (panel izquierdo)
+  // Rotación de mensajes
   const [welcomeIdx, setWelcomeIdx] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
   const float = useRef(new Animated.Value(0)).current;
 
   useEffect(() => { setBaseUrl(base); }, [base]);
 
-  // Animación: rotación de copys
   useEffect(() => {
     const interval = setInterval(() => {
       Animated.timing(fade, {
@@ -116,7 +117,6 @@ export default function RegisterScreen() {
     return () => clearInterval(interval);
   }, [fade]);
 
-  // Animación: flotación sutil del panel
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -126,7 +126,7 @@ export default function RegisterScreen() {
     ).start();
   }, [float]);
 
-  // Validaciones básicas
+  // Validaciones
   const emailOk = useMemo(() => /.+@.+\..+/.test(ownerEmail.trim()), [ownerEmail]);
   const passOk = useMemo(() => password.trim().length >= 3, [password]);
   const confirmOk = useMemo(() => confirm === password, [confirm, password]);
@@ -242,7 +242,7 @@ export default function RegisterScreen() {
                     returnKeyType="next"
                   />
                   <LinearGradient colors={[P.blue, P.cyan]} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.underline} />
-                  <Pressable onPress={() => setShowPass(s => !s)} style={styles.eyeBtn}><Text style={{ fontWeight: '700' }}>{showPass ? '🙈' : '👁️'}</Text></Pressable>
+                  <Pressable onPress={() => setShowPass(s => !s)} style={styles.eyeBtn}><Text style={styles.eyeEmoji}>{showPass ? '🙈' : '👁️'}</Text></Pressable>
                 </View>
               </Field>
 
@@ -259,7 +259,7 @@ export default function RegisterScreen() {
                     onSubmitEditing={handleRegister}
                   />
                   <LinearGradient colors={[P.blue, P.cyan]} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.underline} />
-                  <Pressable onPress={() => setShowConfirm(s => !s)} style={styles.eyeBtn}><Text style={{ fontWeight: '700' }}>{showConfirm ? '🙈' : '👁️'}</Text></Pressable>
+                  <Pressable onPress={() => setShowConfirm(s => !s)} style={styles.eyeBtn}><Text style={styles.eyeEmoji}>{showConfirm ? '🙈' : '👁️'}</Text></Pressable>
                 </View>
               </Field>
 
@@ -302,44 +302,49 @@ export default function RegisterScreen() {
   );
 }
 
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: P.dark },
   split: { flex: 1, flexDirection: 'row' },
 
   // wrapper animado para el panel izquierdo (flotación)
   leftFloat: { flex: 1.2 },
-
   left: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   welcomeBox: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 18, paddingVertical: 18, paddingHorizontal: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)' },
-  welcomeTitle: { color: '#fff', fontSize: 28, fontWeight: '900' },
-  welcomeSub: { color: 'rgba(255,255,255,0.9)', marginTop: 6 },
-  site: { color: 'rgba(255,255,255,0.9)', position: 'absolute', bottom: 18 },
+  welcomeTitle: { ...F, color: '#fff', fontSize: 28 },
+  welcomeSub: { ...F, color: 'rgba(255,255,255,0.9)', marginTop: 6 },
+  site: { ...F, color: 'rgba(255,255,255,0.9)', position: 'absolute', bottom: 18 },
 
   right: { flex: 1, backgroundColor: P.white },
   formWrap: { padding: 24, alignItems: 'center', minHeight: '100%', justifyContent: 'center' },
   formCard: { width: '100%', maxWidth: 520, padding: 22 },
 
-  hello: { color: P.dark, opacity: 0.7 },
-  morning: { color: P.violet, fontWeight: '900', marginBottom: 4 },
-  lead: { color: P.sub, marginBottom: 16 },
+  hello: { ...F, color: P.dark, opacity: 0.7 },
+  morning: { ...F, color: P.violet, marginBottom: 4 },
+  lead: { ...F, color: P.sub, marginBottom: 16 },
 
-  label: { color: P.sub, fontWeight: '700', marginBottom: 6 },
-  input: { backgroundColor: 'transparent', paddingVertical: 10, paddingRight: 42, fontSize: 16, color: P.text },
+  label: { ...F, color: P.sub, marginBottom: 6 },
+  input: { ...F, backgroundColor: 'transparent', paddingVertical: 10, paddingRight: 42, fontSize: 16, color: P.text },
   inputErr: { backgroundColor: 'rgba(254, 242, 242, 0.6)' },
   underline: { height: 3, borderRadius: 2 },
 
   eyeBtn: { position: 'absolute', right: 0, top: 2, height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  eyeEmoji: { ...F },
 
-  error: { color: P.danger, marginTop: 10, fontWeight: '700' },
+  error: { ...F, color: P.danger, marginTop: 10 },
 
   submit: { marginTop: 18, borderRadius: 10, overflow: 'hidden', alignItems: 'center', paddingVertical: 14 },
   submitBG: { ...StyleSheet.absoluteFillObject },
-  submitText: { color: P.white, fontWeight: '900', letterSpacing: 1 },
+  submitText: { ...F, color: P.white, letterSpacing: 1 },
 
   apiBox: { marginTop: 18, borderTopWidth: 1, borderTopColor: P.border, paddingTop: 12 },
-  apiTitle: { fontWeight: '700', color: P.text },
-  apiInput: { borderWidth: 1, borderColor: P.border, borderRadius: 10, padding: 10, marginTop: 6 },
+  apiTitle: { ...F, color: P.text },
+  apiInput: { ...F, borderWidth: 1, borderColor: P.border, borderRadius: 10, padding: 10, marginTop: 6 },
 
   smallBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: P.border, backgroundColor: '#fff' },
-  smallBtnText: { fontWeight: '700', color: P.text },
+  smallBtnText: { ...F, color: P.text },
 });

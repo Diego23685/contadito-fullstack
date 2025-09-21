@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, TextInput, Alert, StyleSheet, ScrollView,
-  Pressable, ActivityIndicator, useWindowDimensions
+  Pressable, ActivityIndicator, useWindowDimensions, Platform
 } from 'react-native';
+import { useFonts } from 'expo-font';
 import { api } from '../../api';
 
 type Customer = {
@@ -18,6 +19,11 @@ const isEmail = (v: string) =>
   !!v && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 
 const onlyDigits = (v: string) => v.replace(/[^\d+]/g, '');
+
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
 
 const Helper = ({ children }: { children: React.ReactNode }) => (
   <Text style={styles.helper}>{children}</Text>
@@ -38,6 +44,11 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
   const isEdit = !!id;
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
+
+  // Cargamos Apoka (no bloquea render)
+  useFonts({
+    Apoka: require('../../../assets/fonts/apokaregular.ttf'),
+  });
 
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
@@ -103,7 +114,6 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
 
   const prettyPhone = useMemo(() => {
     const d = onlyDigits(phone);
-    // Ejemplo simple: +505 8888 8888 (no es máscara estricta)
     if (!d) return '';
     if (d.startsWith('+')) return d.replace(/(\+\d{1,3})(\d{4})(\d{0,4})/, '$1 $2 $3').trim();
     return d.replace(/(\d{4})(\d{0,4})(\d{0,4})/, '$1 $2 $3').trim();
@@ -207,7 +217,6 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
               style={[styles.input, { height: 100, textAlignVertical: 'top', marginTop: 8 }]}
               multiline
               placeholder="Opcional"
-              // Si luego decides persistirlo, añade este campo al backend
               onChangeText={() => {}}
               editable
             />
@@ -285,7 +294,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
   },
-  title: { fontSize: 20, fontWeight: '700' },
+  title: { ...F, fontSize: 20 },
 
   container: { padding: 16, gap: 16 },
   containerWide: { maxWidth: 1200, alignSelf: 'center', width: '100%', flexDirection: 'row' },
@@ -302,28 +311,29 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  sectionTitle: { ...F, fontSize: 16, marginBottom: 8 },
 
   field: { marginBottom: 12 },
-  label: { marginBottom: 6, color: '#111827', fontWeight: '600' },
+  label: { ...F, marginBottom: 6, color: '#111827' },
   input: {
+    ...F,
     borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, minHeight: 42,
-    backgroundColor: '#fff'
+    backgroundColor: '#fff', fontSize: 16
   },
 
   row2: { flexDirection: 'row', gap: 12 },
   flex1: { flex: 1 },
 
-  helper: { marginTop: 6, color: '#6B7280', fontSize: 12 },
-  error: { marginTop: 6, color: '#B91C1C', fontSize: 12 },
+  helper: { ...F, marginTop: 6, color: '#6B7280', fontSize: 12 },
+  error: { ...F, marginTop: 6, color: '#B91C1C', fontSize: 12 },
 
   divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 },
 
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  summaryLabel: { color: '#6B7280' },
-  summaryValue: { fontWeight: '700' },
+  summaryLabel: { ...F, color: '#6B7280' },
+  summaryValue: { ...F },
 
-  tip: { color: '#374151', marginBottom: 6 },
+  tip: { ...F, color: '#374151', marginBottom: 6 },
 
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -337,7 +347,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
   },
-  footerText: { color: '#6B7280' },
+  footerText: { ...F, color: '#6B7280' },
 
   actionBtn: {
     minWidth: 110, alignItems: 'center', justifyContent: 'center',
@@ -347,6 +357,6 @@ const styles = StyleSheet.create({
   primaryBtn: { backgroundColor: '#0EA5E9', borderColor: '#0EA5E9' },
   secondaryBtn: { backgroundColor: '#FFFFFF', borderColor: '#D1D5DB' },
   disabledBtn: { backgroundColor: '#93C5FD', borderColor: '#93C5FD' },
-  actionTextPrimary: { color: '#FFFFFF', fontWeight: '700' },
-  actionTextSecondary: { color: '#111827', fontWeight: '700' },
+  actionTextPrimary: { ...F, color: '#FFFFFF' },
+  actionTextSecondary: { ...F, color: '#111827' },
 });

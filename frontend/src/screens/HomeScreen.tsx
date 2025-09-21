@@ -1,4 +1,4 @@
-// src/screens/HomeScreen.tsx — panel lateral pro + centrado correcto + botón a UserScreen
+// src/screens/HomeScreen.tsx — panel lateral pro + centrado + Apoka manual
 import React, { useCallback, useEffect, useMemo, useRef, useState, useContext } from 'react';
 import {
   Alert,
@@ -16,6 +16,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { useFonts } from 'expo-font';
 import { api } from '../api';
 import { AuthContext } from '../providers/AuthContext';
 
@@ -92,6 +93,12 @@ function initials(s?: string) {
   return parts.map(p => p[0]?.toUpperCase() ?? '').join('') || 'U';
 }
 
+// ===== Helper de fuente Apoka =====
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
+
 // ---------- Componentes UI ----------
 const Card: React.FC<{ style?: any; children: React.ReactNode; onPress?: () => void; testID?: string }>
 = ({ style, children, onPress, testID }) => {
@@ -125,7 +132,7 @@ const Section: React.FC<{ title: string; right?: React.ReactNode; children: Reac
 
 const Label: React.FC<{ children: React.ReactNode; muted?: boolean; style?: any }>
 = ({ children, muted, style }) => (
-  <Text style={[{ color: muted ? '#6b7280' : '#111827' }, style]}>{children}</Text>
+  <Text style={[F, { color: muted ? '#6b7280' : '#111827' }, style]}>{children}</Text>
 );
 
 const Badge: React.FC<{ children: React.ReactNode; style?: any }>
@@ -214,10 +221,10 @@ const SidePanel: React.FC<{
       {/* Tarjeta tenant/plan */}
       <View style={styles.panelCard}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontWeight: '800', color: '#0f172a' }}>Plan</Text>
+          <Text style={[styles.panelCardTitle]}>Plan</Text>
           <Text style={[styles.planPill, planColor(dashboard?.plan)]}>{dashboard?.plan ?? '—'}</Text>
         </View>
-        <Text style={{ color: '#64748b', marginTop: 6 }}>
+        <Text style={styles.panelCardSub}>
           {dashboard?.online ? 'Conectado • ' : 'Sin conexión • '}
           {dashboard?.lastSync ? `Sync ${timeAgo(dashboard.lastSync)}` : '—'}
         </Text>
@@ -253,7 +260,7 @@ const SidePanel: React.FC<{
         <Text style={styles.panelBlockTitle}>Controles</Text>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           <SmallBtn title={polling ? 'Pausar auto-refresco' : 'Reanudar auto-refresco'} onPress={onTogglePolling} />
-          <SmallBtn title="Refrescar tablero" onPress={() => navigation.navigate('Home')} />
+          <SmallBtn title="Refrescar tablero" onPress={() => { /* noop; ya hay pull-to-refresh */ }} />
         </View>
       </View>
 
@@ -281,6 +288,11 @@ export default function HomeScreen({ navigation }: Props) {
   const { logout } = useContext(AuthContext);
   const auth = useContext(AuthContext) as any;
   const currentUserEmail: string | null = auth?.user?.email ?? auth?.email ?? null;
+
+  // Carga de fuente Apoka (cacheada por expo-font)
+  useFonts({
+    Apoka: require('../../assets/fonts/apokaregular.ttf'),
+  });
 
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
@@ -396,7 +408,7 @@ export default function HomeScreen({ navigation }: Props) {
         onTogglePolling={() => setPolling(p => !p)}
       />
 
-      {/* Contenido principal con centrado correcto cuando el panel está anclado */}
+      {/* Contenido principal con centrado cuando el panel está anclado */}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={[
@@ -414,7 +426,7 @@ export default function HomeScreen({ navigation }: Props) {
               <View style={styles.headerLeft}>
                 <Text style={styles.title}>Contadito</Text>
                 <Text style={styles.meta}>
-                  Empresa: <Text style={styles.bold}>{dashboard?.tenantName ?? '—'}</Text>
+                  Empresa: <Text style={[styles.bold]}>{dashboard?.tenantName ?? '—'}</Text>
                   {'  '}·{'  '}
                   Plan: <Text style={[styles.bold, styles.planPill, planColor(dashboard?.plan)]}>{dashboard?.plan ?? '—'}</Text>
                 </Text>
@@ -448,7 +460,7 @@ export default function HomeScreen({ navigation }: Props) {
                 />
                 {!!search && (
                   <Pressable onPress={() => setSearch('')} accessibilityLabel="Limpiar búsqueda" style={styles.searchClear}>
-                    <Text style={{ fontSize: 16 }}>×</Text>
+                    <Text style={[F, { fontSize: 16 }]}>×</Text>
                   </Pressable>
                 )}
               </View>
@@ -464,7 +476,7 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* MAIN GRID (siempre centrado con containerMax) */}
+        {/* MAIN GRID */}
         <View style={[styles.container, styles.containerMax]}>
           <View style={[styles.main, isWide && styles.mainWide]}>
             {/* Columna izquierda */}
@@ -575,7 +587,7 @@ export default function HomeScreen({ navigation }: Props) {
                   <View style={styles.rowBetween}>
                     <Text style={styles.panelTitle}>Stock bajo</Text>
                     {loadingFirst ? <ActivityIndicator /> : (
-                      <Text style={{ color: '#6b7280' }}>{dashboard?.lowStock?.length ?? 0}</Text>
+                      <Text style={[F, { color: '#6b7280' }]}>{dashboard?.lowStock?.length ?? 0}</Text>
                     )}
                   </View>
 
@@ -594,7 +606,7 @@ export default function HomeScreen({ navigation }: Props) {
                     <View style={{ gap: 8 }}>
                       {dashboard.lowStock.slice(0, 6).map((p) => (
                         <View key={p.id} style={styles.rowBetween}>
-                          <Text numberOfLines={1} style={{ flex: 1, paddingRight: 8 }}>
+                          <Text numberOfLines={1} style={[F, { flex: 1, paddingRight: 8 }]}>
                             {p.sku} · {p.name}
                           </Text>
                           <SmallBtn title="Ver" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
@@ -606,8 +618,6 @@ export default function HomeScreen({ navigation }: Props) {
                   <View style={{ marginTop: 8 }}>
                     <SmallBtn title="Ver todos" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
                     <SmallBtn title="Tienda Online" onPress={() => navigation.navigate('StoreFront', { tenantId: 5 })} />
-
-
                   </View>
                 </Card>
 
@@ -616,7 +626,7 @@ export default function HomeScreen({ navigation }: Props) {
                   <View style={styles.rowBetween}>
                     <Text style={styles.panelTitle}>Por cobrar (próx. 7 días)</Text>
                     {loadingFirst ? <ActivityIndicator /> : (
-                      <Text style={{ color: '#6b7280' }}>{dashboard?.receivablesDueSoon?.length ?? 0}</Text>
+                      <Text style={[F, { color: '#6b7280' }]}>{dashboard?.receivablesDueSoon?.length ?? 0}</Text>
                     )}
                   </View>
 
@@ -696,7 +706,7 @@ export default function HomeScreen({ navigation }: Props) {
                   <View style={styles.statusRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <View style={[styles.dot, { backgroundColor: dashboard?.online ? '#10b981' : '#f59e0b' }]} />
-                      <Text style={{ color: dashboard?.online ? '#065f46' : '#92400e', fontWeight: '700' }}>
+                      <Text style={[F, { color: dashboard?.online ? '#065f46' : '#92400e' }]}>
                         {dashboard?.online ? 'Conectado' : 'Sin conexión'}
                       </Text>
                     </View>
@@ -715,6 +725,18 @@ export default function HomeScreen({ navigation }: Props) {
     </View>
   );
 }
+
+// ---------------- EmptyState reutilizable ----------------
+const EmptyState: React.FC<{ title: string; subtitle?: string; actionLabel?: string; onAction?: () => void }>
+= ({ title, subtitle, actionLabel, onAction }) => (
+  <View style={styles.empty}>
+    <Text style={styles.emptyTitle}>{title}</Text>
+    {!!subtitle && <Text style={styles.emptySub}>{subtitle}</Text>}
+    {!!actionLabel && !!onAction && (
+      <SmallBtn title={actionLabel} onPress={onAction} style={{ marginTop: 8 }} />
+    )}
+  </View>
+);
 
 // ---------------- Helpers de estilo ----------------
 function planColor(plan?: string) {
@@ -736,12 +758,12 @@ const styles = StyleSheet.create({
   headerInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   headerLeft: { flex: 1, minWidth: 0 },
   headerBtns: { flexDirection: 'row', gap: 8 },
-  title: { fontSize: 24, fontWeight: '800', marginBottom: 4, color: '#0f172a' },
-  meta: { color: '#64748b' },
-  bold: { fontWeight: '700' },
-  planPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  title: { ...F, fontSize: 24, marginBottom: 4, color: '#0f172a' },
+  meta: { ...F, color: '#64748b' },
+  bold: { ...F, },
+  planPill: { ...F, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
 
-  syncHint: { color: '#94a3b8', marginTop: 4 },
+  syncHint: { ...F, color: '#94a3b8', marginTop: 4 },
 
   // Sticky search bar
   sectionSticky: { backgroundColor: '#ffffff', borderBottomColor: '#eef0f4', borderBottomWidth: 1, paddingVertical: 8 },
@@ -749,8 +771,8 @@ const styles = StyleSheet.create({
   // Secciones
   section: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
-  sectionSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  sectionTitle: { ...F, fontSize: 16, color: '#0f172a' },
+  sectionSub: { ...F, fontSize: 12, color: '#6b7280', marginTop: 2 },
 
   // Main grid
   main: { paddingHorizontal: 16, paddingTop: 12 },
@@ -760,13 +782,13 @@ const styles = StyleSheet.create({
   colRight: { flex: 5 },
 
   // Tipos
-  itemTitle: { fontSize: 16, fontWeight: '600' },
-  itemSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  itemTitle: { ...F, fontSize: 16, color: '#0f172a' },
+  itemSub: { ...F, fontSize: 12, color: '#6b7280', marginTop: 2 },
 
   // Search
   searchRow: { flexDirection: 'row' },
   searchWrap: { position: 'relative' },
-  searchInput: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 12, minHeight: 42, paddingRight: 34, backgroundColor: '#fff' },
+  searchInput: { ...F, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 12, minHeight: 42, paddingRight: 34, backgroundColor: '#fff', fontSize: 16 },
   searchClear: { position: 'absolute', right: 10, top: 9, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6' },
 
   // Grid / cards
@@ -776,7 +798,7 @@ const styles = StyleSheet.create({
   card: { flexGrow: 1, minWidth: 220, backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#eef0f4', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
 
   // KPI
-  kpiValue: { fontSize: 20, fontWeight: '800', marginBottom: 8, color: '#111827' },
+  kpiValue: { ...F, fontSize: 20, marginBottom: 8, color: '#111827' },
   kpiValueXL: { fontSize: 24 },
 
   // Barras
@@ -784,10 +806,10 @@ const styles = StyleSheet.create({
   barFill: { height: '100%', backgroundColor: '#2563eb' },
 
   // Paneles (cards)
-  panelTitle: { fontWeight: '700', marginBottom: 8, color: '#0f172a' },
+  panelTitle: { ...F, color: '#0f172a' },
 
   // Badges base
-  badge: { backgroundColor: '#eef2ff', color: '#1e3a8a', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, overflow: 'hidden', fontWeight: '700' },
+  badge: { ...F, backgroundColor: '#eef2ff', color: '#1e3a8a', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
   badgeDanger: { backgroundColor: '#fee2e2', color: '#991b1b' },
   badgeWarning: { backgroundColor: '#fef3c7', color: '#92400e' },
   badgeOrange: { backgroundColor: '#ffedd5', color: '#9a3412' },
@@ -799,15 +821,15 @@ const styles = StyleSheet.create({
 
   // Empty
   empty: { padding: 16, alignItems: 'flex-start', gap: 6 },
-  emptyTitle: { fontWeight: '700' },
-  emptySub: { color: '#6b7280' },
+  emptyTitle: { ...F, },
+  emptySub: { ...F, color: '#6b7280' },
 
   // Small button
   row: { flexDirection: 'row', gap: 10, justifyContent: 'flex-start', alignItems: 'center' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   smallBtn: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#ffffff' },
   smallBtnDanger: { backgroundColor: '#fff1f2', borderColor: '#fecdd3' },
-  smallBtnText: { fontWeight: '700', color: '#111827' },
+  smallBtnText: { ...F, color: '#111827' },
 
   // ===== Panel lateral =====
   panelPinnedWrap: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#ffffff', borderRightColor: '#eef0f4', borderRightWidth: 1, zIndex: 10 },
@@ -817,18 +839,22 @@ const styles = StyleSheet.create({
   panel: { flex: 1, paddingTop: Platform.OS === 'web' ? 16 : 44, paddingHorizontal: 16, paddingBottom: 16 },
   panelHeaderWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontWeight: '800', color: '#1e40af' },
-  panelTitleMain: { fontWeight: '800', color: '#0f172a' },
-  panelSubtitle: { color: '#64748b', fontSize: 12, marginTop: 2 },
+  avatarText: { ...F, color: '#1e40af' },
+  panelTitleMain: { ...F, color: '#0f172a' },
+  panelSubtitle: { ...F, color: '#64748b', fontSize: 12, marginTop: 2 },
 
   panelCard: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#eef0f4', borderRadius: 12, padding: 12, marginBottom: 12 },
+  panelCardTitle: { ...F, color: '#0f172a' },
+  panelCardSub: { ...F, color: '#64748b', marginTop: 6 },
+
   panelBlock: { marginBottom: 14 },
-  panelBlockTitle: { fontSize: 11, fontWeight: '900', color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 },
+  panelBlockTitle: { ...F, fontSize: 11, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 },
   panelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingVertical: 6, borderBottomColor: '#f1f5f9', borderBottomWidth: 1 },
-  panelRowLabel: { color: '#6b7280', width: 120, fontSize: 12 },
-  panelRowValue: { color: '#0f172a', flex: 1, fontWeight: '600' },
-  linkLike: { color: '#1e40af', fontWeight: '700' },
+  panelRowLabel: { ...F, color: '#6b7280', width: 120, fontSize: 12 },
+  panelRowValue: { ...F, color: '#0f172a', flex: 1 },
+
+  linkLike: { ...F, color: '#1e40af' },
   linkChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff' },
-  linkChipText: { fontWeight: '800', color: '#0f172a' },
-  panelFoot: { marginTop: 8, color: '#94a3b8', fontSize: 12, textAlign: 'center' },
+  linkChipText: { ...F, color: '#0f172a' },
+  panelFoot: { ...F, marginTop: 8, color: '#94a3b8', fontSize: 12, textAlign: 'center' },
 });

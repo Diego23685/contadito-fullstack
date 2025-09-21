@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, FlatList, Alert, StyleSheet, RefreshControl,
   ActivityIndicator, Pressable, useWindowDimensions, Platform
 } from 'react-native';
+import { useFonts } from 'expo-font';
 import { api } from '../../api';
 import { AuthContext } from '../../providers/AuthContext';
 
@@ -20,6 +21,10 @@ type Item = {
 type Resp = { total: number; page: number; pageSize: number; items: Item[] };
 
 const PAGE_SIZE = 12;
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
 
 const currency = (v?: number) =>
   new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(Number(v ?? 0));
@@ -29,6 +34,7 @@ const Chip = ({ label, active, onPress }: { label: string; active?: boolean; onP
     <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
   </Pressable>
 );
+
 const ActionBtn = ({ title, onPress, kind = 'primary', disabled }: {
   title: string; onPress?: () => void; kind?: 'primary' | 'secondary' | 'danger'; disabled?: boolean;
 }) => (
@@ -49,6 +55,7 @@ const ActionBtn = ({ title, onPress, kind = 'primary', disabled }: {
     ]}>{title}</Text>
   </Pressable>
 );
+
 const Card: React.FC<{ children: React.ReactNode; style?: any }> = ({ children, style }) => (
   <View style={[styles.card, style]}>{children}</View>
 );
@@ -58,6 +65,9 @@ export default function ReceivablesList({ navigation }: any) {
   const { width } = useWindowDimensions();
   const columns = width >= 1280 ? 2 : 1;
   const isGrid = columns > 1;
+
+  // Carga la fuente (no bloquea render; se aplicará al estar lista)
+  useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'all' | 'issued' | 'paid'>('all');
@@ -149,7 +159,6 @@ export default function ReceivablesList({ navigation }: any) {
 
   useEffect(() => { load(true); }, []); // primera carga
 
-  // auto refresh cada 30s y al cambiar filtros/busqueda con debounce
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => load(true), 350);
@@ -175,7 +184,6 @@ export default function ReceivablesList({ navigation }: any) {
       item.status === 'paid' ? { label: 'Pagada', style: styles.badgeSuccess } :
       item.dueAmount <= 0.0001 ? { label: 'S/Límite', style: styles.badgeNeutral } :
       (() => {
-        // calcular days
         let days = 0;
         if (item.dueAt) {
           const due = new Date(item.dueAt).getTime();
@@ -253,9 +261,9 @@ export default function ReceivablesList({ navigation }: any) {
       </View>
 
       <View style={styles.toolbarRow}>
-        <Chip label="Todas"   active={status === 'all'}    onPress={() => setStatus('all')} />
+        <Chip label="Todas"     active={status === 'all'}    onPress={() => setStatus('all')} />
         <Chip label="Pendientes" active={status === 'issued'} onPress={() => setStatus('issued')} />
-        <Chip label="Pagadas" active={status === 'paid'}   onPress={() => setStatus('paid')} />
+        <Chip label="Pagadas"   active={status === 'paid'}   onPress={() => setStatus('paid')} />
       </View>
 
       <View style={styles.metaRow}>
@@ -359,30 +367,33 @@ const styles = StyleSheet.create({
 
   toolbarContainer: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10, backgroundColor: '#F6F7F9' },
   toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  toolbarLabel: { color: '#6B7280' },
+  toolbarLabel: { ...F, color: '#6B7280' },
+
   searchBox: { position: 'relative', flex: 1 },
-  searchInput: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, height: 42, backgroundColor: '#fff' },
+  searchInput: { ...F, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, height: 42, backgroundColor: '#fff' },
   clearBtn: { position: 'absolute', right: 8, top: 6, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: '#EEF2FF' },
-  clearText: { fontSize: 18, lineHeight: 18, color: '#374151' },
+  clearText: { ...F, fontSize: 18, lineHeight: 18, color: '#374151' },
 
   chip: { borderWidth: 1, borderColor: '#D1D5DB', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFF' },
   chipActive: { backgroundColor: '#0EA5E922', borderColor: '#0EA5E9' },
-  chipText: { color: '#374151', fontWeight: '600' },
-  chipTextActive: { color: '#0369A1' },
+  chipText: { ...F, color: '#374151' },
+  chipTextActive: { ...F, color: '#0369A1' },
 
   btn: { minWidth: 96, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0EA5E9' },
   btnSecondary: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB' },
   btnDanger: { backgroundColor: '#DC2626' },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#FFFFFF', fontWeight: '700' },
-  btnTextPrimary: { color: '#FFFFFF', fontWeight: '700' },
-  btnTextSecondary: { color: '#111827', fontWeight: '700' },
+
+  btnText: { ...F, color: '#FFFFFF' },
+  btnTextPrimary: { ...F, color: '#FFFFFF' },
+  btnTextSecondary: { ...F, color: '#111827' },
 
   card: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: Platform.select({ android: 2, default: 0 }) },
-  itemTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  itemSub: { color: '#6B7280', fontSize: 12 },
 
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: '#eef2ff', color: '#1e3a8a', fontWeight: '700' },
+  itemTitle: { ...F, fontSize: 16, color: '#111827' },
+  itemSub: { ...F, color: '#6B7280', fontSize: 12 },
+
+  badge: { ...F, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: '#eef2ff', color: '#1e3a8a' },
   badgeInfo: { backgroundColor: '#dbeafe', color: '#1e40af' },
   badgeSuccess: { backgroundColor: '#dcfce7', color: '#14532d' },
   badgeNeutral: { backgroundColor: '#e5e7eb', color: '#1f2937' },
@@ -391,21 +402,21 @@ const styles = StyleSheet.create({
   badgeOrange: { backgroundColor: '#ffedd5', color: '#9a3412' },
 
   rowItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderBottomColor: '#E5E7EB', borderBottomWidth: 1, backgroundColor: '#fff', gap: 10 },
-  rowTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  rowSub: { color: '#6B7280', fontSize: 12 },
+  rowTitle: { ...F, fontSize: 16, color: '#111827' },
+  rowSub: { ...F, color: '#6B7280', fontSize: 12 },
 
   metaRow: { paddingHorizontal: 12, paddingBottom: 8 },
-  metaText: { color: '#6B7280' },
+  metaText: { ...F, color: '#6B7280' },
 
   empty: { alignItems: 'center', padding: 32, gap: 6 },
-  emptyEmoji: { fontSize: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '700' },
-  emptyText: { color: '#6B7280', textAlign: 'center' },
+  emptyEmoji: { ...F, fontSize: 40 },
+  emptyTitle: { ...F, fontSize: 18 },
+  emptyText: { ...F, color: '#6B7280', textAlign: 'center' },
 
-  input: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, minHeight: 42, backgroundColor: '#fff' },
+  input: { ...F, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, minHeight: 42, backgroundColor: '#fff' },
 
   modalWrap: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center', padding: 16 },
   modalCard: { width: '100%', maxWidth: 520, backgroundColor: '#fff', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#E5E7EB' },
-  modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
-  muted: { color: '#6B7280' },
+  modalTitle: { ...F, fontSize: 18 },
+  muted: { ...F, color: '#6B7280' },
 });

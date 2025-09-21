@@ -1,7 +1,14 @@
 import React, { useContext, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Alert, Pressable, Platform } from 'react-native';
+import { useFonts } from 'expo-font';
 import { api } from '../../api';
 import { AuthContext } from '../../providers/AuthContext';
+
+// Helper de fuente (evita problemas con weights en Android)
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
 
 const ActionBtn = ({ title, onPress, kind='primary', disabled }: any) => (
   <Pressable
@@ -19,6 +26,11 @@ const ActionBtn = ({ title, onPress, kind='primary', disabled }: any) => (
 
 export default function ReceivableCreate({ navigation }: any) {
   const { logout } = useContext(AuthContext);
+
+  // Cargar Apoka sin bloquear la UI (se aplicará en cuanto esté lista)
+  useFonts({
+    Apoka: require('../../../assets/fonts/apokaregular.ttf'),
+  });
 
   const [customerId, setCustomerId] = useState('');     // simple: ID numérico
   const [number, setNumber] = useState('');
@@ -61,19 +73,47 @@ export default function ReceivableCreate({ navigation }: any) {
 
       <View style={styles.card}>
         <Text style={styles.label}>ID Cliente</Text>
-        <TextInput value={customerId} onChangeText={setCustomerId} keyboardType="number-pad" placeholder="Ej. 1" style={styles.input} />
+        <TextInput
+          value={customerId}
+          onChangeText={setCustomerId}
+          keyboardType="number-pad"
+          placeholder="Ej. 1"
+          style={styles.input}
+        />
 
         <Text style={styles.label}>Número (opcional)</Text>
-        <TextInput value={number} onChangeText={setNumber} placeholder="FAC-000123" style={styles.input} />
+        <TextInput
+          value={number}
+          onChangeText={setNumber}
+          placeholder="FAC-000123"
+          style={styles.input}
+        />
 
         <Text style={styles.label}>Vence (opcional, YYYY-MM-DD)</Text>
-        <TextInput value={dueAt} onChangeText={setDueAt} placeholder="2025-09-30" style={styles.input} />
+        <TextInput
+          value={dueAt}
+          onChangeText={setDueAt}
+          placeholder="2025-09-30"
+          style={styles.input}
+        />
 
         <Text style={styles.label}>Total</Text>
-        <TextInput value={total} onChangeText={setTotal} keyboardType="decimal-pad" placeholder="0.00" style={styles.input} />
+        <TextInput
+          value={total}
+          onChangeText={setTotal}
+          keyboardType="decimal-pad"
+          placeholder="0.00"
+          style={styles.input}
+        />
 
         <Text style={styles.label}>Notas (opcional)</Text>
-        <TextInput value={notes} onChangeText={setNotes} placeholder="Observaciones" style={[styles.input, { height: 90, textAlignVertical: 'top' }]} multiline />
+        <TextInput
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="Observaciones"
+          style={[styles.input, { height: 90, textAlignVertical: 'top' }]}
+          multiline
+        />
       </View>
 
       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -85,7 +125,8 @@ export default function ReceivableCreate({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 18, fontWeight: '800' },
+  title: { ...F, fontSize: 18 },
+
   card: {
     backgroundColor: '#fff', borderRadius: 12, padding: 14,
     borderWidth: 1, borderColor: '#E5E7EB',
@@ -93,12 +134,21 @@ const styles = StyleSheet.create({
     elevation: Platform.select({ android: 2, default: 0 }),
     gap: 10
   },
-  label: { color: '#111827', fontWeight: '600' },
+
+  label: { ...F, color: '#111827' },
+
   input: {
-    borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, minHeight: 42, backgroundColor: '#fff'
+    ...F,
+    borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10,
+    paddingHorizontal: 12, minHeight: 42, backgroundColor: '#fff', fontSize: 16
   },
-  btn: { minWidth: 96, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0EA5E9' },
+
+  btn: {
+    minWidth: 96, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0EA5E9'
+  },
   btnSecondary: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB' },
-  btnText: { color: '#FFFFFF', fontWeight: '700' },
-  btnTextSecondary: { color: '#111827', fontWeight: '700' },
+
+  btnText: { ...F, color: '#FFFFFF' },
+  btnTextSecondary: { ...F, color: '#111827' },
 });

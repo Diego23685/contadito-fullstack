@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, FlatList, Alert, StyleSheet, RefreshControl,
   ActivityIndicator, Pressable, useWindowDimensions, Platform
 } from 'react-native';
+import { useFonts } from 'expo-font';
 import { api } from '../../api';
 import { AuthContext } from '../../providers/AuthContext';
 
@@ -41,6 +42,12 @@ const colorFrom = (s: string) => {
   return `hsl(${hue}, 70%, 85%)`;
 };
 
+// Helper de fuente (evita problemas con weights en Android)
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
+
 const Chip = ({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) => (
   <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
     <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
@@ -60,11 +67,15 @@ const ActionBtn = ({ title, onPress, kind = 'primary', disabled }: {
       disabled && styles.btnDisabled
     ]}
   >
-    <Text style={[
-      styles.btnText,
-      kind === 'secondary' && styles.btnTextSecondary,
-      kind === 'danger' && styles.btnTextPrimary
-    ]}>{title}</Text>
+    <Text
+      style={[
+        styles.btnText,
+        kind === 'secondary' && styles.btnTextSecondary,
+        kind === 'danger' && styles.btnTextPrimary
+      ]}
+    >
+      {title}
+    </Text>
   </Pressable>
 );
 
@@ -77,6 +88,11 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const columns = width >= 1280 ? 3 : width >= 900 ? 2 : 1;
   const isGrid = columns > 1;
+
+  // Carga no-bloqueante de la fuente (se aplica cuando esté lista)
+  useFonts({
+    Apoka: require('../../../assets/fonts/apokaregular.ttf'),
+  });
 
   const [q, setQ] = useState('');
   const [items, setItems] = useState<Customer[]>([]);
@@ -155,13 +171,11 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
   };
 
   const confirmRemove = (id: number) => {
-    // En web usamos window.confirm porque Alert puede no mostrarse
     if (Platform.OS === 'web') {
       const ok = window.confirm('¿Seguro que deseas eliminar este cliente?');
       if (ok) doRemove(id);
       return;
     }
-    // En nativo usamos Alert
     Alert.alert('Eliminar', '¿Seguro que deseas eliminar este cliente?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: () => doRemove(id) },
@@ -276,7 +290,7 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
         data={items}
         keyExtractor={(c) => String(c.id)}
         numColumns={columns}
-        key={columns} // fuerza re-render al cambiar columnas
+        key={columns}
         columnWrapperStyle={isGrid ? { paddingHorizontal: 8 } : undefined}
         ListHeaderComponent={listHeader}
         renderItem={renderItem}
@@ -316,26 +330,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#F6F7F9'
   },
   toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  toolbarLabel: { color: '#6B7280' },
+  toolbarLabel: { ...F, color: '#6B7280' },
 
   searchBox: { position: 'relative', flex: 1 },
   searchInput: {
+    ...F,
     borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, height: 42,
-    backgroundColor: '#fff'
+    backgroundColor: '#fff', fontSize: 16
   },
   clearBtn: {
     position: 'absolute', right: 8, top: 6, width: 30, height: 30,
     alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: '#EEF2FF'
   },
-  clearText: { fontSize: 18, lineHeight: 18, color: '#374151' },
+  clearText: { ...F, fontSize: 18, lineHeight: 18, color: '#374151' },
 
   chip: {
     borderWidth: 1, borderColor: '#D1D5DB', paddingHorizontal: 10, paddingVertical: 7,
     borderRadius: 999, backgroundColor: '#FFF'
   },
   chipActive: { backgroundColor: '#0EA5E922', borderColor: '#0EA5E9' },
-  chipText: { color: '#374151', fontWeight: '600' },
-  chipTextActive: { color: '#0369A1' },
+  chipText: { ...F, color: '#374151' },
+  chipTextActive: { ...F, color: '#0369A1' },
 
   // Botones
   btn: {
@@ -346,9 +361,9 @@ const styles = StyleSheet.create({
   btnSecondary: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB' },
   btnDanger: { backgroundColor: '#DC2626' },
   btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#FFFFFF', fontWeight: '700' },
-  btnTextPrimary: { color: '#FFFFFF', fontWeight: '700' },
-  btnTextSecondary: { color: '#111827', fontWeight: '700' },
+  btnText: { ...F, color: '#FFFFFF' },
+  btnTextPrimary: { ...F, color: '#FFFFFF' },
+  btnTextSecondary: { ...F, color: '#111827' },
 
   // Grid card
   card: {
@@ -365,14 +380,14 @@ const styles = StyleSheet.create({
     width: 42, height: 42, borderRadius: 999,
     alignItems: 'center', justifyContent: 'center'
   },
-  avatarText: { fontWeight: '800', color: '#111827' },
+  avatarText: { ...F, color: '#111827' },
 
-  itemTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  itemSub: { color: '#6B7280', fontSize: 12 },
+  itemTitle: { ...F, fontSize: 16, color: '#111827' },
+  itemSub: { ...F, color: '#6B7280', fontSize: 12 },
 
   // Badges
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
-  badgeText: { fontSize: 11, color: '#fff', fontWeight: '700' },
+  badgeText: { ...F, fontSize: 11, color: '#fff' },
   badgeInfo: { backgroundColor: '#3B82F6' },
   badgeNeutral: { backgroundColor: '#6B7280' },
 
@@ -381,15 +396,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12,
     borderBottomColor: '#E5E7EB', borderBottomWidth: 1, backgroundColor: '#fff', gap: 10
   },
-  rowTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  rowSub: { color: '#6B7280', fontSize: 12 },
+  rowTitle: { ...F, fontSize: 16, color: '#111827' },
+  rowSub: { ...F, color: '#6B7280', fontSize: 12 },
 
   // Meta/empty
   metaRow: { paddingHorizontal: 12, paddingBottom: 8 },
-  metaText: { color: '#6B7280' },
+  metaText: { ...F, color: '#6B7280' },
 
   empty: { alignItems: 'center', padding: 32, gap: 6 },
   emptyEmoji: { fontSize: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '700' },
-  emptyText: { color: '#6B7280', textAlign: 'center' },
+  emptyTitle: { ...F, fontSize: 18 },
+  emptyText: { ...F, color: '#6B7280', textAlign: 'center' },
 });

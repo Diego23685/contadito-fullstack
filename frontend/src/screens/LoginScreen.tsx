@@ -1,9 +1,6 @@
-// src/screens/LoginScreen.tsx — estilo mock (panel welcome + form) con rotación de mensajes
-// Librerías usadas:
-//  - expo-linear-gradient (o react-native-linear-gradient)
-//  - react-native-svg
-//  - (opcional) react-native-vector-icons si luego quieres íconos
-// Mantiene endpoints y navegación.
+// src/screens/LoginScreen.tsx
+// Estilo mock (panel welcome + form) con Apoka aplicada manualmente
+// Requiere: expo-linear-gradient, react-native-svg, expo-font
 
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -24,8 +21,8 @@ import {
   Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-// Si no usas Expo, cambia la import a: import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Circle } from 'react-native-svg';
+import { useFonts } from 'expo-font';
 
 import { api, setBaseUrl } from '../api';
 import { AuthContext } from '../providers/AuthContext';
@@ -58,13 +55,13 @@ const WELCOMES: Array<[string, string]> = [
   ['Integrado a tu día a día', 'WhatsApp Business, facturación electrónica y más.'],
 ];
 
-const SmallBtn: React.FC<{ title: string; onPress: () => void }>=({ title, onPress }) => (
+const SmallBtn: React.FC<{ title: string; onPress: () => void }> = ({ title, onPress }) => (
   <Pressable onPress={onPress} style={styles.smallBtn}>
     <Text style={styles.smallBtnText}>{title}</Text>
   </Pressable>
 );
 
-const Field: React.FC<{ label: string; children: React.ReactNode }>=({ label, children }) => (
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <View style={{ marginTop: 14 }}>
     <Text style={styles.label}>{label}</Text>
     {children}
@@ -74,6 +71,11 @@ const Field: React.FC<{ label: string; children: React.ReactNode }>=({ label, ch
 export default function LoginScreen() {
   const { login } = useContext(AuthContext);
   const navigation = useNavigation<any>();
+
+  // Carga de la fuente Apoka (no bloquea el render)
+  const [_fontsLoaded] = useFonts({
+    Apoka: require('../../assets/fonts/apokaregular.ttf'),
+  });
 
   const [email, setEmail] = useState('owner@demo.com');
   const [password, setPassword] = useState('pass123');
@@ -86,7 +88,7 @@ export default function LoginScreen() {
   // Rotación de mensajes del panel izquierdo
   const [welcomeIdx, setWelcomeIdx] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
-  const float = useRef(new Animated.Value(0)).current; // micro-animación opcional al panel
+  const float = useRef(new Animated.Value(0)).current;
 
   useEffect(() => { setBaseUrl(base); }, [base]);
 
@@ -107,12 +109,12 @@ export default function LoginScreen() {
           useNativeDriver: true,
         }).start();
       });
-    }, 6000); // cada 6s
+    }, 6000);
     return () => clearInterval(interval);
   }, [fade]);
 
   useEffect(() => {
-    // Micro “flotación” del panel para dar vida (opcional)
+    // Micro “flotación” del panel
     Animated.loop(
       Animated.sequence([
         Animated.timing(float, { toValue: 1, duration: 3500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
@@ -130,7 +132,8 @@ export default function LoginScreen() {
     try {
       setError(null); setLoading(true); Keyboard.dismiss();
       const res = await api.post('/auth/login', { email: email.trim(), password });
-      const token = res.data?.token as string | undefined; if (!token) throw new Error('Respuesta sin token');
+      const token = res.data?.token as string | undefined;
+      if (!token) throw new Error('Respuesta sin token');
       await login(token);
     } catch (e: any) {
       const msg = e?.response?.data || e?.message || 'No se pudo iniciar sesión';
@@ -186,8 +189,8 @@ export default function LoginScreen() {
               <Text style={styles.hello}>¡Hola!</Text>
               <Text style={styles.morning}>Bienvenido de nuevo</Text>
               <Text style={styles.lead}>
-                <Text style={{ color: P.text }}>Inicia sesión en </Text>
-                <Text style={{ fontWeight: '700' }}>tu cuenta</Text>
+                <Text style={[styles.lead, { color: P.text }]}>Inicia sesión en </Text>
+                <Text style={[styles.leadBold]}>tu cuenta</Text>
               </Text>
 
               <Field label="Correo electrónico">
@@ -216,7 +219,7 @@ export default function LoginScreen() {
                   />
                   <LinearGradient colors={[P.blue, P.cyan]} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.underline} />
                   <Pressable onPress={() => setShowPass(s => !s)} style={styles.eyeBtn} accessibilityLabel={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
-                    <Text style={{ fontWeight: '700' }}>{showPass ? '🙈' : '👁️'}</Text>
+                    <Text style={styles.eyeEmoji}>{showPass ? '🙈' : '👁️'}</Text>
                   </Pressable>
                 </View>
               </Field>
@@ -273,13 +276,17 @@ export default function LoginScreen() {
   );
 }
 
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: P.dark },
   split: { flex: 1, flexDirection: 'row' },
 
-  // “float” wrapper para el panel izquierdo (animación opcional)
+  // “float” wrapper para el panel izquierdo
   leftFloat: { flex: 1.2 },
-
   left: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   welcomeBox: {
     backgroundColor: 'rgba(255,255,255,0.15)',
@@ -288,44 +295,47 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.35)',
   },
-  welcomeTitle: { color: '#fff', fontSize: 28, fontWeight: '900' },
-  welcomeSub: { color: 'rgba(255,255,255,0.9)', marginTop: 6 },
-  site: { color: 'rgba(255,255,255,0.9)', position: 'absolute', bottom: 18 },
+  welcomeTitle: { ...F, color: '#fff', fontSize: 28 },
+  welcomeSub: { ...F, color: 'rgba(255,255,255,0.9)', marginTop: 6 },
+  site: { ...F, color: 'rgba(255,255,255,0.9)', position: 'absolute', bottom: 18 },
 
   right: { flex: 1, backgroundColor: P.white },
   formWrap: { padding: 24, alignItems: 'center', minHeight: '100%', justifyContent: 'center' },
   formCard: { width: '100%', maxWidth: 520, padding: 22 },
 
-  hello: { color: P.dark, opacity: 0.7 },
-  morning: { color: P.violet, fontWeight: '900', marginBottom: 4 },
-  lead: { color: P.sub, marginBottom: 16 },
+  hello: { ...F, color: P.dark, opacity: 0.7 },
+  morning: { ...F, color: P.violet, marginBottom: 4 },
+  lead: { ...F, color: P.sub, marginBottom: 16 },
+  leadBold: { ...F, color: P.text },
 
-  label: { color: P.sub, fontWeight: '700', marginBottom: 6 },
-  input: { backgroundColor: 'transparent', paddingVertical: 10, paddingRight: 42, fontSize: 16, color: P.text },
+  label: { ...F, color: P.sub, marginBottom: 6 },
+  input: { ...F, backgroundColor: 'transparent', paddingVertical: 10, paddingRight: 42, fontSize: 16, color: P.text },
   underline: { height: 2, borderRadius: 2 },
 
   eyeBtn: { position: 'absolute', right: 4, top: 6, padding: 8, borderRadius: 10 },
+  eyeEmoji: { ...F },
 
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
   rememberRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
   checkboxOn: { backgroundColor: '#E0F2FE', borderColor: '#BAE6FD' },
-  tick: { color: P.blue, fontSize: 12, fontWeight: '900' },
-  rememberText: { color: P.text },
-  forgot: { color: P.violet, fontWeight: '700' },
+  tick: { ...F, color: P.blue, fontSize: 12 },
 
-  error: { color: P.danger, marginTop: 10, fontWeight: '700' },
+  rememberText: { ...F, color: P.text },
+  forgot: { ...F, color: P.violet },
+
+  error: { ...F, color: P.danger, marginTop: 10 },
 
   submit: { marginTop: 18, borderRadius: 10, overflow: 'hidden', alignItems: 'center', paddingVertical: 14 },
   submitBG: { ...StyleSheet.absoluteFillObject },
-  submitText: { color: P.white, fontWeight: '900', letterSpacing: 1 },
+  submitText: { ...F, color: P.white, letterSpacing: 1 },
 
-  create: { color: P.violet, textAlign: 'center', fontWeight: '700' },
+  create: { ...F, color: P.violet, textAlign: 'center' },
 
   apiBox: { marginTop: 18, borderTopWidth: 1, borderTopColor: P.border, paddingTop: 12 },
-  apiTitle: { fontWeight: '700', color: P.text },
-  apiInput: { borderWidth: 1, borderColor: P.border, borderRadius: 10, padding: 10, marginTop: 6 },
+  apiTitle: { ...F, color: P.text },
+  apiInput: { ...F, borderWidth: 1, borderColor: P.border, borderRadius: 10, padding: 10, marginTop: 6 },
 
   smallBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: P.border, backgroundColor: '#fff' },
-  smallBtnText: { fontWeight: '700', color: P.text },
+  smallBtnText: { ...F, color: P.text },
 });

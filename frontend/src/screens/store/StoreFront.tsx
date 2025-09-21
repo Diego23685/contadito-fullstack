@@ -2,11 +2,26 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator,
-  FlatList, RefreshControl, useWindowDimensions, Image,
+  FlatList, RefreshControl, useWindowDimensions, Image, ScrollView,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { api } from '../../api';
 import { useCart } from '../../providers/CartContext';
+
+/** ===== Apoka theme ===== */
+const apoka = {
+  brand: '#7C3AED',
+  brandStrong: '#5B21B6',
+  brandSoftBg: '#F5F3FF',
+  brandSoftBorder: '#DDD6FE',
+  text: '#0F172A',
+  muted: '#64748B',
+  border: '#E5E7EB',
+  cardBg: '#FFFFFF',
+  canvas: '#F8FAFC',
+  dark: '#111827',
+  danger: '#DC2626',
+};
 
 type Item = {
   id?: number;
@@ -37,6 +52,7 @@ export default function StoreFront() {
   const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
 
+  // Cart context (tolerante)
   let cart: any = null; try { cart = useCart?.(); } catch {}
 
   const { tenantId, slugOrName } = (route.params ?? {}) as RouteParams;
@@ -45,6 +61,9 @@ export default function StoreFront() {
   // UI
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('relevance');
+  const [sortOpen, setSortOpen] = useState(false);
+  const [compact, setCompact] = useState(false);
+  const [likes, setLikes] = useState<Record<string, boolean>>({}); // “favoritos” locales
 
   // server paging
   const [page, setPage] = useState(1);
@@ -61,7 +80,10 @@ export default function StoreFront() {
   // cantidades por PID (fuente de verdad de la UI)
   const [shadowQty, setShadowQty] = useState<Record<string, number>>({});
 
-  const cols = useMemo(() => (width >= 1200 ? 4 : width >= 900 ? 3 : width >= 600 ? 2 : 1), [width]);
+  const cols = useMemo(() => {
+    // en modo compacto mantén el grid apretado visualmente (thumbnails más bajos)
+    return width >= 1200 ? 4 : width >= 900 ? 3 : width >= 600 ? 2 : 1;
+  }, [width]);
 
   const endpointBase = useMemo(
     () => (isNaN(Number(tenantRef)) ? `/store/${tenantRef}/products` : `/store/${Number(tenantRef)}/products`),
@@ -144,12 +166,17 @@ export default function StoreFront() {
     if (sort === 'name_asc')   cp.sort((a,b)=>a.name.localeCompare(b.name,'es'));
     return cp;
   }, [items, sort]);
-  const cycleSort = () => setSort(s => s==='relevance'?'price_asc':s==='price_asc'?'price_desc':s==='price_desc'?'name_asc':'relevance');
+
+  const sortOptions: { key: SortKey; label: string }[] = [
+    { key: 'relevance', label: 'Relevancia' },
+    { key: 'price_asc', label: 'Precio ↑' },
+    { key: 'price_desc', label: 'Precio ↓' },
+    { key: 'name_asc', label: 'Nombre A-Z' },
+  ];
 
   const onRefresh = () => { setRefreshing(true); fetchPage(1, false); };
 
   // ===== cantidades =====
-  // Buscar en carrito (si existe) — sólo para sincronizar de fondo
   const findInCart = useCallback((p: Item) => {
     if (!cart?.items?.length) return null;
     return cart.items.find((l: any) =>
@@ -159,10 +186,9 @@ export default function StoreFront() {
     );
   }, [cart]);
 
-  // Fuente de verdad en UI = shadowQty[p.pid]; si no existe, caemos a carrito
   const uiQtyOf = useCallback((p: Item) => {
     const local = shadowQty[p.pid];
-    if (typeof local === 'number') return local; // <- prioridad UI
+    if (typeof local === 'number') return local;
     const line = findInCart(p);
     const ctx = Number(line?.qty ?? line?.quantity ?? (cart?.getQty && Number.isFinite(p.id) ? cart.getQty(p.id!) : 0)) || 0;
     return ctx;
@@ -176,12 +202,8 @@ export default function StoreFront() {
     try {
       const q = Math.max(0, qty);
 
-      // Requiere id numérico para clave estable en el carrito
       const idNum = Number(p.id);
-      if (!Number.isFinite(idNum)) {
-        console.warn('[Cart] Producto sin id numérico; no se puede agregar:', p);
-        return;
-      }
+      if (!Number.isFinite(idNum)) return;
 
       const payload = {
         id: idNum,
@@ -195,19 +217,16 @@ export default function StoreFront() {
       const current = cart?.getQty ? Number(cart.getQty(idNum, tenantRef)) : 0;
       const exists = current > 0;
 
-      // 1) Si no existe aún la línea:
       if (!exists) {
-        if (q <= 0) return; // nada que hacer
+        if (q <= 0) return;
         if (cart?.addItem) { cart.addItem(payload, q, tenantRef); return; }
         if (cart?.add)     { cart.add(payload, q, tenantRef);     return; }
-        return; // si no hay API para crear, salimos
+        return;
       }
 
-      // 2) Si ya existe la línea:
       if (cart?.setQty)       { cart.setQty(idNum, q, tenantRef);       return; }
       if (cart?.setQuantity)  { cart.setQuantity(idNum, q, tenantRef);  return; }
 
-      // 3) Fallback por delta
       const delta = q - current;
       if (delta > 0) {
         if (cart?.addItem) cart.addItem(payload, delta, tenantRef);
@@ -219,17 +238,13 @@ export default function StoreFront() {
           cart.decrement(idNum, tenantRef, Math.abs(delta));
         }
       }
-    } catch {
-      // noop
-    }
+    } catch { /* noop */ }
   }, [cart, tenantRef]);
-
-
 
   const inc = (it: Item) => {
     const next = uiQtyOf(it) + 1;
-    setQtyUI(it, next);       // UI primero
-    syncCartFromUI(it, next); // luego carrito (best-effort)
+    setQtyUI(it, next);
+    syncCartFromUI(it, next);
   };
   const dec = (it: Item) => {
     const next = Math.max(0, uiQtyOf(it) - 1);
@@ -238,13 +253,28 @@ export default function StoreFront() {
   };
 
   const cartCount = useMemo(() => {
-    // Cuenta basada en UI (shadowQty) para que el badge coincida con lo que el usuario ve
     const uiTotal = Object.values(shadowQty).reduce((s, n) => s + (n || 0), 0);
     if (uiTotal > 0) return uiTotal;
-    // si aún no hay UI, usa carrito real
     if (cart?.items?.length) return cart.items.reduce((s:number,l:any)=>s+Number(l.qty ?? l.quantity ?? 0),0);
     return 0;
   }, [cart, shadowQty]);
+
+  // Total estimado para sticky mini-cart (prefiere carrito real)
+  const cartTotalFromCtx = useMemo(() => {
+    if (typeof cart?.total === 'number') return cart.total;
+    if (cart?.items?.length) return cart.items.reduce((s:number,l:any)=>s + (Number(l.qty ?? l.quantity ?? 0) * Number(l.price ?? 0)), 0);
+    return 0;
+  }, [cart]);
+
+  const uiEstimatedTotal = useMemo(() => {
+    if (!sortedItems.length) return 0;
+    return sortedItems.reduce((s, it) => s + uiQtyOf(it) * Number(it.price || 0), 0);
+  }, [sortedItems, uiQtyOf]);
+
+  const stickyTotal = useMemo(() => {
+    const t = cartTotalFromCtx || uiEstimatedTotal || 0;
+    return money(t);
+  }, [cartTotalFromCtx, uiEstimatedTotal]);
 
   // nav
   const goDetail = (it: Item) => {
@@ -255,7 +285,7 @@ export default function StoreFront() {
     });
   };
 
-  // UI
+  // UI subcomponentes
   const QtyRow = ({ item }: { item: Item }) => {
     const qty = uiQtyOf(item);
     if (qty <= 0) {
@@ -278,34 +308,60 @@ export default function StoreFront() {
     );
   };
 
-  const renderCard = ({ item }: { item: Item }) => (
-    <View style={[styles.card, cols > 1 && { flex: 1 }]}>
-      <Pressable onPress={() => goDetail(item)} style={{ width: '100%' }} accessibilityLabel={`Ver ${item.name}`}>
-        {item.images?.[0]
-          ? <Image source={{ uri: item.images[0] }} style={styles.thumb} resizeMode="cover" />
-          : <View style={[styles.thumb, { backgroundColor: '#e5e7eb' }]} />
-        }
-        <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-      </Pressable>
+  const toggleLike = (pid: string) => setLikes(prev => ({ ...prev, [pid]: !prev[pid] }));
 
-      <Text style={styles.price}>{money(item.price)}</Text>
-      {!!item.description && <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>}
+  const renderCard = ({ item }: { item: Item }) => {
+    const liked = !!likes[item.pid];
+    return (
+      <View style={[styles.card, cols > 1 && { flex: 1 }, compact && styles.cardCompact]}>
+        <Pressable onPress={() => goDetail(item)} style={{ width: '100%' }} accessibilityLabel={`Ver ${item.name}`}>
+          <View style={styles.thumbWrap}>
+            {item.images?.[0]
+              ? <Image source={{ uri: item.images[0] }} style={[styles.thumb, compact && styles.thumbCompact]} resizeMode="cover" />
+              : <View style={[styles.thumb, compact && styles.thumbCompact, { backgroundColor: '#e5e7eb' }]} />
+            }
+            <Pressable onPress={() => toggleLike(item.pid)} style={styles.likeBtn} accessibilityLabel="Favorito">
+              <Text style={{ fontSize: 16 }}>{liked ? '❤️' : '🤍'}</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+        </Pressable>
 
-      <QtyRow item={item} />
+        <Text style={styles.price}>{money(item.price)}</Text>
+        {!!item.description && <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>}
 
-      <Pressable onPress={() => goDetail(item)} style={styles.detailBtn}>
-        <Text style={styles.detailBtnText}>Ver detalle</Text>
-      </Pressable>
-    </View>
-  );
+        <QtyRow item={item} />
+
+        <Pressable onPress={() => goDetail(item)} style={styles.detailBtn}>
+          <Text style={styles.detailBtnText}>Ver detalle</Text>
+        </Pressable>
+      </View>
+    );
+  };
 
   const keyExtractor = (it: Item) => it.pid;
+
+  const SortMenu = () => (
+    <View style={styles.sortMenuCard}>
+      {sortOptions.map(opt => (
+        <Pressable
+          key={opt.key}
+          onPress={() => { setSort(opt.key); setSortOpen(false); }}
+          style={[styles.sortItem, sort === opt.key && styles.sortItemActive]}
+        >
+          <Text style={[styles.sortItemText, sort === opt.key && styles.sortItemTextActive]}>{opt.label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
 
   return (
     <View style={styles.root}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Tienda</Text>
+
+        {/* Controles: búsqueda / orden / vista */}
         <View style={styles.rowWrap}>
           <View style={styles.searchWrap}>
             <TextInput
@@ -322,22 +378,35 @@ export default function StoreFront() {
               </Pressable>
             )}
           </View>
-          <Pressable onPress={cycleSort} style={styles.sortBtn}>
-            <Text style={styles.sortText}>
-              {sort === 'relevance' ? 'Relevancia' :
-               sort === 'price_asc' ? 'Precio ↑' :
-               sort === 'price_desc' ? 'Precio ↓' :
-               'Nombre A-Z'}
+
+          <View style={{ position: 'relative' }}>
+            <Pressable onPress={() => setSortOpen(s => !s)} style={styles.sortBtn}>
+              <Text style={styles.sortText}>
+                {sortOptions.find(o => o.key === sort)?.label ?? 'Ordenar'}
+              </Text>
+            </Pressable>
+            {sortOpen && <SortMenu />}
+          </View>
+
+          <Pressable
+            onPress={() => setCompact(c => !c)}
+            style={[styles.toggleChip, compact && styles.toggleChipActive]}
+          >
+            <Text style={[styles.toggleChipText, compact && styles.toggleChipTextActive]}>
+              {compact ? 'Compacto ✓' : 'Compacto'}
             </Text>
           </Pressable>
         </View>
-        <Text style={styles.meta}>{loading ? 'Cargando…' : `${total} resultado${total === 1 ? '' : 's'}`}</Text>
+
+        <Text style={styles.meta}>
+          {loading ? 'Cargando…' : `${total} resultado${total === 1 ? '' : 's'}`}
+        </Text>
       </View>
 
       {/* Body */}
       {error ? (
         <View style={{ padding: 16 }}>
-          <Text style={{ color: '#b91c1c', fontWeight: '700' }}>{error}</Text>
+          <Text style={{ color: apoka.danger, fontWeight: '700' }}>{error}</Text>
           <Pressable onPress={() => fetchPage(1, false)} style={[styles.detailBtn, { marginTop: 10 }]}>
             <Text style={styles.detailBtnText}>Reintentar</Text>
           </Pressable>
@@ -356,7 +425,7 @@ export default function StoreFront() {
         </View>
       ) : !items.length ? (
         <View style={{ padding: 16 }}>
-          <Text style={{ color: '#64748b' }}>No hay productos públicos.</Text>
+          <Text style={{ color: apoka.muted }}>No hay productos públicos.</Text>
         </View>
       ) : (
         <FlatList
@@ -370,11 +439,11 @@ export default function StoreFront() {
           onEndReachedThreshold={0.4}
           ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical: 12 }} /> : null}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          extraData={{ shadowQty, sort }} // fuerza re-render cuando cambian cantidades
+          extraData={{ shadowQty, sort, compact, likes }}
         />
       )}
 
-      {/* FAB carrito */}
+      {/* FAB carrito (desktop / tablets) */}
       <Pressable
         onPress={() => navigation.navigate('Cart', { tenantRef })}
         style={styles.fab}
@@ -388,39 +457,138 @@ export default function StoreFront() {
         )}
       </Pressable>
 
+      {/* Mini-carrito fijo (móvil) */}
+      {cartCount > 0 && width < 900 && (
+        <View style={styles.checkoutBar}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.totalLabel}>Carrito</Text>
+            <Text style={styles.totalValue}>{stickyTotal}</Text>
+          </View>
+          <Pressable
+            onPress={() => navigation.navigate('Cart', { tenantRef })}
+            style={styles.checkoutBtn}
+          >
+            <Text style={styles.checkoutBtnText}>Ver carrito</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eef2f7' },
-  title: { fontWeight: '900', fontSize: 18, color: '#0f172a' },
-  meta: { color: '#64748b', marginTop: 6, fontSize: 12 },
+  root: { flex: 1, backgroundColor: apoka.canvas },
+  header: {
+    padding: 16, backgroundColor: apoka.cardBg,
+    borderBottomWidth: 1, borderBottomColor: '#eef2f7'
+  },
+  title: { fontWeight: '900', fontSize: 18, color: apoka.text },
+  meta: { color: apoka.muted, marginTop: 6, fontSize: 12 },
+
   rowWrap: { flexDirection: 'row', gap: 8, marginTop: 10, alignItems: 'center' },
   searchWrap: { position: 'relative', flex: 1 },
-  input: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingHorizontal: 12, minHeight: 42, backgroundColor: '#fff', paddingRight: 34 },
-  clearBtn: { position: 'absolute', right: 6, top: 6, width: 28, height: 28, borderRadius: 14, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
-  sortBtn: { paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#111827', minHeight: 42, alignItems: 'center', justifyContent: 'center' },
+  input: {
+    borderWidth: 1, borderColor: apoka.border, borderRadius: 10,
+    paddingHorizontal: 12, minHeight: 42, backgroundColor: '#fff', paddingRight: 34
+  },
+  clearBtn: {
+    position: 'absolute', right: 6, top: 6, width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center'
+  },
+
+  // Sort
+  sortBtn: {
+    paddingHorizontal: 12, borderRadius: 10, backgroundColor: apoka.brand,
+    minHeight: 42, alignItems: 'center', justifyContent: 'center'
+  },
   sortText: { color: '#fff', fontWeight: '800' },
-  card: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#eef0f4', borderRadius: 12, padding: 12 },
-  thumb: { height: 120, borderRadius: 10, backgroundColor: '#e5e7eb', marginBottom: 8, width: '100%' },
-  name: { fontWeight: '700', color: '#0f172a' },
-  price: { marginTop: 4, fontWeight: '900', color: '#1e40af' },
-  desc: { marginTop: 6, color: '#6b7280', fontSize: 12 },
-  addBtn: { marginTop: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingVertical: 10, alignItems: 'center', backgroundColor: '#111827' },
-  addBtnText: { color: '#fff', fontWeight: '800' },
-  stepper: { marginTop: 10, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, overflow: 'hidden' },
+  sortMenuCard: {
+    position: 'absolute', right: 0, top: 46, zIndex: 10,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: apoka.border,
+    borderRadius: 12, padding: 6, width: 160,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 6 }, elevation: 3
+  },
+  sortItem: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10 },
+  sortItemActive: { backgroundColor: apoka.brandSoftBg, borderColor: apoka.brandSoftBorder },
+  sortItemText: { color: apoka.text, fontWeight: '600' },
+  sortItemTextActive: { color: apoka.brandStrong },
+
+  // Compact toggle
+  toggleChip: {
+    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999,
+    borderWidth: 1, borderColor: apoka.border, backgroundColor: '#fff'
+  },
+  toggleChipActive: { backgroundColor: apoka.brandSoftBg, borderColor: apoka.brandSoftBorder },
+  toggleChipText: { color: apoka.text, fontWeight: '700' },
+  toggleChipTextActive: { color: apoka.brandStrong },
+
+  // Cards
+  card: {
+    backgroundColor: apoka.cardBg, borderWidth: 1, borderColor: apoka.border,
+    borderRadius: 12, padding: 12
+  },
+  cardCompact: { padding: 10 },
+  thumbWrap: { position: 'relative' },
+  thumb: { height: 140, borderRadius: 10, backgroundColor: '#e5e7eb', marginBottom: 8, width: '100%' },
+  thumbCompact: { height: 110 },
+  likeBtn: {
+    position: 'absolute', right: 8, top: 8,
+    width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#ffffffcc'
+  },
+  name: { fontWeight: '800', color: apoka.text },
+  price: { marginTop: 4, fontWeight: '900', color: apoka.brandStrong },
+  desc: { marginTop: 6, color: apoka.muted, fontSize: 12 },
+
+  addBtn: {
+    marginTop: 10, borderWidth: 1, borderColor: apoka.brand, borderRadius: 10,
+    paddingVertical: 10, alignItems: 'center', backgroundColor: apoka.brand
+  },
+  addBtnText: { color: '#fff', fontWeight: '900' },
+
+  stepper: {
+    marginTop: 10, flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: apoka.border, borderRadius: 10, overflow: 'hidden'
+  },
   stepBtn: { paddingVertical: 8, paddingHorizontal: 14, backgroundColor: '#f9fafb' },
-  stepBtnLeft: { borderRightWidth: 1, borderRightColor: '#e5e7eb' },
-  stepBtnRight: { borderLeftWidth: 1, borderLeftColor: '#e5e7eb' },
-  stepBtnText: { fontSize: 16, fontWeight: '900', color: '#111827' },
-  qtyText: { minWidth: 36, textAlign: 'center', fontWeight: '900', color: '#0f172a' },
-  detailBtn: { marginTop: 10, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, paddingVertical: 10, alignItems: 'center', backgroundColor: '#fff' },
-  detailBtnText: { fontWeight: '800', color: '#111827' },
+  stepBtnLeft: { borderRightWidth: 1, borderRightColor: apoka.border },
+  stepBtnRight: { borderLeftWidth: 1, borderLeftColor: apoka.border },
+  stepBtnText: { fontSize: 16, fontWeight: '900', color: apoka.dark },
+  qtyText: { minWidth: 36, textAlign: 'center', fontWeight: '900', color: apoka.text },
+
+  detailBtn: {
+    marginTop: 10, borderWidth: 1, borderColor: apoka.border, borderRadius: 10,
+    paddingVertical: 10, alignItems: 'center', backgroundColor: '#fff'
+  },
+  detailBtnText: { fontWeight: '800', color: apoka.dark },
+
   skeletonRow: { flexDirection: 'row', gap: 12 },
-  fab: { position: 'absolute', right: 16, bottom: 16, width: 52, height: 52, borderRadius: 26, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', elevation: 4 },
+
+  // FAB
+  fab: {
+    position: 'absolute', right: 16, bottom: 88, // deja espacio al mini-carrito
+    width: 52, height: 52, borderRadius: 26, backgroundColor: apoka.brand,
+    alignItems: 'center', justifyContent: 'center', elevation: 4
+  },
   fabText: { color: '#fff', fontSize: 20 },
-  badge: { position: 'absolute', top: -6, right: -6, minWidth: 20, height: 20, paddingHorizontal: 4, borderRadius: 10, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center' },
+  badge: {
+    position: 'absolute', top: -6, right: -6, minWidth: 20, height: 20, paddingHorizontal: 4,
+    borderRadius: 10, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center'
+  },
   badgeText: { color: '#fff', fontWeight: '900', fontSize: 12 },
+
+  // Mini-carrito móvil
+  checkoutBar: {
+    position: 'absolute', left: 12, right: 12, bottom: 12,
+    backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: apoka.border,
+    padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 3
+  },
+  totalLabel: { color: apoka.muted, fontSize: 12 },
+  totalValue: { fontSize: 18, fontWeight: '900', color: apoka.text },
+  checkoutBtn: {
+    backgroundColor: apoka.brand, borderColor: apoka.brand,
+    paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1
+  },
+  checkoutBtnText: { color: '#fff', fontWeight: '900' },
 });
