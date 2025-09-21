@@ -1,6 +1,4 @@
-// src/screens/HomeScreen.tsx — diseño mejorado (más amigable, responsive y mejor uso de pantallas largas)
-// Nota: sin librerías externas y sin cambiar endpoints/funcionalidad. Mejora sólo de UI/UX.
-
+// src/screens/HomeScreen.tsx — panel lateral pro + centrado correcto + botón a UserScreen
 import React, { useCallback, useEffect, useMemo, useRef, useState, useContext } from 'react';
 import {
   Alert,
@@ -15,6 +13,8 @@ import {
   Pressable,
   AppState,
   Platform,
+  Animated,
+  Easing,
 } from 'react-native';
 import { api } from '../api';
 import { AuthContext } from '../providers/AuthContext';
@@ -86,6 +86,12 @@ function timeAgo(iso?: string) {
   return 'justo ahora';
 }
 
+function initials(s?: string) {
+  if (!s) return 'U';
+  const parts = String(s).trim().split(/\s+/).slice(0, 2);
+  return parts.map(p => p[0]?.toUpperCase() ?? '').join('') || 'U';
+}
+
 // ---------- Componentes UI ----------
 const Card: React.FC<{ style?: any; children: React.ReactNode; onPress?: () => void; testID?: string }>
 = ({ style, children, onPress, testID }) => {
@@ -153,31 +159,144 @@ const Skeleton: React.FC<{ height?: number; width?: number; style?: any }>
   <View style={[{ height, width, backgroundColor: '#eef0f4', borderRadius: 8 }, style]} />
 );
 
-// Empty State reutilizable
-const EmptyState: React.FC<{ title: string; subtitle?: string; actionLabel?: string; onAction?: () => void }>
-= ({ title, subtitle, actionLabel, onAction }) => (
-  <View style={styles.empty}>
-    <Text style={styles.emptyTitle}>{title}</Text>
-    {!!subtitle && <Text style={styles.emptySub}>{subtitle}</Text>}
-    {!!actionLabel && !!onAction && (
-      <SmallBtn title={actionLabel} onPress={onAction} style={{ marginTop: 8 }} />
-    )}
+// ---------- Panel Lateral Moderno ----------
+const PanelRow: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, value }) => (
+  <View style={styles.panelRow}>
+    <Text style={styles.panelRowLabel}>{label}</Text>
+    <Text style={styles.panelRowValue} numberOfLines={1}>{value ?? '—'}</Text>
   </View>
 );
+
+const SidePanel: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  pinned: boolean;
+  width?: number;
+  dashboard?: Dashboard | null;
+  navigation: any;
+  userEmail?: string | null;
+  onTogglePolling: () => void;
+  polling: boolean;
+}> = ({ open, onClose, pinned, width = 320, dashboard, navigation, userEmail, onTogglePolling, polling }) => {
+  const slide = useRef(new Animated.Value(pinned ? 0 : -width)).current;
+
+  useEffect(() => {
+    if (pinned) {
+      slide.setValue(0);
+      return;
+    }
+    Animated.timing(slide, {
+      toValue: open ? 0 : -width,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [open, pinned, width, slide]);
+
+  const avatarText = initials(dashboard?.tenantName || userEmail || 'Usuario');
+
+  const PanelContent = (
+    <View style={[styles.panel, { width }]}>
+      {/* Cabecera usuario */}
+      <View style={styles.panelHeaderWrap}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{avatarText}</Text>
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.panelTitleMain} numberOfLines={1}>{dashboard?.tenantName ?? '—'}</Text>
+          <Text style={styles.panelSubtitle} numberOfLines={1}>{userEmail ?? '—'}</Text>
+        </View>
+        <Pressable onPress={() => navigation.navigate('UserScreen')} style={styles.linkChip} accessibilityRole="button">
+          <Text style={styles.linkChipText}>Usuario</Text>
+        </Pressable>
+      </View>
+
+      {/* Tarjeta tenant/plan */}
+      <View style={styles.panelCard}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ fontWeight: '800', color: '#0f172a' }}>Plan</Text>
+          <Text style={[styles.planPill, planColor(dashboard?.plan)]}>{dashboard?.plan ?? '—'}</Text>
+        </View>
+        <Text style={{ color: '#64748b', marginTop: 6 }}>
+          {dashboard?.online ? 'Conectado • ' : 'Sin conexión • '}
+          {dashboard?.lastSync ? `Sync ${timeAgo(dashboard.lastSync)}` : '—'}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+          <SmallBtn title="Administrar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
+          {String(dashboard?.plan || '').toLowerCase() !== 'business' && (
+            <SmallBtn title="Mejorar plan" onPress={() => navigation.navigate('Billing')} />
+          )}
+        </View>
+      </View>
+
+      {/* Métricas rápidas */}
+      <View style={styles.panelBlock}>
+        <Text style={styles.panelBlockTitle}>Resumen</Text>
+        <PanelRow label="Productos" value={String(dashboard?.productsTotal ?? '—')} />
+        <PanelRow label="Clientes" value={String(dashboard?.customersTotal ?? '—')} />
+        <PanelRow label="Almacenes" value={String(dashboard?.warehousesTotal ?? '—')} />
+      </View>
+
+      {/* Navegación */}
+      <View style={styles.panelBlock}>
+        <Text style={styles.panelBlockTitle}>Ir a</Text>
+        <View style={{ gap: 8 }}>
+          <Card onPress={() => navigation.navigate('ProductsList')}><Text style={styles.linkLike}>Catálogo de productos</Text></Card>
+          <Card onPress={() => navigation.navigate('CustomersList')}><Text style={styles.linkLike}>Clientes</Text></Card>
+          <Card onPress={() => navigation.navigate('ReceivablesList')}><Text style={styles.linkLike}>Cuentas por cobrar</Text></Card>
+          <Card onPress={() => navigation.navigate('WarehousesList')}><Text style={styles.linkLike}>Almacenes</Text></Card>
+        </View>
+      </View>
+
+      {/* Preferencias / controles */}
+      <View style={styles.panelBlock}>
+        <Text style={styles.panelBlockTitle}>Controles</Text>
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+          <SmallBtn title={polling ? 'Pausar auto-refresco' : 'Reanudar auto-refresco'} onPress={onTogglePolling} />
+          <SmallBtn title="Refrescar tablero" onPress={() => navigation.navigate('Home')} />
+        </View>
+      </View>
+
+      {/* Footer panel */}
+      <Text style={styles.panelFoot}>Contadito · Panel</Text>
+    </View>
+  );
+
+  if (pinned) {
+    return <View style={[styles.panelPinnedWrap, { width }]}>{PanelContent}</View>;
+  }
+
+  return (
+    <>
+      {open && <Pressable accessibilityRole="button" style={styles.overlay} onPress={onClose} />}
+      <Animated.View style={[styles.panelDrawer, { width, transform: [{ translateX: slide }] }]}>
+        {PanelContent}
+      </Animated.View>
+    </>
+  );
+};
 
 // ---------------- Pantalla ----------------
 export default function HomeScreen({ navigation }: Props) {
   const { logout } = useContext(AuthContext);
+  const auth = useContext(AuthContext) as any;
+  const currentUserEmail: string | null = auth?.user?.email ?? auth?.email ?? null;
+
   const { width } = useWindowDimensions();
-  const isWide = width >= 900;      // 2 columnas (ajustado para mejor respiración)
-  const isXL = width >= 1200;       // grillas más anchas
-  const huge = width >= 1440;       // pantallas muy largas, centramos contenido
+  const isWide = width >= 900;
+  const isXL = width >= 1200;
+  const huge = width >= 1440;
+
+  const panelWidth = Math.min(360, Math.max(300, Math.floor(width * 0.26)));
+  const panelPinned = width >= 1200;
 
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [search, setSearch] = useState('');
   const [loadingFirst, setLoadingFirst] = useState(true);
   const [polling, setPolling] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
+
   const appState = useRef(AppState.currentState);
   const searchTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -195,16 +314,13 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }, []);
 
-  // Primer load
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  // Re-fetch al volver a la pantalla
   useEffect(() => {
     const unsub = navigation.addListener?.('focus', fetchDashboard);
     return unsub;
   }, [navigation, fetchDashboard]);
 
-  // Polling pausado cuando la app va a background
   useEffect(() => {
     const sub = AppState.addEventListener('change', nextState => {
       if (appState.current.match(/inactive|background/) && nextState === 'active') {
@@ -220,13 +336,10 @@ export default function HomeScreen({ navigation }: Props) {
 
   useEffect(() => {
     let interval: NodeJS.Timer | null = null;
-    if (polling) {
-      interval = setInterval(fetchDashboard, 60000); // 60s
-    }
+    if (polling) interval = setInterval(fetchDashboard, 60000);
     return () => { if (interval) clearInterval(interval); };
   }, [polling, fetchDashboard]);
 
-  // Búsqueda (debounce) y acciones
   const goSearch = useCallback(() => {
     const q = search?.trim();
     if (!q) return;
@@ -236,12 +349,9 @@ export default function HomeScreen({ navigation }: Props) {
   const onChangeSearch = useCallback((txt: string) => {
     setSearch(txt);
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      // listo para quick search si se desea en el futuro
-    }, 350);
+    searchTimer.current = setTimeout(() => {}, 350);
   }, []);
 
-  // KPIs HOY (con barras relativas)
   const kpisHoy = useMemo(() => {
     const vals = [
       { label: 'Ventas hoy', value: Number(dashboard?.salesToday ?? 0), fmt: moneyNI },
@@ -252,7 +362,6 @@ export default function HomeScreen({ navigation }: Props) {
     return { items: vals, max };
   }, [dashboard]);
 
-  // KPIs MES
   const kpisMes = useMemo(() => {
     const vals = [
       { label: 'Ventas mes', value: Number(dashboard?.salesMonth ?? 0), fmt: moneyNI },
@@ -269,321 +378,338 @@ export default function HomeScreen({ navigation }: Props) {
     { label: 'Almacenes', value: String(dashboard?.warehousesTotal ?? '—'), to: () => navigation.navigate('WarehousesList') },
   ]), [dashboard, navigation]);
 
-  // ---------------- Render ----------------
-  const isOffline = dashboard && !dashboard.online;
-
-  // Sticky indexes: mantenemos el bloque de búsqueda fijo
-  const sticky: number[] = [1]; // 0=header, 1=search (ajustado abajo)
+  const sticky: number[] = [1];
+  const onTogglePanel = () => setPanelOpen(o => !o);
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: '#f9fafb' }}
-      contentContainerStyle={{ paddingBottom: 28 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchDashboard} />}
-      stickyHeaderIndices={sticky}
-      contentInsetAdjustmentBehavior="automatic"
-    >
-      {/* 0 - Header */}
-      <View style={[styles.headerWrap, huge && styles.headerHugelyCenter]}>
-        <View style={[styles.container, huge && styles.containerMax]}>
-          <View style={styles.headerInner}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.title}>Contadito</Text>
-              <Text style={styles.meta}>
-                Empresa: <Text style={styles.bold}>{dashboard?.tenantName ?? '—'}</Text>
-                {'  '}·{'  '}
-                Plan: <Text style={[styles.bold, styles.planPill, planColor(dashboard?.plan)]}>{dashboard?.plan ?? '—'}</Text>
-              </Text>
-            </View>
-            <View style={styles.headerBtns}>
-              <SmallBtn title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
-              <SmallBtn title="Cerrar sesión" onPress={logout} danger />
-            </View>
-          </View>
-          {dashboard?.lastSync && (
-            <Text style={styles.syncHint}>Sincronizado {timeAgo(dashboard.lastSync)} • {dashboard.lastSync}</Text>
-          )}
-        </View>
-      </View>
+    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      {/* Panel anclado o drawer */}
+      <SidePanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        pinned={panelPinned}
+        width={panelWidth}
+        dashboard={dashboard}
+        navigation={navigation}
+        userEmail={currentUserEmail}
+        polling={polling}
+        onTogglePolling={() => setPolling(p => !p)}
+      />
 
-      {/* 1 - Search + Acciones rápidas (STICKY) */}
-      <View style={[styles.sectionSticky]}> 
-        <View style={[styles.container, huge && styles.containerMax]}>
-          <View style={[styles.searchRow, { alignItems: 'center', gap: 10 }] }>
-            <View style={[styles.searchWrap, { flex: 1 }]}>
-              <TextInput
-                placeholder="Buscar productos, clientes o SKU…"
-                value={search}
-                onChangeText={onChangeSearch}
-                onSubmitEditing={goSearch}
-                style={styles.searchInput}
-                returnKeyType="search"
-                accessibilityLabel="Cuadro de búsqueda global"
-                clearButtonMode="while-editing"
-              />
-              {!!search && (
-                <Pressable onPress={() => setSearch('')} accessibilityLabel="Limpiar búsqueda" style={styles.searchClear}>
-                  <Text style={{ fontSize: 16 }}>×</Text>
-                </Pressable>
-              )}
+      {/* Contenido principal con centrado correcto cuando el panel está anclado */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          { paddingBottom: 28 },
+          panelPinned ? { paddingLeft: panelWidth } : null,
+        ]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchDashboard} />}
+        stickyHeaderIndices={sticky}
+        contentInsetAdjustmentBehavior="automatic"
+      >
+        {/* 0 - Header */}
+        <View style={[styles.headerWrap]}>
+          <View style={[styles.container, styles.containerMax]}>
+            <View style={styles.headerInner}>
+              <View style={styles.headerLeft}>
+                <Text style={styles.title}>Contadito</Text>
+                <Text style={styles.meta}>
+                  Empresa: <Text style={styles.bold}>{dashboard?.tenantName ?? '—'}</Text>
+                  {'  '}·{'  '}
+                  Plan: <Text style={[styles.bold, styles.planPill, planColor(dashboard?.plan)]}>{dashboard?.plan ?? '—'}</Text>
+                </Text>
+              </View>
+              <View style={styles.headerBtns}>
+                {!panelPinned && <SmallBtn title={panelOpen ? 'Cerrar panel' : 'Abrir panel'} onPress={onTogglePanel} />}
+                <SmallBtn title="Usuario" onPress={() => navigation.navigate('UserScreen')} />
+                <SmallBtn title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
+                <SmallBtn title="Cerrar sesión" onPress={logout} danger />
+              </View>
             </View>
-            <SmallBtn title="Buscar" onPress={goSearch} />
-            <SmallBtn title="Limpiar" onPress={() => setSearch('')} />
-            <View style={{ flexDirection: 'row', gap: 8, marginLeft: 'auto' }}>
-              <SmallBtn title="Venta" onPress={() => navigation.navigate('SaleCreate')} />
-              <SmallBtn title="Compra" onPress={() => navigation.navigate('PurchaseCreate')} />
-              <SmallBtn title="Producto" onPress={() => navigation.navigate('ProductForm')} />
-              <SmallBtn title="Cliente" onPress={() => navigation.navigate('CustomerForm')} />
-            </View>
+            {dashboard?.lastSync && (
+              <Text style={styles.syncHint}>Sincronizado {timeAgo(dashboard.lastSync)} • {dashboard.lastSync}</Text>
+            )}
           </View>
         </View>
-      </View>
 
-      {/* MAIN GRID (contenedor centrado en pantallas muy anchas) */}
-      <View style={[styles.container, huge && styles.containerMax]}>
-        <View style={[styles.main, isWide && styles.mainWide]}>
-          {/* Columna izquierda */}
-          <View style={[styles.col, isWide && styles.colLeft]}>
-            {/* KPIs Hoy */}
-            <Section title="Hoy" subtitle="Resultados del día en curso">
-              <View style={[styles.grid, isXL ? styles.cols3 : styles.cols2]}>
-                {loadingFirst
-                  ? [0,1,2].map(i => (
-                      <Card key={`skh-${i}`}>
-                        <Skeleton width={90} />
-                        <Skeleton height={24} style={{ marginVertical: 8, width: 120 }} />
-                        <Skeleton height={8} />
-                      </Card>
-                    ))
-                  : kpisHoy.items.map(k => (
-                      <Card key={k.label}>
-                        <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
-                        <Text style={[styles.kpiValue, isXL && styles.kpiValueXL]}>{k.fmt(k.value)}</Text>
-                        <Bar value={k.value} max={kpisHoy.max} />
-                      </Card>
-                    ))}
+        {/* 1 - Search (STICKY) */}
+        <View style={[styles.sectionSticky]}>
+          <View style={[styles.container, styles.containerMax]}>
+            <View style={[styles.searchRow, { alignItems: 'center', gap: 10 }] }>
+              <View style={[styles.searchWrap, { flex: 1 }]}>
+                <TextInput
+                  placeholder="Buscar productos, clientes o SKU…"
+                  value={search}
+                  onChangeText={onChangeSearch}
+                  onSubmitEditing={goSearch}
+                  style={styles.searchInput}
+                  returnKeyType="search"
+                  accessibilityLabel="Cuadro de búsqueda global"
+                />
+                {!!search && (
+                  <Pressable onPress={() => setSearch('')} accessibilityLabel="Limpiar búsqueda" style={styles.searchClear}>
+                    <Text style={{ fontSize: 16 }}>×</Text>
+                  </Pressable>
+                )}
               </View>
-            </Section>
-
-            {/* KPIs Mes */}
-            <Section title="Este mes" subtitle="Acumulados del mes" >
-              <View style={[styles.grid, isXL ? styles.cols3 : styles.cols2]}>
-                {loadingFirst
-                  ? [0,1,2].map(i => (
-                      <Card key={`skm-${i}`}>
-                        <Skeleton width={100} />
-                        <Skeleton height={24} style={{ marginVertical: 8, width: 140 }} />
-                        <Skeleton height={8} />
-                      </Card>
-                    ))
-                  : kpisMes.items.map(k => (
-                      <Card key={k.label}>
-                        <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
-                        <Text style={[styles.kpiValue, isXL && styles.kpiValueXL]}>{k.fmt(k.value)}</Text>
-                        <Bar value={k.value} max={kpisMes.max} />
-                      </Card>
-                    ))}
+              <SmallBtn title="Buscar" onPress={goSearch} />
+              <SmallBtn title="Limpiar" onPress={() => setSearch('')} />
+              <View style={{ flexDirection: 'row', gap: 8, marginLeft: 'auto' }}>
+                <SmallBtn title="Venta" onPress={() => navigation.navigate('SaleCreate')} />
+                <SmallBtn title="Compra" onPress={() => navigation.navigate('PurchaseCreate')} />
+                <SmallBtn title="Producto" onPress={() => navigation.navigate('ProductForm')} />
+                <SmallBtn title="Cliente" onPress={() => navigation.navigate('CustomerForm')} />
               </View>
-            </Section>
+            </View>
+          </View>
+        </View>
 
-            {/* Totales */}
-            <Section
-              title="Resumen de entidades"
-              right={<View style={styles.row}><SmallBtn title="Productos" onPress={() => navigation.navigate('ProductsList')} /><SmallBtn title="Clientes" onPress={() => navigation.navigate('CustomersList')} /><SmallBtn title="Almacenes" onPress={() => navigation.navigate('WarehousesList')} /></View>}
-            >
-              <View style={[styles.grid, styles.cols3]}>
-                {(loadingFirst ? [0,1,2] : totals).map((k: any, idx: number) => (
-                  <Card key={k?.label ?? `skt-${idx}`} onPress={k?.to}>
-                    {loadingFirst ? (
-                      <>
-                        <Skeleton width={90} />
-                        <Skeleton height={24} style={{ marginTop: 8, width: 60 }} />
-                      </>
-                    ) : (
-                      <>
-                        <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
-                        <Text style={[styles.kpiValue, isXL && styles.kpiValueXL]}>{k.value}</Text>
-                      </>
-                    )}
-                  </Card>
-                ))}
-              </View>
-            </Section>
+        {/* MAIN GRID (siempre centrado con containerMax) */}
+        <View style={[styles.container, styles.containerMax]}>
+          <View style={[styles.main, isWide && styles.mainWide]}>
+            {/* Columna izquierda */}
+            <View style={[styles.col, isWide && styles.colLeft]}>
+              {/* KPIs Hoy */}
+              <Section title="Hoy" subtitle="Resultados del día en curso">
+                <View style={[styles.grid, isXL ? styles.cols3 : styles.cols2]}>
+                  {loadingFirst
+                    ? [0,1,2].map(i => (
+                        <Card key={`skh-${i}`}>
+                          <Skeleton width={90} />
+                          <Skeleton height={24} style={{ marginVertical: 8, width: 120 }} />
+                          <Skeleton height={8} />
+                        </Card>
+                      ))
+                    : kpisHoy.items.map(k => (
+                        <Card key={k.label}>
+                          <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
+                          <Text style={[styles.kpiValue, isXL && styles.kpiValueXL]}>{k.fmt(k.value)}</Text>
+                          <Bar value={k.value} max={kpisHoy.max} />
+                        </Card>
+                      ))}
+                </View>
+              </Section>
 
-            {/* Últimos productos */}
-            <Section title="Últimos productos" right={<SmallBtn title="Ver todos" onPress={() => navigation.navigate('ProductsList')} />}>
-              {loadingFirst ? (
-                <View style={{ gap: 8 }}>
-                  {[...Array(isWide ? 8 : 5)].map((_, i) => (
-                    <Card key={`skp-${i}`} style={{ paddingVertical: 10 }}>
-                      <Skeleton width={200} />
-                      <Skeleton width={120} style={{ marginTop: 6 }} />
+              {/* KPIs Mes */}
+              <Section title="Este mes" subtitle="Acumulados del mes" >
+                <View style={[styles.grid, isXL ? styles.cols3 : styles.cols2]}>
+                  {loadingFirst
+                    ? [0,1,2].map(i => (
+                        <Card key={`skm-${i}`}>
+                          <Skeleton width={100} />
+                          <Skeleton height={24} style={{ marginVertical: 8, width: 140 }} />
+                          <Skeleton height={8} />
+                        </Card>
+                      ))
+                    : kpisMes.items.map(k => (
+                        <Card key={k.label}>
+                          <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
+                          <Text style={[styles.kpiValue, isXL && styles.kpiValueXL]}>{k.fmt(k.value)}</Text>
+                          <Bar value={k.value} max={kpisMes.max} />
+                        </Card>
+                      ))}
+                </View>
+              </Section>
+
+              {/* Totales */}
+              <Section
+                title="Resumen de entidades"
+                right={<View style={styles.row}><SmallBtn title="Productos" onPress={() => navigation.navigate('ProductsList')} /><SmallBtn title="Clientes" onPress={() => navigation.navigate('CustomersList')} /><SmallBtn title="Almacenes" onPress={() => navigation.navigate('WarehousesList')} /></View>}
+              >
+                <View style={[styles.grid, styles.cols3]}>
+                  {(loadingFirst ? [0,1,2] : totals).map((k: any, idx: number) => (
+                    <Card key={k?.label ?? `skt-${idx}`} onPress={k?.to}>
+                      {loadingFirst ? (
+                        <>
+                          <Skeleton width={90} />
+                          <Skeleton height={24} style={{ marginTop: 8, width: 60 }} />
+                        </>
+                      ) : (
+                        <>
+                          <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
+                          <Text style={[styles.kpiValue, isXL && styles.kpiValueXL]}>{k.value}</Text>
+                        </>
+                      )}
                     </Card>
                   ))}
                 </View>
-              ) : !dashboard?.latestProducts?.length ? (
-                <EmptyState title="Aún no tienes productos" subtitle="Crea tu primer producto para empezar a vender" actionLabel="Crear producto" onAction={() => navigation.navigate('ProductForm')} />
-              ) : (
-                <View style={{ gap: 8 }}>
-                  {dashboard.latestProducts.slice(0, isWide ? 8 : 5).map(item => (
-                    <Card key={item.id} style={{ paddingVertical: 10 }} onPress={() => navigation.navigate('ProductForm', { id: item.id })}>
-                      <View style={styles.rowBetween}>
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <Text style={styles.itemTitle} numberOfLines={1}>{item.name}</Text>
-                          <Text style={styles.itemSub}>{item.sku}</Text>
-                        </View>
-                        <SmallBtn title="Editar" onPress={() => navigation.navigate('ProductForm', { id: item.id })} />
-                      </View>
-                    </Card>
-                  ))}
-                </View>
-              )}
-            </Section>
-          </View>
+              </Section>
 
-          {/* Columna derecha */}
-          <View style={[styles.col, isWide && styles.colRight]}>
-            {/* Alertas */}
-            <Section title="Alertas" subtitle="Riesgos y pendientes" right={<View style={styles.row}><SmallBtn title="Refrescar" onPress={fetchDashboard} /></View>}>
-              {/* Stock bajo */}
-              <Card style={{ marginBottom: 12 }}>
-                <View style={styles.rowBetween}>
-                  <Text style={styles.panelTitle}>Stock bajo</Text>
-                  {loadingFirst ? <ActivityIndicator /> : (
-                    <Text style={{ color: '#6b7280' }}>{dashboard?.lowStock?.length ?? 0}</Text>
-                  )}
-                </View>
-
+              {/* Últimos productos */}
+              <Section title="Últimos productos" right={<SmallBtn title="Ver todos" onPress={() => navigation.navigate('ProductsList')} />}>
                 {loadingFirst ? (
                   <View style={{ gap: 8 }}>
-                    {[...Array(4)].map((_, i) => (
-                      <View key={`sks-${i}`} style={styles.rowBetween}>
+                    {[...Array(isWide ? 8 : 5)].map((_, i) => (
+                      <Card key={`skp-${i}`} style={{ paddingVertical: 10 }}>
                         <Skeleton width={200} />
-                        <Skeleton width={70} height={28} />
-                      </View>
+                        <Skeleton width={120} style={{ marginTop: 6 }} />
+                      </Card>
                     ))}
                   </View>
-                ) : !dashboard?.lowStock?.length ? (
-                  <Label muted>Sin alertas de stock.</Label>
+                ) : !dashboard?.latestProducts?.length ? (
+                  <EmptyState title="Aún no tienes productos" subtitle="Crea tu primer producto para empezar a vender" actionLabel="Crear producto" onAction={() => navigation.navigate('ProductForm')} />
                 ) : (
                   <View style={{ gap: 8 }}>
-                    {dashboard.lowStock.slice(0, 6).map((p) => (
-                      <View key={p.id} style={styles.rowBetween}>
-                        <Text numberOfLines={1} style={{ flex: 1, paddingRight: 8 }}>
-                          {p.sku} · {p.name}
-                        </Text>
-                        <SmallBtn title="Ver" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
-                      </View>
+                    {dashboard.latestProducts.slice(0, isWide ? 8 : 5).map(item => (
+                      <Card key={item.id} style={{ paddingVertical: 10 }} onPress={() => navigation.navigate('ProductForm', { id: item.id })}>
+                        <View style={styles.rowBetween}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={styles.itemTitle} numberOfLines={1}>{item.name}</Text>
+                            <Text style={styles.itemSub}>{item.sku}</Text>
+                          </View>
+                          <SmallBtn title="Editar" onPress={() => navigation.navigate('ProductForm', { id: item.id })} />
+                        </View>
+                      </Card>
                     ))}
                   </View>
                 )}
+              </Section>
+            </View>
 
-                <View style={{ marginTop: 8 }}>
-                  <SmallBtn title="Ver todos" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
-                </View>
-              </Card>
+            {/* Columna derecha */}
+            <View style={[styles.col, isWide && styles.colRight]}>
+              {/* Alertas */}
+              <Section title="Alertas" subtitle="Riesgos y pendientes" right={<View style={styles.row}><SmallBtn title="Refrescar" onPress={fetchDashboard} /></View>}>
+                {/* Stock bajo */}
+                <Card style={{ marginBottom: 12 }}>
+                  <View style={styles.rowBetween}>
+                    <Text style={styles.panelTitle}>Stock bajo</Text>
+                    {loadingFirst ? <ActivityIndicator /> : (
+                      <Text style={{ color: '#6b7280' }}>{dashboard?.lowStock?.length ?? 0}</Text>
+                    )}
+                  </View>
 
-              {/* Por cobrar */}
-              <Card>
-                <View style={styles.rowBetween}>
-                  <Text style={styles.panelTitle}>Por cobrar (próx. 7 días)</Text>
-                  {loadingFirst ? <ActivityIndicator /> : (
-                    <Text style={{ color: '#6b7280' }}>{dashboard?.receivablesDueSoon?.length ?? 0}</Text>
+                  {loadingFirst ? (
+                    <View style={{ gap: 8 }}>
+                      {[...Array(4)].map((_, i) => (
+                        <View key={`sks-${i}`} style={styles.rowBetween}>
+                          <Skeleton width={200} />
+                          <Skeleton width={70} height={28} />
+                        </View>
+                      ))}
+                    </View>
+                  ) : !dashboard?.lowStock?.length ? (
+                    <Label muted>Sin alertas de stock.</Label>
+                  ) : (
+                    <View style={{ gap: 8 }}>
+                      {dashboard.lowStock.slice(0, 6).map((p) => (
+                        <View key={p.id} style={styles.rowBetween}>
+                          <Text numberOfLines={1} style={{ flex: 1, paddingRight: 8 }}>
+                            {p.sku} · {p.name}
+                          </Text>
+                          <SmallBtn title="Ver" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
+                        </View>
+                      ))}
+                    </View>
                   )}
-                </View>
 
+                  <View style={{ marginTop: 8 }}>
+                    <SmallBtn title="Ver todos" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
+                  </View>
+                </Card>
+
+                {/* Por cobrar */}
+                <Card>
+                  <View style={styles.rowBetween}>
+                    <Text style={styles.panelTitle}>Por cobrar (próx. 7 días)</Text>
+                    {loadingFirst ? <ActivityIndicator /> : (
+                      <Text style={{ color: '#6b7280' }}>{dashboard?.receivablesDueSoon?.length ?? 0}</Text>
+                    )}
+                  </View>
+
+                  {loadingFirst ? (
+                    <View style={{ gap: 8 }}>
+                      {[...Array(4)].map((_, i) => (
+                        <View key={`skr-${i}`} style={styles.rowBetween}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Skeleton width={230} />
+                            <Skeleton width={120} style={{ marginTop: 6 }} />
+                          </View>
+                          <Skeleton width={60} height={26} />
+                        </View>
+                      ))}
+                    </View>
+                  ) : !dashboard?.receivablesDueSoon?.length ? (
+                    <Label muted>Sin cuentas próximas a vencer.</Label>
+                  ) : (
+                    <View style={{ gap: 8 }}>
+                      {dashboard.receivablesDueSoon.slice(0, 6).map((i) => {
+                        const tag =
+                          i.dueInDays < 0 ? { label: 'Vencido', style: styles.badgeDanger } :
+                          i.dueInDays === 0 ? { label: 'Hoy', style: styles.badgeWarning } :
+                          i.dueInDays <= 3 ? { label: 'Pronto', style: styles.badgeOrange } :
+                          { label: 'Esta semana', style: styles.badgeInfo };
+
+                        return (
+                          <View key={i.invoiceId} style={styles.rowBetween}>
+                            <View style={{ flex: 1, paddingRight: 8 }}>
+                              <Text numberOfLines={1} style={styles.itemTitle}>#{i.number} · {i.customerName ?? 'Cliente'}</Text>
+                              <Text style={styles.itemSub}>vence en {i.dueInDays}d</Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <Badge style={tag.style}>{tag.label}</Badge>
+                              <Badge>{moneyNI(i.dueAmount)}</Badge>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+
+                  <View style={{ marginTop: 8 }}>
+                    <SmallBtn title="Ver cuentas por cobrar" onPress={() => navigation.navigate('ReceivablesList')} />
+                  </View>
+                </Card>
+              </Section>
+
+              {/* Actividad */}
+              <Section title="Actividad reciente" subtitle="Últimos movimientos en el sistema">
                 {loadingFirst ? (
                   <View style={{ gap: 8 }}>
-                    {[...Array(4)].map((_, i) => (
-                      <View key={`skr-${i}`} style={styles.rowBetween}>
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <Skeleton width={230} />
-                          <Skeleton width={120} style={{ marginTop: 6 }} />
-                        </View>
-                        <Skeleton width={60} height={26} />
-                      </View>
+                    {[...Array(isWide ? 10 : 6)].map((_, i) => (
+                      <Card key={`ska-${i}`} style={{ paddingVertical: 10 }}>
+                        <Skeleton width={220} />
+                        <Skeleton width={120} style={{ marginTop: 6 }} />
+                      </Card>
                     ))}
                   </View>
-                ) : !dashboard?.receivablesDueSoon?.length ? (
-                  <Label muted>Sin cuentas próximas a vencer.</Label>
+                ) : !dashboard?.activity?.length ? (
+                  <Label muted>Sin actividad reciente.</Label>
                 ) : (
                   <View style={{ gap: 8 }}>
-                    {dashboard.receivablesDueSoon.slice(0, 6).map((i) => {
-                      const tag =
-                        i.dueInDays < 0 ? { label: 'Vencido', style: styles.badgeDanger } :
-                        i.dueInDays === 0 ? { label: 'Hoy', style: styles.badgeWarning } :
-                        i.dueInDays <= 3 ? { label: 'Pronto', style: styles.badgeOrange } :
-                        { label: 'Esta semana', style: styles.badgeInfo };
-
-                      return (
-                        <View key={i.invoiceId} style={styles.rowBetween}>
-                          <View style={{ flex: 1, paddingRight: 8 }}>
-                            <Text numberOfLines={1} style={styles.itemTitle}>#{i.number} · {i.customerName ?? 'Cliente'}</Text>
-                            <Text style={styles.itemSub}>vence en {i.dueInDays}d</Text>
-                          </View>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Badge style={tag.style}>{tag.label}</Badge>
-                            <Badge>{moneyNI(i.dueAmount)}</Badge>
-                          </View>
-                        </View>
-                      );
-                    })}
+                    {dashboard.activity.slice(0, isWide ? 10 : 6).map((a, idx) => (
+                      <Card key={`${a.kind}-${a.refId}-${idx}`} style={{ paddingVertical: 10 }}>
+                        <Text style={styles.itemTitle} numberOfLines={1}>{a.kind}: {a.title}</Text>
+                        <Text style={styles.itemSub}>{a.whenAt} · {timeAgo(a.whenAt)}</Text>
+                      </Card>
+                    ))}
                   </View>
                 )}
+              </Section>
 
-                <View style={{ marginTop: 8 }}>
-                  <SmallBtn title="Ver cuentas por cobrar" onPress={() => navigation.navigate('ReceivablesList')} />
-                </View>
-              </Card>
-            </Section>
-
-            {/* Actividad */}
-            <Section title="Actividad reciente" subtitle="Últimos movimientos en el sistema">
-              {loadingFirst ? (
-                <View style={{ gap: 8 }}>
-                  {[...Array(isWide ? 10 : 6)].map((_, i) => (
-                    <Card key={`ska-${i}`} style={{ paddingVertical: 10 }}>
-                      <Skeleton width={220} />
-                      <Skeleton width={120} style={{ marginTop: 6 }} />
-                    </Card>
-                  ))}
-                </View>
-              ) : !dashboard?.activity?.length ? (
-                <Label muted>Sin actividad reciente.</Label>
-              ) : (
-                <View style={{ gap: 8 }}>
-                  {dashboard.activity.slice(0, isWide ? 10 : 6).map((a, idx) => (
-                    <Card key={`${a.kind}-${a.refId}-${idx}`} style={{ paddingVertical: 10 }}>
-                      <Text style={styles.itemTitle} numberOfLines={1}>{a.kind}: {a.title}</Text>
-                      <Text style={styles.itemSub}>{a.whenAt} · {timeAgo(a.whenAt)}</Text>
-                    </Card>
-                  ))}
-                </View>
-              )}
-            </Section>
-
-            {/* Estado / Sync */}
-            <Section title="Estado del sistema" subtitle="Conectividad y sincronización">
-              <Card>
-                <View style={styles.statusRow}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={[styles.dot, { backgroundColor: dashboard?.online ? '#10b981' : '#f59e0b' }]} />
-                    <Text style={{ color: dashboard?.online ? '#065f46' : '#92400e', fontWeight: '700' }}>
-                      {dashboard?.online ? 'Conectado' : 'Sin conexión'}
-                    </Text>
+              {/* Estado / Sync */}
+              <Section title="Estado del sistema" subtitle="Conectividad y sincronización">
+                <Card>
+                  <View style={styles.statusRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={[styles.dot, { backgroundColor: dashboard?.online ? '#10b981' : '#f59e0b' }]} />
+                      <Text style={{ color: dashboard?.online ? '#065f46' : '#92400e', fontWeight: '700' }}>
+                        {dashboard?.online ? 'Conectado' : 'Sin conexión'}
+                      </Text>
+                    </View>
+                    <Label muted>Último sync: {dashboard?.lastSync ? `${dashboard.lastSync} · ${timeAgo(dashboard.lastSync)}` : '—'}</Label>
                   </View>
-                  <Label muted>Último sync: {dashboard?.lastSync ? `${dashboard.lastSync} · ${timeAgo(dashboard.lastSync)}` : '—'}</Label>
-                </View>
-                <View style={{ marginTop: 8, flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                  <SmallBtn title="Refrescar tablero" onPress={fetchDashboard} />
-                  <SmallBtn title={polling ? 'Pausar auto-refresco' : 'Reanudar auto-refresco'} onPress={() => setPolling(p => !p)} />
-                </View>
-              </Card>
-            </Section>
+                  <View style={{ marginTop: 8, flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                    <SmallBtn title="Refrescar tablero" onPress={fetchDashboard} />
+                    <SmallBtn title={polling ? 'Pausar auto-refresco' : 'Reanudar auto-refresco'} onPress={() => setPolling(p => !p)} />
+                  </View>
+                </Card>
+              </Section>
+            </View>
           </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -598,27 +724,27 @@ function planColor(plan?: string) {
 
 // ---------------- Estilos ----------------
 const styles = StyleSheet.create({
-  // Layout contenedor para pantallas muy anchas
+  // Layout
   container: { width: '100%', paddingHorizontal: 16 },
   containerMax: { maxWidth: 1280, alignSelf: 'center' },
 
   // Header
   headerWrap: { paddingTop: 12, paddingBottom: 8, backgroundColor: '#ffffff', borderBottomColor: '#eef0f4', borderBottomWidth: 1 },
   headerInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
-  headerHugelyCenter: { },
-  headerLeft: { flex: 1 },
+  headerLeft: { flex: 1, minWidth: 0 },
   headerBtns: { flexDirection: 'row', gap: 8 },
   title: { fontSize: 24, fontWeight: '800', marginBottom: 4, color: '#0f172a' },
-  meta: { color: '#6b7280' },
+  meta: { color: '#64748b' },
   bold: { fontWeight: '700' },
   planPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+
   syncHint: { color: '#94a3b8', marginTop: 4 },
 
   // Sticky search bar
   sectionSticky: { backgroundColor: '#ffffff', borderBottomColor: '#eef0f4', borderBottomWidth: 1, paddingVertical: 8 },
 
   // Secciones
-  section: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderRadius: 0 },
+  section: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
   sectionSub: { fontSize: 12, color: '#6b7280', marginTop: 2 },
@@ -644,7 +770,7 @@ const styles = StyleSheet.create({
   grid: { gap: 12, flexDirection: 'row', flexWrap: 'wrap' },
   cols3: {},
   cols2: {},
-  card: { flexGrow: 1, minWidth: 220, backgroundColor: '#f8f9fb', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#eef0f4', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  card: { flexGrow: 1, minWidth: 220, backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#eef0f4', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
 
   // KPI
   kpiValue: { fontSize: 20, fontWeight: '800', marginBottom: 8, color: '#111827' },
@@ -654,7 +780,7 @@ const styles = StyleSheet.create({
   barTrack: { height: 8, backgroundColor: '#e5e7eb', borderRadius: 6, overflow: 'hidden' },
   barFill: { height: '100%', backgroundColor: '#2563eb' },
 
-  // Paneles
+  // Paneles (cards)
   panelTitle: { fontWeight: '700', marginBottom: 8, color: '#0f172a' },
 
   // Badges base
@@ -667,8 +793,6 @@ const styles = StyleSheet.create({
   // Estado
   statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   dot: { width: 10, height: 10, borderRadius: 999 },
-  bannerOffline: { marginHorizontal: 16, marginTop: 6, padding: 12, borderRadius: 10, backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa' },
-  bannerOfflineText: { color: '#9a3412', fontWeight: '600' },
 
   // Empty
   empty: { padding: 16, alignItems: 'flex-start', gap: 6 },
@@ -681,4 +805,27 @@ const styles = StyleSheet.create({
   smallBtn: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#ffffff' },
   smallBtnDanger: { backgroundColor: '#fff1f2', borderColor: '#fecdd3' },
   smallBtnText: { fontWeight: '700', color: '#111827' },
+
+  // ===== Panel lateral =====
+  panelPinnedWrap: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#ffffff', borderRightColor: '#eef0f4', borderRightWidth: 1, zIndex: 10 },
+  panelDrawer: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#ffffff', borderRightColor: '#eef0f4', borderRightWidth: 1, zIndex: 20 },
+  overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.28)', zIndex: 15 },
+
+  panel: { flex: 1, paddingTop: Platform.OS === 'web' ? 16 : 44, paddingHorizontal: 16, paddingBottom: 16 },
+  panelHeaderWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontWeight: '800', color: '#1e40af' },
+  panelTitleMain: { fontWeight: '800', color: '#0f172a' },
+  panelSubtitle: { color: '#64748b', fontSize: 12, marginTop: 2 },
+
+  panelCard: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#eef0f4', borderRadius: 12, padding: 12, marginBottom: 12 },
+  panelBlock: { marginBottom: 14 },
+  panelBlockTitle: { fontSize: 11, fontWeight: '900', color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.6 },
+  panelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingVertical: 6, borderBottomColor: '#f1f5f9', borderBottomWidth: 1 },
+  panelRowLabel: { color: '#6b7280', width: 120, fontSize: 12 },
+  panelRowValue: { color: '#0f172a', flex: 1, fontWeight: '600' },
+  linkLike: { color: '#1e40af', fontWeight: '700' },
+  linkChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff' },
+  linkChipText: { fontWeight: '800', color: '#0f172a' },
+  panelFoot: { marginTop: 8, color: '#94a3b8', fontSize: 12, textAlign: 'center' },
 });
