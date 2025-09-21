@@ -605,6 +605,9 @@ export default function HomeScreen({ navigation }: Props) {
 
                   <View style={{ marginTop: 8 }}>
                     <SmallBtn title="Ver todos" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
+                    <SmallBtn title="Tienda Online" onPress={() => navigation.navigate('StoreFront', { tenantId: 5 })} />
+
+
                   </View>
                 </Card>
 

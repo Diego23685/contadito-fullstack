@@ -1,3 +1,4 @@
+// src/navigation/RootNavigator.tsx
 import React, { useContext } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthContext } from '../providers/AuthContext';
@@ -18,7 +19,7 @@ import CustomerForm from '../screens/customers/CustomerForm';
 import WarehousesList from '../screens/warehouses/WarehousesList';
 import WarehouseForm from '../screens/warehouses/WarehouseForm';
 
-// Nuevas
+// Extras
 import GlobalSearch from '../screens/GlobalSearch';
 import SaleCreate from '../screens/sales/SaleCreate';
 import PurchaseCreate from '../screens/purchases/PurchaseCreate';
@@ -27,52 +28,72 @@ import ReceivableCreate from '../screens/finance/ReceivableCreate';
 import TenantSwitch from '../screens/tenants/TenantSwitch';
 import UserScreen from '../screens/user/UserScreen';
 
+// Store (público)
+import StoreFront from '../screens/store/StoreFront';
+import ProductDetail from '../screens/store/ProductDetail';
+import CartScreen from '../screens/store/CartScreen';
+import CheckoutScreen from '../screens/store/CheckoutScreen';
+
+// Cart provider
+import { CartProvider } from '../providers/CartContext';
+
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const { token } = useContext(AuthContext);
 
   return (
-    <Stack.Navigator
-      initialRouteName="Splash"           // 👈 primero Splash
-      screenOptions={{ headerBackTitleVisible: false }}
-    >
-      {/* Splash sin header */}
-      <Stack.Screen
-        name="Splash"
-        component={SplashScreen}
-        options={{ headerShown: false }}
-      />
+    <CartProvider>
+      <Stack.Navigator
+        initialRouteName="Splash"
+        screenOptions={{ headerBackTitleVisible: false }}
+      >
+        {/* Splash sin header */}
+        <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
 
-      {!token ? (
-        // ======== AUTH STACK ========
-        <>
-          <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />
-          <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registro' }} />
-        </>
-      ) : (
-        // ======== APP STACK ========
-        <>
-          <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Contadito' }} />
-          <Stack.Screen name="UserScreen" component={UserScreen} options={{ title: 'Usuario' }} />
+        {/* ======= TIENDA PÚBLICA (disponible siempre) ======= */}
+        {/* Alias para mantener navegaciones existentes: navigate('Store', { tenantId }) */}
+        <Stack.Screen name="Store" component={StoreFront} options={{ title: 'Tienda' }} />
+        {/* Nombre “nuevo” si prefieres usarlo en adelante */}
+        <Stack.Screen name="StoreFront" component={StoreFront} options={{ title: 'Tienda' }} />
+        <Stack.Screen name="ProductDetail" component={ProductDetail} options={{ title: 'Producto' }} />
+        <Stack.Screen name="Cart" component={CartScreen} options={{ title: 'Carrito' }} />
+        <Stack.Screen
+          name="Checkout"
+          component={CheckoutScreen}
+          options={{ title: 'Checkout', presentation: 'modal' }}
+        />
 
-          {/* CRUDs */}
-          <Stack.Screen name="ProductsList" component={ProductsList} options={{ title: 'Productos' }} />
-          <Stack.Screen name="ProductForm" component={ProductForm} options={{ title: 'Producto' }} />
-          <Stack.Screen name="CustomersList" component={CustomersList} options={{ title: 'Clientes' }} />
-          <Stack.Screen name="CustomerForm" component={CustomerForm} options={{ title: 'Cliente' }} />
-          <Stack.Screen name="WarehousesList" component={WarehousesList} options={{ title: 'Almacenes' }} />
-          <Stack.Screen name="WarehouseForm" component={WarehouseForm} options={{ title: 'Almacén' }} />
+        {!token ? (
+          // ======= AUTH =======
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />
+            <Stack.Screen name="Register" component={RegisterScreen} options={{ title: 'Registro' }} />
+          </>
+        ) : (
+          // ======= APP PRIVADA =======
+          <>
+            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Contadito' }} />
+            <Stack.Screen name="UserScreen" component={UserScreen} options={{ title: 'Usuario' }} />
 
-          {/* Extras / Finanzas */}
-          <Stack.Screen name="GlobalSearch" component={GlobalSearch} options={{ title: 'Búsqueda' }} />
-          <Stack.Screen name="SaleCreate" component={SaleCreate} options={{ title: 'Nueva venta' }} />
-          <Stack.Screen name="PurchaseCreate" component={PurchaseCreate} options={{ title: 'Nueva compra' }} />
-          <Stack.Screen name="ReceivablesList" component={ReceivablesList} options={{ title: 'Cuentas por cobrar' }} />
-          <Stack.Screen name="ReceivableCreate" component={ReceivableCreate} options={{ title: 'Nueva CxC' }} />
-          <Stack.Screen name="TenantSwitch" component={TenantSwitch} options={{ title: 'Cambiar empresa' }} />
-        </>
-      )}
-    </Stack.Navigator>
+            {/* CRUDs */}
+            <Stack.Screen name="ProductsList" component={ProductsList} options={{ title: 'Productos' }} />
+            <Stack.Screen name="ProductForm" component={ProductForm} options={{ title: 'Producto' }} />
+            <Stack.Screen name="CustomersList" component={CustomersList} options={{ title: 'Clientes' }} />
+            <Stack.Screen name="CustomerForm" component={CustomerForm} options={{ title: 'Cliente' }} />
+            <Stack.Screen name="WarehousesList" component={WarehousesList} options={{ title: 'Almacenes' }} />
+            <Stack.Screen name="WarehouseForm" component={WarehouseForm} options={{ title: 'Almacén' }} />
+
+            {/* Extras */}
+            <Stack.Screen name="GlobalSearch" component={GlobalSearch} options={{ title: 'Búsqueda' }} />
+            <Stack.Screen name="SaleCreate" component={SaleCreate} options={{ title: 'Nueva venta' }} />
+            <Stack.Screen name="PurchaseCreate" component={PurchaseCreate} options={{ title: 'Nueva compra' }} />
+            <Stack.Screen name="ReceivablesList" component={ReceivablesList} options={{ title: 'Cuentas por cobrar' }} />
+            <Stack.Screen name="ReceivableCreate" component={ReceivableCreate} options={{ title: 'Nueva CxC' }} />
+            <Stack.Screen name="TenantSwitch" component={TenantSwitch} options={{ title: 'Cambiar empresa' }} />
+          </>
+        )}
+      </Stack.Navigator>
+    </CartProvider>
   );
 }
