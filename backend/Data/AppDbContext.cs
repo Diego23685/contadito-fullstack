@@ -29,6 +29,11 @@ namespace Contadito.Api.Data
         // Precios especiales (si los usas)
         public DbSet<SpecialPrice> SpecialPrices => Set<SpecialPrice>();
 
+        // ===== Tienda pública =====
+        public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+        public DbSet<StoreOrder> StoreOrders => Set<StoreOrder>();
+        public DbSet<StoreOrderItem> StoreOrderItems => Set<StoreOrderItem>();
+
         protected override void OnModelCreating(ModelBuilder mb)
         {
             mb.Entity<Tenant>().HasKey(t => t.Id);
@@ -48,6 +53,67 @@ namespace Contadito.Api.Data
             mb.Entity<Product>().HasIndex(p => new { p.TenantId, p.Sku }).IsUnique();
             mb.Entity<Product>().Property(p => p.ListPrice).HasColumnType("decimal(18,2)");
             mb.Entity<Product>().Property(p => p.StdCost).HasColumnType("decimal(18,6)");
+            // Índice recomendado para tienda pública
+            mb.Entity<Product>().HasIndex(p => new { p.TenantId, p.IsPublic, p.Name });
+
+            // ProductImage
+            mb.Entity<ProductImage>(e =>
+            {
+                e.ToTable("product_images");
+                e.HasKey(pi => pi.Id);
+                e.Property(pi => pi.Id).HasColumnName("id");
+                e.Property(pi => pi.TenantId).HasColumnName("tenant_id");
+                e.Property(pi => pi.ProductId).HasColumnName("product_id");
+                e.Property(pi => pi.Url).HasColumnName("url").HasMaxLength(512);
+                e.Property(pi => pi.SortOrder).HasColumnName("sort_order");
+                e.Property(pi => pi.CreatedAt).HasColumnName("created_at")
+                    .ValueGeneratedOnAdd()
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                e.HasIndex(pi => new { pi.TenantId, pi.ProductId }).HasDatabaseName("idx_pi_tenant_product");
+            });
+
+            // StoreOrder
+            mb.Entity<StoreOrder>(e =>
+            {
+                e.ToTable("store_orders");
+                e.HasKey(o => o.Id);
+                e.Property(o => o.Id).HasColumnName("id");
+                e.Property(o => o.TenantId).HasColumnName("tenant_id");
+                e.Property(o => o.CustomerId).HasColumnName("customer_id");
+                e.Property(o => o.Number).HasColumnName("number").HasMaxLength(64);
+                e.Property(o => o.Status).HasColumnName("status").HasMaxLength(32);
+                e.Property(o => o.Subtotal).HasColumnName("subtotal").HasColumnType("decimal(18,2)");
+                e.Property(o => o.TaxTotal).HasColumnName("tax_total").HasColumnType("decimal(18,2)");
+                e.Property(o => o.ShippingTotal).HasColumnName("shipping_total").HasColumnType("decimal(18,2)");
+                e.Property(o => o.DiscountTotal).HasColumnName("discount_total").HasColumnType("decimal(18,2)");
+                e.Property(o => o.Total).HasColumnName("total").HasColumnType("decimal(18,2)");
+                e.Property(o => o.Currency).HasColumnName("currency").HasMaxLength(8);
+                e.Property(o => o.PlacedAt).HasColumnName("placed_at");
+                e.Property(o => o.GuestName).HasColumnName("guest_name").HasMaxLength(160);
+                e.Property(o => o.GuestEmail).HasColumnName("guest_email").HasMaxLength(160);
+                e.Property(o => o.GuestPhone).HasColumnName("guest_phone").HasMaxLength(32);
+                e.Property(o => o.ShippingAddress).HasColumnName("shipping_address").HasMaxLength(280);
+
+                e.HasIndex(o => o.TenantId).HasDatabaseName("idx_so_tenant");
+                e.HasIndex(o => o.Number).IsUnique().HasDatabaseName("uq_so_number");
+            });
+
+            // StoreOrderItem
+            mb.Entity<StoreOrderItem>(e =>
+            {
+                e.ToTable("store_order_items");
+                e.HasKey(i => i.Id);
+                e.Property(i => i.Id).HasColumnName("id");
+                e.Property(i => i.TenantId).HasColumnName("tenant_id");
+                e.Property(i => i.OrderId).HasColumnName("order_id");
+                e.Property(i => i.ProductId).HasColumnName("product_id");
+                e.Property(i => i.Quantity).HasColumnName("quantity").HasColumnType("decimal(18,6)");
+                e.Property(i => i.UnitPrice).HasColumnName("unit_price").HasColumnType("decimal(18,2)");
+                e.Property(i => i.Total).HasColumnName("total").HasColumnType("decimal(18,2)");
+
+                e.HasIndex(i => i.OrderId).HasDatabaseName("idx_soi_order");
+                e.HasIndex(i => i.TenantId).HasDatabaseName("idx_soi_tenant");
+            });
 
             // SpecialPrice
             mb.Entity<SpecialPrice>().HasKey(sp => sp.Id);
@@ -104,7 +170,6 @@ namespace Contadito.Api.Data
                     .HasDatabaseName("idx_inv_mov_tenant_wh");
             });
 
-
             // Vistas keyless
             mb.Entity<AvgCostView>().ToView("v_avg_cost").HasNoKey();
             mb.Entity<StockView>().ToView("v_stock").HasNoKey();
@@ -133,12 +198,29 @@ namespace Contadito.Api.Data
                 };
                 db.Users.Add(user);
 
-                db.Products.Add(new Product
+                var prod = new Product
                 {
                     Id = 1, TenantId = t.Id, Sku = "SKU-001", Name = "Producto Demo",
                     Unit = "unidad", TrackStock = true,
                     ListPrice = 250.00m, StdCost = 120.123456m,
+                    // 🔹 Habilitamos en tienda pública
+                    IsPublic = true,
+                    PublicPrice = 260.00m,
+                    PublicSlug = "producto-demo",
+                    PublicDescription = "Este es un producto de demostración visible en la tienda pública.",
                     CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+                };
+                db.Products.Add(prod);
+
+                // Imagen demo
+                db.ProductImages.Add(new ProductImage
+                {
+                    Id = 1,
+                    TenantId = t.Id,
+                    ProductId = prod.Id,
+                    Url = "https://via.placeholder.com/600x400?text=Producto+Demo",
+                    SortOrder = 0,
+                    CreatedAt = DateTime.UtcNow
                 });
 
                 db.Customers.AddRange(

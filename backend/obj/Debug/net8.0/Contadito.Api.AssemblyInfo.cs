@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Contadito.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e6942d983d2530fd748a197299ab1c0671a7de2c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e32356e9524904c3b43d039849d6ac7768abcd07")]
 [assembly: System.Reflection.AssemblyProductAttribute("Contadito.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Contadito.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
