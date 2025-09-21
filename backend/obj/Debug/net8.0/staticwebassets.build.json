@@ -1,11 +1,19 @@
 {
   "Version": 1,
-  "Hash": "NKz2k9Dey4WcW//ZPK84KILYfa1R0UEBFkzSXOViis8=",
+  "Hash": "YCmS+9DMTullpV0umzyIB+af2VLAgCT3SuqZg/MUIPI=",
   "Source": "Contadito.Api",
   "BasePath": "_content/Contadito.Api",
   "Mode": "Default",
   "ManifestType": "Build",
   "ReferencedProjectsConfiguration": [],
-  "DiscoveryPatterns": [],
+  "DiscoveryPatterns": [
+    {
+      "Name": "Contadito.Api\\wwwroot",
+      "Source": "Contadito.Api",
+      "ContentRoot": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\wwwroot\\",
+      "BasePath": "_content/Contadito.Api",
+      "Pattern": "**"
+    }
+  ],
   "Assets": []
 }

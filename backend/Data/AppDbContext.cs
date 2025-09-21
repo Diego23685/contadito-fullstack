@@ -29,10 +29,7 @@ namespace Contadito.Api.Data
         // Precios especiales (si los usas)
         public DbSet<SpecialPrice> SpecialPrices => Set<SpecialPrice>();
 
-        // ===== Tienda pública =====
-        public DbSet<ProductImage> ProductImages => Set<ProductImage>();
-        public DbSet<StoreOrder> StoreOrders => Set<StoreOrder>();
-        public DbSet<StoreOrderItem> StoreOrderItems => Set<StoreOrderItem>();
+        // (Opción A) ❌ Sin ProductImages (se usa images_json en products)
 
         protected override void OnModelCreating(ModelBuilder mb)
         {
@@ -55,22 +52,6 @@ namespace Contadito.Api.Data
             mb.Entity<Product>().Property(p => p.StdCost).HasColumnType("decimal(18,6)");
             // Índice recomendado para tienda pública
             mb.Entity<Product>().HasIndex(p => new { p.TenantId, p.IsPublic, p.Name });
-
-            // ProductImage
-            mb.Entity<ProductImage>(e =>
-            {
-                e.ToTable("product_images");
-                e.HasKey(pi => pi.Id);
-                e.Property(pi => pi.Id).HasColumnName("id");
-                e.Property(pi => pi.TenantId).HasColumnName("tenant_id");
-                e.Property(pi => pi.ProductId).HasColumnName("product_id");
-                e.Property(pi => pi.Url).HasColumnName("url").HasMaxLength(512);
-                e.Property(pi => pi.SortOrder).HasColumnName("sort_order");
-                e.Property(pi => pi.CreatedAt).HasColumnName("created_at")
-                    .ValueGeneratedOnAdd()
-                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
-                e.HasIndex(pi => new { pi.TenantId, pi.ProductId }).HasDatabaseName("idx_pi_tenant_product");
-            });
 
             // StoreOrder
             mb.Entity<StoreOrder>(e =>
@@ -158,7 +139,6 @@ namespace Contadito.Api.Data
 
                 e.Property(x => x.CreatedBy).HasColumnName("created_by");
 
-                // ⚠️ Deja que MySQL ponga CURRENT_TIMESTAMP (y EF no lo envía en el INSERT)
                 e.Property(x => x.CreatedAt)
                     .HasColumnName("created_at")
                     .ValueGeneratedOnAdd()
@@ -203,25 +183,16 @@ namespace Contadito.Api.Data
                     Id = 1, TenantId = t.Id, Sku = "SKU-001", Name = "Producto Demo",
                     Unit = "unidad", TrackStock = true,
                     ListPrice = 250.00m, StdCost = 120.123456m,
-                    // 🔹 Habilitamos en tienda pública
+                    // Tienda pública
                     IsPublic = true,
                     PublicPrice = 260.00m,
                     PublicSlug = "producto-demo",
                     PublicDescription = "Este es un producto de demostración visible en la tienda pública.",
+                    // 🔹 Imagen demo
+                    ImagesJson = "[\"https://via.placeholder.com/600x400?text=Producto+Demo\"]",
                     CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
                 };
                 db.Products.Add(prod);
-
-                // Imagen demo
-                db.ProductImages.Add(new ProductImage
-                {
-                    Id = 1,
-                    TenantId = t.Id,
-                    ProductId = prod.Id,
-                    Url = "https://via.placeholder.com/600x400?text=Producto+Demo",
-                    SortOrder = 0,
-                    CreatedAt = DateTime.UtcNow
-                });
 
                 db.Customers.AddRange(
                     new Customer { Id = 1, TenantId = t.Id, Name = "Juan Pérez",

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -48,7 +49,7 @@ namespace Contadito.Api.Controllers
             }
 
             // 2) Query base: solo productos públicos vivos del tenant
-            var query = _db.Products
+            var queryable = _db.Products
                 .AsNoTracking()
                 .Where(p => p.TenantId == tenantId && p.IsPublic && p.DeletedAt == null);
 
@@ -56,15 +57,17 @@ namespace Contadito.Api.Controllers
             if (!string.IsNullOrWhiteSpace(q))
             {
                 var term = q.Trim();
-                query = query.Where(p =>
+                queryable = queryable.Where(p =>
                     p.Sku.Contains(term) ||
                     p.Name.Contains(term) ||
                     (p.PublicDescription != null && p.PublicDescription.Contains(term)));
             }
 
             // 4) Total y página
-            var total = await query.CountAsync();
-            var items = await query
+            var total = await queryable.CountAsync();
+
+            // Traer images_json y deserializar en memoria (después de ToListAsync)
+            var raw = await queryable
                 .OrderBy(p => p.Name)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -76,10 +79,22 @@ namespace Contadito.Api.Controllers
                     price = p.PublicPrice ?? p.ListPrice,
                     slug = p.PublicSlug,
                     description = p.PublicDescription,
-                    // Si aún no tienes tabla de imágenes, deja un arreglo vacío
-                    images = Array.Empty<string>()
+                    imagesJson = p.ImagesJson // columna JSON (string)
                 })
                 .ToListAsync();
+
+            var items = raw.Select(p => new
+            {
+                p.Id,
+                p.Sku,
+                p.Name,
+                p.price,
+                p.slug,
+                p.description,
+                images = string.IsNullOrWhiteSpace(p.imagesJson)
+                    ? Array.Empty<string>()
+                    : (JsonSerializer.Deserialize<string[]>(p.imagesJson!) ?? Array.Empty<string>())
+            }).ToList();
 
             return Ok(new
             {

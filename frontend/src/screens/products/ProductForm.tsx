@@ -1,9 +1,11 @@
+// src/screens/products/ProductForm.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, TextInput, Switch, Button, Alert, StyleSheet, ScrollView,
-  Pressable, ActivityIndicator, useWindowDimensions, Platform
+  View, Text, TextInput, Switch, Alert, StyleSheet, ScrollView,
+  Pressable, ActivityIndicator, useWindowDimensions, Platform, Image
 } from 'react-native';
 import { useFonts } from 'expo-font';
+import * as ImagePicker from 'expo-image-picker';
 import { api } from '../../api';
 
 type Product = {
@@ -17,6 +19,7 @@ type Product = {
   trackStock?: boolean;
   listPrice?: number;
   stdCost?: number | null;
+  images?: string[]; // 👈 agregado
 };
 
 const currency = (n: number | null | undefined) =>
@@ -44,12 +47,8 @@ const Card: React.FC<{ children: React.ReactNode, style?: any }> = ({ children, 
 const Divider = () => <View style={styles.divider} />;
 
 const ProductForm: React.FC<any> = ({ route, navigation }) => {
-  // Carga de fuente (no bloquea; se aplica cuando lista)
+  // Carga de fuente (no bloquea; se aplica cuando esté lista)
   useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
-  const F = Platform.select({
-    ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
-    default: { fontFamily: 'Apoka' },
-  });
 
   const id: number | undefined = route?.params?.id;
   const isEdit = !!id;
@@ -65,6 +64,9 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
   const [trackStock, setTrackStock] = useState(true);
   const [listPrice, setListPrice] = useState<string>('0');
   const [stdCost, setStdCost] = useState<string>('');
+  const [images, setImages] = useState<string[]>([]);      // 👈 imágenes del producto
+  const [uploadingImg, setUploadingImg] = useState(false); // 👈 estado de subida
+  const [urlToAdd, setUrlToAdd] = useState('');            // 👈 pegar URL directa
 
   const [errors, setErrors] = useState<{ [k: string]: string | null }>({});
 
@@ -102,6 +104,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
         setTrackStock(!!p.trackStock);
         setListPrice(String(p.listPrice ?? 0));
         setStdCost(p.stdCost != null ? String(p.stdCost) : '');
+        setImages(p.images ?? (p as any).Images ?? []); // 👈 cargar imágenes existentes
       } catch (e: any) {
         Alert.alert('Error', String(e?.response?.data || e?.message));
       } finally {
@@ -130,6 +133,65 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
     return Object.keys(next).length === 0;
   };
 
+  // ====== Subida de imagen ======
+  async function uploadImage(uri: string): Promise<string> {
+    const form = new FormData();
+
+    if (Platform.OS === 'web') {
+      const res = await fetch(uri);
+      const blob = await res.blob();
+      form.append('file', blob, `product_${Date.now()}.jpg`);
+    } else {
+      form.append('file', {
+        uri,
+        name: `product_${Date.now()}.jpg`,
+        type: 'image/jpeg',
+      } as any);
+    }
+
+    const { data } = await api.post('/files/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.url ?? data.Location ?? data.path;
+  }
+
+  const pickAndUpload = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Autoriza acceso a tus fotos.');
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+    });
+    if (res.canceled) return;
+
+    const asset = res.assets?.[0];
+    if (!asset?.uri) return;
+
+    try {
+      setUploadingImg(true);
+      const url = await uploadImage(asset.uri);
+      setImages(prev => [url, ...prev]);
+    } catch (e: any) {
+      Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo subir la imagen'));
+    } finally {
+      setUploadingImg(false);
+    }
+  };
+
+  const addByUrl = () => {
+    const u = urlToAdd.trim();
+    if (!u) return;
+    setImages(prev => [u, ...prev]);
+    setUrlToAdd('');
+  };
+
+  const removeImage = (u: string) => {
+    setImages(prev => prev.filter(x => x !== u));
+  };
+
   const save = async () => {
     if (!validate()) return;
     try {
@@ -142,6 +204,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
         trackStock: isService ? false : trackStock,
         listPrice: numPrice,
         stdCost: stdCost === '' ? null : numCost,
+        images, // 👈 guarda imágenes junto al producto
       };
       if (isEdit) {
         await api.put(`/products/${id}`, payload);
@@ -210,7 +273,11 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
           <Pressable onPress={cancel} style={[styles.actionBtn, styles.secondaryBtn]}>
             <Text style={styles.actionTextSecondary}>Cancelar</Text>
           </Pressable>
-          <Pressable onPress={save} disabled={loading || (!isEdit && !sku)} style={[styles.actionBtn, (!loading && (isEdit || !!sku) ? styles.primaryBtn : styles.disabledBtn)]}>
+          <Pressable
+            onPress={save}
+            disabled={loading || (!isEdit && !sku)}
+            style={[styles.actionBtn, (!loading && (isEdit || !!sku) ? styles.primaryBtn : styles.disabledBtn)]}
+          >
             {loading ? <ActivityIndicator /> : <Text style={styles.actionTextPrimary}>Guardar</Text>}
           </Pressable>
         </View>
@@ -229,6 +296,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                 onChangeText={setSku}
                 editable={!isEdit}
                 placeholder="Ej. CAF-001"
+                autoCapitalize="characters"
               />
               {!!errors.sku && <Text style={styles.error}>{errors.sku}</Text>}
               {!isEdit && <HelperText>Identificador único dentro del tenant.</HelperText>}
@@ -312,6 +380,49 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
 
         {/* Columna derecha */}
         <View style={[styles.col, isWide && styles.colRight]}>
+          {/* ===== Imágenes ===== */}
+          <Card>
+            <SectionTitle>Imágenes</SectionTitle>
+
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Pressable onPress={pickAndUpload} style={[styles.actionBtn, styles.secondaryBtn]}>
+                <Text style={styles.actionTextSecondary}>{uploadingImg ? 'Subiendo…' : 'Desde galería'}</Text>
+              </Pressable>
+
+              <View style={{ flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="Pegar URL de imagen"
+                  value={urlToAdd}
+                  onChangeText={setUrlToAdd}
+                  autoCapitalize="none"
+                />
+                <Pressable onPress={addByUrl} style={[styles.actionBtn, styles.primaryBtn]}>
+                  <Text style={styles.actionTextPrimary}>Agregar</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={{ height: 10 }} />
+
+            {images.length === 0 ? (
+              <Text style={styles.helper}>Aún no hay imágenes. Agrega al menos una para mostrarla en la tienda.</Text>
+            ) : (
+              <View style={styles.thumbGrid}>
+                {images.map(u => (
+                  <View key={u} style={styles.thumbItem}>
+                    <View style={styles.thumbBox}>
+                      <Image source={{ uri: u }} style={styles.thumbImg} />
+                    </View>
+                    <Pressable onPress={() => removeImage(u)} style={{ marginTop: 6, alignItems: 'center' }}>
+                      <Text style={styles.removeTxt}>Quitar</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+          </Card>
+
           <Card>
             <SectionTitle>Resumen</SectionTitle>
             <View style={styles.summaryRow}>
@@ -438,7 +549,11 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
             <Pressable onPress={cancel} style={[styles.actionBtn, styles.secondaryBtn]}>
               <Text style={styles.actionTextSecondary}>Cancelar</Text>
             </Pressable>
-            <Pressable onPress={save} disabled={loading || (!isEdit && !sku)} style={[styles.actionBtn, (!loading && (isEdit || !!sku) ? styles.primaryBtn : styles.disabledBtn)]}>
+            <Pressable
+              onPress={save}
+              disabled={loading || (!isEdit && !sku)}
+              style={[styles.actionBtn, (!loading && (isEdit || !!sku) ? styles.primaryBtn : styles.disabledBtn)]}
+            >
               {loading ? <ActivityIndicator /> : <Text style={styles.actionTextPrimary}>Guardar</Text>}
             </Pressable>
           </View>
@@ -539,4 +654,16 @@ const styles = StyleSheet.create({
   disabledBtn: { backgroundColor: '#93C5FD', borderColor: '#93C5FD' },
   actionTextPrimary: { ...F, color: '#FFFFFF', fontWeight: '700' },
   actionTextSecondary: { ...F, color: '#111827', fontWeight: '700' },
+
+  // ===== Imágenes =====
+  thumbGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  thumbItem: { width: 86 },
+  thumbBox: {
+    borderRadius: 10, overflow: 'hidden',
+    borderWidth: 1, borderColor: '#E5E7EB',
+    width: 86, height: 86, backgroundColor: '#F3F4F6'
+  },
+  thumbImg: { width: '100%', height: '100%' },
+  removeTxt: { ...F, color: '#DC2626', fontWeight: '700' },
 });
+

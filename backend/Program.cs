@@ -58,6 +58,13 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+// (opcional, útil en dev) Asegura que exista wwwroot
+var webRoot = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+if (!Directory.Exists(webRoot)) Directory.CreateDirectory(webRoot);
+
+// ⚠️ Necesario para servir /uploads/... (imágenes)
+app.UseStaticFiles();  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 // Pipeline
 app.UseRouting();
 app.UseCors("allow-all");
