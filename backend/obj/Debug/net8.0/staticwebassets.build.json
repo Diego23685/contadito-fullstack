@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "YCmS+9DMTullpV0umzyIB+af2VLAgCT3SuqZg/MUIPI=",
+  "Hash": "A6UcY3nt4R9MVjQZzLUSCtEH+ak7/Ju8SExjaMnIxdc=",
   "Source": "Contadito.Api",
   "BasePath": "_content/Contadito.Api",
   "Mode": "Default",
@@ -15,5 +15,25 @@
       "Pattern": "**"
     }
   ],
-  "Assets": []
+  "Assets": [
+    {
+      "Identity": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\wwwroot\\uploads\\5\\2025\\09\\31fa8250017b4ab68247616b48538530.jpg",
+      "SourceId": "Contadito.Api",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\wwwroot\\",
+      "BasePath": "_content/Contadito.Api",
+      "RelativePath": "uploads/5/2025/09/31fa8250017b4ab68247616b48538530.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\5\\2025\\09\\31fa8250017b4ab68247616b48538530.jpg"
+    }
+  ]
 }

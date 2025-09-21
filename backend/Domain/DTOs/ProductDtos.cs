@@ -8,13 +8,11 @@ namespace Contadito.Api.Domain.DTOs
         public string? Unit { get; set; }
         public bool IsService { get; set; }
         public bool TrackStock { get; set; } = true;
-
-        // Precios/costos
         public decimal ListPrice { get; set; } = 0m;
         public decimal? StdCost { get; set; }
-
-        // 🔹 NUEVO: imágenes
         public List<string>? Images { get; set; }
+        public bool? IsPublic { get; set; }          // opcional
+        public decimal? PublicPrice { get; set; }    // opcional
     }
 
     public class ProductUpdateDto
@@ -24,16 +22,13 @@ namespace Contadito.Api.Domain.DTOs
         public string? Unit { get; set; }
         public bool IsService { get; set; }
         public bool TrackStock { get; set; }
-
-        // Precios/costos
         public decimal ListPrice { get; set; }
         public decimal? StdCost { get; set; }
-
-        // 🔹 NUEVO: imágenes
         public List<string>? Images { get; set; }
+        public bool? IsPublic { get; set; }          // opcional
+        public decimal? PublicPrice { get; set; }    // opcional
     }
 
-    // 🔹 NUEVO: DTO para lecturas (Get)
     public class ProductReadDto
     {
         public long Id { get; set; }

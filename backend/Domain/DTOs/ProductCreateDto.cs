@@ -1,24 +1,32 @@
-namespace Contadito.Api.Domain.DTOs
+// Contadito.Api.Domain.DTOs
+public class ProductCreateDto
 {
-    public class PurchaseCreateDto
-    {
-        public string? SupplierName { get; set; }
-        public string? Currency { get; set; } = "NIO";
+    public string Sku { get; set; } = null!;
+    public string Name { get; set; } = null!;
+    public string? Description { get; set; }
+    public string? Unit { get; set; }
+    public bool IsService { get; set; }
+    public bool TrackStock { get; set; } = true;
+    public decimal ListPrice { get; set; } = 0m;
+    public decimal? StdCost { get; set; }
+    public List<string>? Images { get; set; }
 
-        public decimal? TaxRate { get; set; }       // % default para líneas
-        public decimal? DiscountRate { get; set; }  // %
+    // 👇 opcional si decides exponerlo:
+    public bool? IsPublic { get; set; }   // null => usar default true
+    public decimal? PublicPrice { get; set; } // si null, usar ListPrice
+}
 
-        public List<PurchaseItemDto> Items { get; set; } = new();
-    }
+public class ProductUpdateDto
+{
+    public string Name { get; set; } = null!;
+    public string? Description { get; set; }
+    public string? Unit { get; set; }
+    public bool IsService { get; set; }
+    public bool TrackStock { get; set; }
+    public decimal ListPrice { get; set; }
+    public decimal? StdCost { get; set; }
+    public List<string>? Images { get; set; }
 
-    public class PurchaseItemDto
-    {
-        public long ProductId { get; set; }
-        public string? Description { get; set; }
-        public decimal Quantity { get; set; }
-        public decimal? UnitCost { get; set; }      // si no viene, usamos StdCost o 0
-        public decimal? TaxRate { get; set; }       // % si no, hereda del header
-        public decimal? DiscountRate { get; set; }  // %
-        public long? WarehouseId { get; set; }
-    }
+    public bool? IsPublic { get; set; }         // 👈 nullable
+    public decimal? PublicPrice { get; set; }   // 👈 nullable
 }

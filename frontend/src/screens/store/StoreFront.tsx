@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator,
-  FlatList, RefreshControl, useWindowDimensions, Image, ScrollView,
+  FlatList, RefreshControl, useWindowDimensions, Image,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { api } from '../../api';
@@ -84,6 +84,14 @@ export default function StoreFront() {
     // en modo compacto mantén el grid apretado visualmente (thumbnails más bajos)
     return width >= 1200 ? 4 : width >= 900 ? 3 : width >= 600 ? 2 : 1;
   }, [width]);
+
+  // Layout: padding contenedor + gutter + ancho de tarjeta fijo para grid estable
+  const layout = useMemo(() => {
+    const padding = 12;        // contentContainerStyle padding (x2 laterales)
+    const gutter = 12;         // separación manual entre columnas
+    const cardWidth = Math.max(0, (width - padding * 2 - gutter * (cols - 1)) / cols);
+    return { padding, gutter, cardWidth };
+  }, [width, cols]);
 
   const endpointBase = useMemo(
     () => (isNaN(Number(tenantRef)) ? `/store/${tenantRef}/products` : `/store/${Number(tenantRef)}/products`),
@@ -201,7 +209,6 @@ export default function StoreFront() {
   const syncCartFromUI = useCallback((p: Item, qty: number) => {
     try {
       const q = Math.max(0, qty);
-
       const idNum = Number(p.id);
       if (!Number.isFinite(idNum)) return;
 
@@ -313,7 +320,11 @@ export default function StoreFront() {
   const renderCard = ({ item }: { item: Item }) => {
     const liked = !!likes[item.pid];
     return (
-      <View style={[styles.card, cols > 1 && { flex: 1 }, compact && styles.cardCompact]}>
+      <View style={[
+        styles.card,
+        { width: layout.cardWidth },            // ancho fijo por columna
+        compact && styles.cardCompact
+      ]}>
         <Pressable onPress={() => goDetail(item)} style={{ width: '100%' }} accessibilityLabel={`Ver ${item.name}`}>
           <View style={styles.thumbWrap}>
             {item.images?.[0]
@@ -355,10 +366,29 @@ export default function StoreFront() {
     </View>
   );
 
+  // Skeleton fila (sin gap)
+  const SkeletonRow = () => (
+    <View style={styles.skeletonRow}>
+      {Array.from({ length: cols }).map((_, i) => (
+        <View
+          key={`sk-${i}`}
+          style={[
+            styles.card,
+            { width: layout.cardWidth, marginRight: i < cols - 1 ? layout.gutter : 0 }
+          ]}
+        >
+          <View style={[styles.thumb, { backgroundColor: '#eef2f7' }]} />
+          <View style={{ height: 14, backgroundColor: '#eef2f7', borderRadius: 6, marginTop: 8 }} />
+          <View style={{ height: 12, width: '40%', backgroundColor: '#eef2f7', borderRadius: 6, marginTop: 6 }} />
+        </View>
+      ))}
+    </View>
+  );
+
   return (
     <View style={styles.root}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={styles.header} pointerEvents="box-none">
         <Text style={styles.title}>Tienda</Text>
 
         {/* Controles: búsqueda / orden / vista */}
@@ -412,16 +442,8 @@ export default function StoreFront() {
           </Pressable>
         </View>
       ) : loading && !items.length ? (
-        <View style={{ padding: 12 }}>
-          <View style={[styles.skeletonRow, { marginBottom: 8 }]}>
-            {[...Array(cols)].map((_, i) => (
-              <View key={`sk-${i}`} style={[styles.card, { flex: 1 }]}>
-                <View style={[styles.thumb, { backgroundColor: '#eef2f7' }]} />
-                <View style={{ height: 14, backgroundColor: '#eef2f7', borderRadius: 6, marginTop: 8 }} />
-                <View style={{ height: 12, width: '40%', backgroundColor: '#eef2f7', borderRadius: 6, marginTop: 6 }} />
-              </View>
-            ))}
-          </View>
+        <View style={{ paddingHorizontal: layout.padding, paddingTop: 12, paddingBottom: 12 }}>
+          <SkeletonRow />
         </View>
       ) : !items.length ? (
         <View style={{ padding: 16 }}>
@@ -429,17 +451,22 @@ export default function StoreFront() {
         </View>
       ) : (
         <FlatList
+          key={`grid-${cols}`} // 👈 fuerza re-mount al cambiar columnas
           data={sortedItems}
           renderItem={renderCard}
           keyExtractor={keyExtractor}
           numColumns={cols}
-          contentContainerStyle={{ padding: 12, gap: 12 }}
-          columnWrapperStyle={cols > 1 ? { gap: 12 } : undefined}
+          contentContainerStyle={{ paddingHorizontal: layout.padding, paddingTop: 12, paddingBottom: 12 }}
+          columnWrapperStyle={cols > 1 ? { justifyContent: 'space-between' } : undefined}
+          ItemSeparatorComponent={() => <View style={{ height: layout.gutter }} />}
+          removeClippedSubviews={false}              // 👈 evita clipping en web
+          initialNumToRender={cols * 6}
+          windowSize={5}
           onEndReached={() => !loadingMore && canLoadMore && fetchPage(page + 1, true)}
           onEndReachedThreshold={0.4}
           ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical: 12 }} /> : null}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          extraData={{ shadowQty, sort, compact, likes }}
+          extraData={{ shadowQty, sort, compact, likes, layoutCardWidth: layout.cardWidth }}
         />
       )}
 
@@ -485,8 +512,8 @@ const styles = StyleSheet.create({
   title: { fontWeight: '900', fontSize: 18, color: apoka.text },
   meta: { color: apoka.muted, marginTop: 6, fontSize: 12 },
 
-  rowWrap: { flexDirection: 'row', gap: 8, marginTop: 10, alignItems: 'center' },
-  searchWrap: { position: 'relative', flex: 1 },
+  rowWrap: { flexDirection: 'row', marginTop: 10, alignItems: 'center' },
+  searchWrap: { position: 'relative', flex: 1, marginRight: 8 },
   input: {
     borderWidth: 1, borderColor: apoka.border, borderRadius: 10,
     paddingHorizontal: 12, minHeight: 42, backgroundColor: '#fff', paddingRight: 34
@@ -499,14 +526,15 @@ const styles = StyleSheet.create({
   // Sort
   sortBtn: {
     paddingHorizontal: 12, borderRadius: 10, backgroundColor: apoka.brand,
-    minHeight: 42, alignItems: 'center', justifyContent: 'center'
+    minHeight: 42, alignItems: 'center', justifyContent: 'center', marginRight: 8
   },
   sortText: { color: '#fff', fontWeight: '800' },
   sortMenuCard: {
     position: 'absolute', right: 0, top: 46, zIndex: 10,
     backgroundColor: '#fff', borderWidth: 1, borderColor: apoka.border,
     borderRadius: 12, padding: 6, width: 160,
-    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 6 }, elevation: 3
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 6 }, elevation: 3,
+    maxHeight: 300, overflow: 'hidden'
   },
   sortItem: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10 },
   sortItemActive: { backgroundColor: apoka.brandSoftBg, borderColor: apoka.brandSoftBorder },
@@ -525,7 +553,7 @@ const styles = StyleSheet.create({
   // Cards
   card: {
     backgroundColor: apoka.cardBg, borderWidth: 1, borderColor: apoka.border,
-    borderRadius: 12, padding: 12
+    borderRadius: 12, padding: 12, // ancho se define dinámicamente
   },
   cardCompact: { padding: 10 },
   thumbWrap: { position: 'relative' },
@@ -562,7 +590,7 @@ const styles = StyleSheet.create({
   },
   detailBtnText: { fontWeight: '800', color: apoka.dark },
 
-  skeletonRow: { flexDirection: 'row', gap: 12 },
+  skeletonRow: { flexDirection: 'row' }, // sin gap
 
   // FAB
   fab: {
@@ -581,7 +609,7 @@ const styles = StyleSheet.create({
   checkoutBar: {
     position: 'absolute', left: 12, right: 12, bottom: 12,
     backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: apoka.border,
-    padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10,
+    padding: 12, flexDirection: 'row', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 3
   },
   totalLabel: { color: apoka.muted, fontSize: 12 },

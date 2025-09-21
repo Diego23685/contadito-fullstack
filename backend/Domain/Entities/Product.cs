@@ -28,7 +28,7 @@ namespace Contadito.Api.Domain.Entities
         public decimal? StdCost { get; set; }
 
         // 🔹 Tienda pública
-        [Column("is_public")] public bool IsPublic { get; set; } = false;
+        [Column("is_public")] public bool IsPublic { get; set; } = true;
         [Column("public_price", TypeName = "decimal(18,2)")] public decimal? PublicPrice { get; set; }
         [Column("public_description", TypeName = "TEXT")] public string? PublicDescription { get; set; }
         [MaxLength(160)] [Column("public_slug")] public string? PublicSlug { get; set; }

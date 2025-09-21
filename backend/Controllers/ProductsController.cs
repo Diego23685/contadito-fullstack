@@ -1,4 +1,6 @@
+using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Contadito.Api.Data;
 using Contadito.Api.Domain.DTOs;
 using Contadito.Api.Domain.Entities;
@@ -33,13 +35,16 @@ namespace Contadito.Api.Controllers
 
             if (!string.IsNullOrWhiteSpace(q))
             {
-                var ql = q.Trim();
-                baseQ = baseQ.Where(p => p.Name.Contains(ql) || p.Sku.Contains(ql));
+                var term = q.Trim();
+                var like = $"%{term}%";
+                // LIKE null-safe y más performante con índices
+                baseQ = baseQ.Where(p =>
+                    EF.Functions.Like(p.Name, like) ||
+                    (p.Sku != null && EF.Functions.Like(p.Sku, like)));
             }
 
             var total = await baseQ.CountAsync();
 
-            // Trae lo necesario, incluyendo ImagesJson
             var rows = await baseQ
                 .OrderByDescending(p => p.Id)
                 .Skip((page - 1) * pageSize)
@@ -53,7 +58,6 @@ namespace Contadito.Api.Controllers
                 })
                 .ToListAsync();
 
-            // Deserializa JSON en memoria
             var items = rows.Select(r => new ProductReadDto
             {
                 Id = r.Id,
@@ -75,6 +79,9 @@ namespace Contadito.Api.Controllers
                     : (JsonSerializer.Deserialize<List<string>>(r.ImagesJson) ?? new List<string>())
             }).ToList();
 
+            // expón total en header para el front
+            Response.Headers["X-Total-Count"] = total.ToString();
+
             return Ok(new { total, page, pageSize, items });
         }
 
@@ -89,6 +96,9 @@ namespace Contadito.Api.Controllers
 
             var now = DateTime.UtcNow;
 
+            // slug por defecto desde Name
+            var slug = Slugify(dto.Name);
+
             var p = new Product
             {
                 TenantId = TenantId,
@@ -100,9 +110,16 @@ namespace Contadito.Api.Controllers
                 TrackStock = dto.IsService ? false : dto.TrackStock,
                 ListPrice = dto.ListPrice,
                 StdCost = dto.StdCost,
+
+                // ✅ públicos por defecto
+                IsPublic = true,
+                PublicPrice = dto.ListPrice,                  // default a ListPrice
+                PublicDescription = dto.Description,          // razonable por defecto
+                PublicSlug = slug,                            // slug autogenerado
+
+                ImagesJson = dto.Images != null ? JsonSerializer.Serialize(dto.Images) : null,
                 CreatedAt = now,
-                UpdatedAt = now,
-                ImagesJson = dto.Images != null ? JsonSerializer.Serialize(dto.Images) : null
+                UpdatedAt = now
             };
 
             _db.Products.Add(p);
@@ -157,8 +174,7 @@ namespace Contadito.Api.Controllers
         public async Task<ActionResult> Update([FromRoute] long id, [FromBody] ProductUpdateDto dto)
         {
             var p = await _db.Products
-                .FirstOrDefaultAsync(x =>
-                    x.Id == id && x.TenantId == TenantId && x.DeletedAt == null);
+                .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == TenantId && x.DeletedAt == null);
 
             if (p == null) return NotFound();
 
@@ -170,7 +186,17 @@ namespace Contadito.Api.Controllers
             p.ListPrice = dto.ListPrice;
             p.StdCost = dto.StdCost;
 
-            // 🔹 actualiza imágenes si vienen en el payload
+            // 🔹 mantener públicos; si quieres permitir “ocultar” desde admin,
+            // agrega bool? IsPublic en el DTO y usa: p.IsPublic = dto.IsPublic ?? p.IsPublic;
+            p.IsPublic = true;
+            // Si quieres recalcular public price cuando cambie list price:
+            if (p.PublicPrice == null || p.PublicPrice <= 0)
+                p.PublicPrice = p.ListPrice;
+
+            // Generar slug si no tiene
+            if (string.IsNullOrWhiteSpace(p.PublicSlug))
+                p.PublicSlug = Slugify(p.Name);
+
             if (dto.Images != null)
             {
                 p.ImagesJson = JsonSerializer.Serialize(dto.Images);
@@ -187,14 +213,35 @@ namespace Contadito.Api.Controllers
         public async Task<ActionResult> SoftDelete([FromRoute] long id)
         {
             var p = await _db.Products
-                .FirstOrDefaultAsync(x =>
-                    x.Id == id && x.TenantId == TenantId && x.DeletedAt == null);
+                .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == TenantId && x.DeletedAt == null);
 
             if (p == null) return NotFound();
 
             p.DeletedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
             return NoContent();
+        }
+
+        // Util: slugify simple para URLs limpias
+        private static string Slugify(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+            s = s.Trim().ToLowerInvariant();
+            // quita acentos
+            s = s.Normalize(NormalizationForm.FormD);
+            var sb = new StringBuilder();
+            foreach (var c in s)
+            {
+                var uc = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+                if (uc != System.Globalization.UnicodeCategory.NonSpacingMark)
+                    sb.Append(c);
+            }
+            s = sb.ToString().Normalize(NormalizationForm.FormC);
+            // reemplaza no alfanumérico por guiones
+            s = Regex.Replace(s, @"[^a-z0-9]+", "-").Trim('-');
+            // colapsa múltiples guiones
+            s = Regex.Replace(s, @"-+", "-");
+            return s;
         }
     }
 }
