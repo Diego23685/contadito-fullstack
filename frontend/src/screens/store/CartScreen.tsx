@@ -9,6 +9,7 @@ import {
   Pressable,
   useWindowDimensions,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { useCart } from '../../providers/CartContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -90,7 +91,8 @@ export default function CartScreen() {
   const nav = useNavigation<any>();
   const route = useRoute<any>();
   const { width } = useWindowDimensions();
-  const isWide = width >= 900;
+  const isWide = width >= 900;   // 2 columnas de cards
+  const isXL = width >= 1180;    // layout 2-panel (lista + resumen lateral)
 
   const tenantRef: string = String(
     route.params?.tenantRef ??
@@ -124,25 +126,25 @@ export default function CartScreen() {
   const renderItem = ({ item }: any) => {
     const lineSubtotal = Number(item.qty) * Number(item.price || 0);
     return (
-      <View style={[styles.card, isWide && styles.cardWide]}>
+      <View style={[styles.card, isWide && styles.cardWide, isXL && styles.cardDense]}>
         {/* Imagen */}
         {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.img} />
+          <Image source={{ uri: item.image }} style={[styles.img, isXL && styles.imgXL]} />
         ) : (
-          <View style={[styles.img, styles.imgPh]}>
+          <View style={[styles.img, styles.imgPh, isXL && styles.imgXL]}>
             <Text style={{ ...F, color: '#64748B' }}>🛍️</Text>
           </View>
         )}
 
         {/* Info */}
-        <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
           <Text style={styles.name} numberOfLines={2}>
             {item.name}
           </Text>
           {!!item.variant && (
-            <Text style={styles.badge}>{String(item.variant)}</Text>
+            <Text style={styles.badge} numberOfLines={1}>{String(item.variant)}</Text>
           )}
-          <Text style={styles.sub}>
+          <Text style={styles.sub} numberOfLines={1}>
             {money(item.price)} · <Text style={styles.subStrong}>Subtotal:</Text> {money(lineSubtotal)}
           </Text>
 
@@ -177,6 +179,88 @@ export default function CartScreen() {
 
   const keyExtractor = (it: any) => it.lineId;
 
+  // ==== Vista para pantallas XL: 2 paneles (lista + resumen fijo) ====
+  if (isXL) {
+    return (
+      <View style={styles.root}>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Carrito</Text>
+          <View style={styles.headerStats}>
+            <Text style={styles.hPill}>Ítems: {items.length}</Text>
+            <Text style={[styles.hPill, styles.hTotal]}>{money(Number(total))}</Text>
+          </View>
+        </View>
+
+        <View style={styles.twoPane}>
+          {/* IZQUIERDA: Lista */}
+          <View style={styles.leftPane}>
+            {items.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyEmoji}>🛒</Text>
+                <Text style={styles.emptyTitle}>Tu carrito está vacío</Text>
+                <Text style={styles.emptyText}>
+                  Explora productos y vuelve aquí cuando estés listo para pagar.
+                </Text>
+                <AButton
+                  title="Explorar productos"
+                  variant="secondary"
+                  onPress={() => nav.goBack()}
+                  style={{ marginTop: 8 }}
+                />
+              </View>
+            ) : (
+              <FlatList
+                data={items}
+                keyExtractor={keyExtractor}
+                renderItem={renderItem}
+                ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+                contentContainerStyle={{ paddingVertical: 10, paddingBottom: 24 }}
+                // En XL dejamos 1 columna, tarjetas más anchas/densas
+              />
+            )}
+          </View>
+
+          {/* DERECHA: Resumen (sidebar) */}
+          <View style={styles.rightPane}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Resumen</Text>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Subtotal</Text>
+                <Text style={styles.summaryValue}>{money(Number(total))}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Envío</Text>
+                <Text style={styles.summaryValue}>—</Text>
+              </View>
+              <View style={[styles.summaryRow, { marginTop: 6 }]}>
+                <Text style={styles.summaryTotalLabel}>Total</Text>
+                <Text style={styles.summaryTotalValue}>{money(Number(total))}</Text>
+              </View>
+
+              <View style={{ height: 12 }} />
+              <AButton
+                title="Vaciar carrito"
+                variant="secondary"
+                onPress={() => clear(tenantRef)}
+                style={{ width: '100%' }}
+              />
+              <AButton
+                title="Ir a pagar"
+                onPress={() => nav.navigate('Checkout', { slug: tenantRef })}
+                style={{ width: '100%', marginTop: 8 }}
+              />
+
+              <Text style={styles.summaryHint}>
+                Los productos quedan reservados por 15 minutos al iniciar el pago.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // ==== Vista estándar (angosta / wide) ====
   return (
     <View style={styles.root}>
       <Text style={styles.title}>Carrito</Text>
@@ -208,7 +292,7 @@ export default function CartScreen() {
             extraData={items.map((i: any) => `${i.lineId}:${i.qty}:${i.price}`).join('|')}
           />
 
-          {/* Footer de Checkout fijo */}
+          {/* Footer de Checkout fijo (solo en anchas < XL y móviles) */}
           <View style={styles.checkoutBar}>
             <View style={{ flex: 1 }}>
               <Text style={styles.totalLabel}>Total</Text>
@@ -234,7 +318,17 @@ export default function CartScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BRAND.surfaceTint, padding: 12 },
+
+  // Header
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { ...F, fontSize: 20, color: BRAND.hanBlue },
+  headerStats: { flexDirection: 'row', gap: 6 },
+  hPill: {
+    ...F,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
+    backgroundColor: BRAND.surfaceSubtle, borderWidth: 1, borderColor: BRAND.borderSofter, color: '#0f172a'
+  },
+  hTotal: { backgroundColor: '#EEF2FF', borderColor: '#E0E7FF', color: BRAND.hanBlue },
 
   // Empty state
   emptyWrap: { alignItems: 'center', marginTop: 40, paddingHorizontal: 16 },
@@ -259,8 +353,10 @@ const styles = StyleSheet.create({
     elevation: Platform.select({ android: 3, default: 0 }),
   },
   cardWide: { flex: 1 },
+  cardDense: { padding: 10, gap: 10 },
 
   img: { width: 64, height: 64, borderRadius: 12, backgroundColor: '#FFF' },
+  imgXL: { width: 72, height: 72 },
   imgPh: {
     borderWidth: 1,
     borderColor: BRAND.borderSoft,
@@ -325,7 +421,39 @@ const styles = StyleSheet.create({
   },
   rmTxt: { ...F, color: '#991b1b', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
 
-  // Checkout bar
+  // Layout 2-panel (XL)
+  twoPane: { flex: 1, flexDirection: 'row', gap: 12, marginTop: 10 },
+  leftPane: {
+    flex: 2,
+    backgroundColor: 'transparent',
+  },
+  rightPane: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+
+  // Summary card (sidebar)
+  summaryCard: {
+    backgroundColor: BRAND.surfacePanel,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+    padding: 14,
+    shadowColor: BRAND.hanBlue,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: Platform.select({ android: 3, default: 0 }),
+  },
+  summaryTitle: { ...F, fontSize: 16, color: '#0f172a', marginBottom: 8, fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
+  summaryLabel: { ...F, color: '#6B7280' },
+  summaryValue: { ...F, color: '#0f172a' },
+  summaryTotalLabel: { ...F, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  summaryTotalValue: { ...F, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold', fontSize: 18 },
+  summaryHint: { ...F, color: '#6B7280', fontSize: 12, marginTop: 10 },
+
+  // Checkout bar (solo no-XL)
   checkoutBar: {
     position: 'absolute',
     left: 12,

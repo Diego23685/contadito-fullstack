@@ -166,9 +166,9 @@ export default function CheckoutScreen() {
             <Text style={{ ...F, color: '#64748B' }}>🛍️</Text>
           </View>
         )}
-        <View style={{ flex: 1 }}>
-          <Text style={styles.itemName} numberOfLines={2}>{it.name}</Text>
-          <Text style={styles.itemMeta}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.itemName} numberOfLines={1} ellipsizeMode="tail">{it.name}</Text>
+          <Text style={styles.itemMeta} numberOfLines={1}>
             {money(Number(it.price))} · Cant. {it.qty}
           </Text>
         </View>
@@ -263,10 +263,16 @@ export default function CheckoutScreen() {
         <View style={[styles.rightCol, isWide && styles.rightColWide]}>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Resumen del pedido</Text>
-            <View style={{ gap: 10 }}>
-              {items.map((it: any) => (
-                <SummaryLine key={it.lineId ?? `${it.productId}-${it.qty}-${it.price}`} it={it} />
-              ))}
+
+            {/* Lista compacta y con alto máximo */}
+            <View style={styles.itemsScrollBox}>
+              <ScrollView>
+                <View style={{ gap: 8 }}>
+                  {items.map((it: any) => (
+                    <SummaryLine key={it.lineId ?? `${it.productId}-${it.qty}-${it.price}`} it={it} />
+                  ))}
+                </View>
+              </ScrollView>
             </View>
 
             <View style={styles.totalBox}>
@@ -311,13 +317,6 @@ export default function CheckoutScreen() {
           <AButton title="Confirmar" onPress={submit} disabled={loading} style={{ minWidth: 140 }} />
         </View>
       )}
-
-      {/* Overlay opcional de loading global
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={BRAND.hanBlue} />
-        </View>
-      )} */}
     </View>
   );
 }
@@ -363,9 +362,10 @@ const styles = StyleSheet.create({
   main: { flex: 1, marginTop: 8 },
   mainWide: { flexDirection: 'row', gap: 12 },
   leftCol: { flex: 1 },
-  leftColWide: { flex: 7 },
+  leftColWide: { flex: 7, minWidth: 0 }, // evita estiramientos del form
   rightCol: { marginTop: 12 },
-  rightColWide: { flex: 5, marginTop: 0 },
+  // 👉 sidebar con ancho máximo para que no “se estire”
+  rightColWide: { flex: 5, marginTop: 0, maxWidth: 420, alignSelf: 'flex-start' },
 
   // Tarjetas
   card: {
@@ -398,24 +398,26 @@ const styles = StyleSheet.create({
   helper: { ...F, color: '#6B7280', fontSize: 12, marginTop: 4 },
   error: { ...F, color: '#DC2626', fontSize: 12, marginTop: 4 },
 
-  // Resumen
+  // Resumen (lista compacta y scrolleable)
+  itemsScrollBox: { maxHeight: 320, marginBottom: 8 },
   lineCard: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     padding: 8,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: BRAND.borderSoft,
     backgroundColor: BRAND.surfacePanel,
     alignItems: 'center',
+    minHeight: 56,
   },
-  img: { width: 52, height: 52, borderRadius: 10, backgroundColor: '#fff' },
+  img: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#fff' },
   imgPh: { borderWidth: 1, borderColor: BRAND.borderSoft, alignItems: 'center', justifyContent: 'center' },
   itemName: { ...F, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
-  itemMeta: { ...F, color: '#6B7280', fontSize: 12 },
+  itemMeta: { ...F, color: '#6B7280', fontSize: 11 },
   itemLineTotal: { ...F, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '900' : 'bold' },
 
-  totalBox: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: BRAND.borderSoft, gap: 6 },
+  totalBox: { marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: BRAND.borderSoft, gap: 6 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   muted: { ...F, color: '#6B7280' },
   bold: { ...F, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
