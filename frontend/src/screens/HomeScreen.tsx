@@ -457,6 +457,7 @@ export default function HomeScreen({ navigation }: Props) {
               <View style={styles.headerBtns}>
                 {!panelPinned && <SmallBtn title={panelOpen ? 'Cerrar panel' : 'Abrir panel'} onPress={onTogglePanel} />}
                 <SmallBtn title="Usuario" onPress={() => navigation.navigate('UserScreen')} />
+                <SmallBtn title="Chat IA" onPress={() => navigation.navigate('OllamaChat')} />
                 <SmallBtn title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
                 <SmallBtn title="Cerrar sesión" onPress={logout} danger />
               </View>

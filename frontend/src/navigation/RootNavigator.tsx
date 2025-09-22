@@ -2,6 +2,7 @@
 import React, { useContext } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthContext } from '../providers/AuthContext';
+import OllamaChat from '../screens/OllamaChat';
 
 // Splash
 import SplashScreen from '../screens/SplashScreen';
@@ -83,7 +84,7 @@ export default function RootNavigator() {
             <Stack.Screen name="CustomerForm" component={CustomerForm} options={{ title: 'Cliente' }} />
             <Stack.Screen name="WarehousesList" component={WarehousesList} options={{ title: 'Almacenes' }} />
             <Stack.Screen name="WarehouseForm" component={WarehouseForm} options={{ title: 'Almacén' }} />
-
+            <Stack.Screen name="OllamaChat" component={OllamaChat} options={{ title: 'Chat IA (local)' }} />
             {/* Extras */}
             <Stack.Screen name="GlobalSearch" component={GlobalSearch} options={{ title: 'Búsqueda' }} />
             <Stack.Screen name="SaleCreate" component={SaleCreate} options={{ title: 'Nueva venta' }} />
