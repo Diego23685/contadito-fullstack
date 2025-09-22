@@ -30,7 +30,24 @@ type SortKey = 'name' | 'price';
 const currency = (v?: number) =>
   new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(Number(v ?? 0));
 
-// ===== Tipografía Apoka =====
+// ===== Paleta de marca (alineada con otras pantallas) =====
+const BRAND = {
+  hanBlue: '#4458C7',
+  iris: '#5A44C7',
+  cyanBlueAzure: '#4481C7',
+  maximumBlue: '#44AAC7',
+  darkPastelBlue: '#8690C7',
+  verdigris: '#43BFB7',
+
+  surfaceTint:  '#F3F6FF',
+  surfaceSubtle:'#F8FAFF',
+  surfacePanel: '#FCFDFF',
+  borderSoft:   '#E2E7FF',
+  borderSofter: '#E9EEFF',
+  trackSoft:    '#DEE6FB',
+} as const;
+
+// Tipografía Apoka
 const F = Platform.select({
   ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
   default: { fontFamily: 'Apoka' },
@@ -295,6 +312,7 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
             value={q}
             onChangeText={setQ}
             returnKeyType="search"
+            placeholderTextColor="#9aa7c2"
           />
           {!!q && (
             <Pressable onPress={() => setQ('')} style={styles.clearBtn}>
@@ -362,60 +380,92 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
 export default ProductsList;
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F6F7F9' },
+  screen: { flex: 1, backgroundColor: BRAND.surfaceTint },
 
-  toolbarContainer: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10, backgroundColor: '#F6F7F9' },
+  // Toolbar
+  toolbarContainer: {
+    paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10,
+    backgroundColor: BRAND.surfaceTint
+  },
   toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   toolbarLabel: { color: '#6B7280', ...F },
 
-  searchBox: { position: 'relative', flex: 1 },
-  searchInput: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, height: 42, backgroundColor: '#fff', ...F },
-  clearBtn: { position: 'absolute', right: 8, top: 6, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: '#EEF2FF' },
+  searchBox: { position: 'relative', flex: 1, minWidth: 220 },
+  searchInput: {
+    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10,
+    paddingHorizontal: 12, height: 42, backgroundColor: BRAND.surfacePanel, ...F
+  },
+  clearBtn: {
+    position: 'absolute', right: 8, top: 6, width: 30, height: 30,
+    alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: BRAND.surfaceSubtle
+  },
   clearText: { fontSize: 18, lineHeight: 18, color: '#374151', ...F },
 
-  chip: { borderWidth: 1, borderColor: '#D1D5DB', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFF' },
-  chipActive: { backgroundColor: '#0EA5E922', borderColor: '#0EA5E9' },
+  // Chips
+  chip: {
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999,
+    backgroundColor: BRAND.surfacePanel
+  },
+  chipActive: { backgroundColor: '#E9EDFF', borderColor: BRAND.hanBlue },
   chipText: { color: '#374151', fontWeight: '600', ...F },
-  chipTextActive: { color: '#0369A1', ...F },
+  chipTextActive: { color: BRAND.hanBlue, ...F },
 
-  btn: { minWidth: 96, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0EA5E9' },
-  btnSecondary: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB' },
-  btnDanger: { backgroundColor: '#DC2626' },
+  // Botones
+  btn: {
+    minWidth: 96, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 10, backgroundColor: BRAND.hanBlue, borderWidth: 1, borderColor: BRAND.hanBlue
+  },
+  btnSecondary: { backgroundColor: BRAND.surfacePanel, borderWidth: 1, borderColor: BRAND.borderSoft },
+  btnDanger: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
   btnDisabled: { opacity: 0.6 },
+
   btnText: { color: '#FFFFFF', fontWeight: '700', ...F },
   btnTextPrimary: { color: '#FFFFFF', fontWeight: '700', ...F },
   btnTextSecondary: { color: '#111827', fontWeight: '700', ...F },
 
+  // Card
   card: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BRAND.surfacePanel,
     borderRadius: 12,
     padding: 14,
-    borderWidth: 1, borderColor: '#E5E7EB',
-    shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
-    elevation: Platform.select({ android: 2, default: 0 }),
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    borderTopWidth: 3, borderTopColor: BRAND.hanBlue,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+    elevation: Platform.select({ android: 3, default: 0 }),
   },
 
-  itemTitle: { fontSize: 16, fontWeight: '700', color: '#111827', ...F },
+  // Texto
+  itemTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a', ...F },
   itemSub: { color: '#6B7280', fontSize: 12, ...F },
-  price: { fontSize: 16, fontWeight: '800', color: '#111827', ...F },
+  price: { fontSize: 16, fontWeight: '800', color: BRAND.hanBlue, ...F },
 
+  // Badges
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   badgeText: { fontSize: 11, color: '#fff', fontWeight: '700', ...F },
-  badgeInfo: { backgroundColor: '#3B82F6' },
+  badgeInfo: { backgroundColor: BRAND.cyanBlueAzure },
   badgeSuccess: { backgroundColor: '#10B981' },
-  badgeNeutral: { backgroundColor: '#6B7280' },
+  badgeNeutral: { backgroundColor: BRAND.darkPastelBlue },
   badgeDanger: { backgroundColor: '#DC2626' },
 
-  rowItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderBottomColor: '#E5E7EB', borderBottomWidth: 1, backgroundColor: '#fff', gap: 10 },
-  rowTitle: { fontSize: 16, fontWeight: '600', color: '#111827', ...F },
+  // Lista en filas
+  rowItem: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 12, paddingHorizontal: 12,
+    borderBottomColor: BRAND.borderSoft, borderBottomWidth: 1,
+    backgroundColor: BRAND.surfacePanel, gap: 10
+  },
+  rowTitle: { fontSize: 16, fontWeight: '600', color: '#0f172a', ...F },
   rowSub: { color: '#6B7280', fontSize: 12, ...F },
 
+  // Meta / Empty
   metaRow: { paddingHorizontal: 12, paddingBottom: 8 },
   metaText: { color: '#6B7280', ...F },
 
   empty: { alignItems: 'center', padding: 32, gap: 6 },
   emptyEmoji: { fontSize: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', ...F },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#0f172a', ...F },
   emptyText: { color: '#6B7280', textAlign: 'center', ...F },
 });

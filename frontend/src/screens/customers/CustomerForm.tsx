@@ -25,6 +25,23 @@ const F = Platform.select({
   default: { fontFamily: 'Apoka' },
 });
 
+// ===== Paleta de marca (igual a Home) =====
+const BRAND = {
+  hanBlue: '#4458C7',        // Han Blue
+  iris: '#5A44C7',           // Iris
+  cyanBlueAzure: '#4481C7',  // Cyan-Blue Azure
+  maximumBlue: '#44AAC7',    // Maximum Blue
+  darkPastelBlue: '#8690C7', // Dark Pastel Blue
+  verdigris: '#43BFB7',      // Verdigris
+
+  surfaceTint:  '#F3F6FF',
+  surfaceSubtle:'#F8FAFF',
+  surfacePanel: '#FCFDFF',
+  borderSoft:   '#E2E7FF',
+  borderSofter: '#E9EEFF',
+  trackSoft:    '#DEE6FB',
+} as const;
+
 const Helper = ({ children }: { children: React.ReactNode }) => (
   <Text style={styles.helper}>{children}</Text>
 );
@@ -45,10 +62,7 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
 
-  // Cargamos Apoka (no bloquea render)
-  useFonts({
-    Apoka: require('../../../assets/fonts/apokaregular.ttf'),
-  });
+  useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
@@ -154,6 +168,7 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
                 value={name}
                 onChangeText={setName}
                 placeholder="Ej. María Pérez"
+                placeholderTextColor="#9aa7c2"
               />
               {!!errors.name && <Text style={styles.error}>{errors.name}</Text>}
             </View>
@@ -168,6 +183,7 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
                   value={email}
                   onChangeText={setEmail}
                   placeholder="persona@correo.com"
+                  placeholderTextColor="#9aa7c2"
                 />
                 {!!errors.email && <Text style={styles.error}>{errors.email}</Text>}
                 <Helper>Usa un correo válido para enviar facturas o recibos.</Helper>
@@ -180,6 +196,7 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
                   placeholder="+505 8888 8888"
+                  placeholderTextColor="#9aa7c2"
                 />
                 {!!errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
                 <Helper>Formato recomendado: +código país + número.</Helper>
@@ -194,6 +211,7 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
                   value={documentId}
                   onChangeText={setDocumentId}
                   placeholder="Cédula / RUC / NIT"
+                  placeholderTextColor="#9aa7c2"
                 />
                 <Helper>Identificación fiscal o personal.</Helper>
               </View>
@@ -205,6 +223,7 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
                   value={address}
                   onChangeText={setAddress}
                   placeholder="Barrio, calle, referencia"
+                  placeholderTextColor="#9aa7c2"
                 />
               </View>
             </View>
@@ -217,6 +236,7 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
               style={[styles.input, { height: 100, textAlignVertical: 'top', marginTop: 8 }]}
               multiline
               placeholder="Opcional"
+              placeholderTextColor="#9aa7c2"
               onChangeText={() => {}}
               editable
             />
@@ -285,16 +305,17 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
 
 export default CustomerForm;
 
+// ===== Estilos con la paleta de marca =====
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F6F7F9' },
+  screen: { flex: 1, backgroundColor: BRAND.surfaceTint },
 
   topBar: {
     paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+    backgroundColor: BRAND.surfacePanel,
+    borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
   },
-  title: { ...F, fontSize: 20 },
+  title: { ...F, fontSize: 20, color: BRAND.hanBlue },
 
   container: { padding: 16, gap: 16 },
   containerWide: { maxWidth: 1200, alignSelf: 'center', width: '100%', flexDirection: 'row' },
@@ -303,43 +324,48 @@ const styles = StyleSheet.create({
   colRight: { flex: 1, minWidth: 320 },
 
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BRAND.surfacePanel,
     borderRadius: 12,
     padding: 16,
-    borderWidth: 1, borderColor: '#E5E7EB',
-    shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    // ribete/acento superior
+    borderTopWidth: 3, borderTopColor: BRAND.hanBlue,
+    // sombra azulada sutil
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+    elevation: 3,
   },
 
-  sectionTitle: { ...F, fontSize: 16, marginBottom: 8 },
+  sectionTitle: { ...F, fontSize: 16, marginBottom: 8, color: BRAND.darkPastelBlue },
 
   field: { marginBottom: 12 },
   label: { ...F, marginBottom: 6, color: '#111827' },
+
   input: {
     ...F,
-    borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, minHeight: 42,
-    backgroundColor: '#fff', fontSize: 16
+    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10, paddingHorizontal: 12, minHeight: 42,
+    backgroundColor: BRAND.surfaceSubtle, fontSize: 16,
   },
 
   row2: { flexDirection: 'row', gap: 12 },
   flex1: { flex: 1 },
 
-  helper: { ...F, marginTop: 6, color: '#6B7280', fontSize: 12 },
+  helper: { ...F, marginTop: 6, color: '#6b7280', fontSize: 12 },
   error: { ...F, marginTop: 6, color: '#B91C1C', fontSize: 12 },
 
-  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 },
+  divider: { height: 1, backgroundColor: BRAND.borderSofter, marginVertical: 12 },
 
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   summaryLabel: { ...F, color: '#6B7280' },
-  summaryValue: { ...F },
+  summaryValue: { ...F, color: '#0f172a' },
 
   tip: { ...F, color: '#374151', marginBottom: 6 },
 
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: '#E5E7EB',
-    shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: -2 }, shadowRadius: 8,
+    backgroundColor: BRAND.surfacePanel,
+    borderTopWidth: 1, borderTopColor: BRAND.borderSoft,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06, shadowOffset: { width: 0, height: -2 }, shadowRadius: 8,
     elevation: 6,
   },
   footerInner: {
@@ -354,9 +380,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10,
     borderRadius: 10, borderWidth: 1
   },
-  primaryBtn: { backgroundColor: '#0EA5E9', borderColor: '#0EA5E9' },
-  secondaryBtn: { backgroundColor: '#FFFFFF', borderColor: '#D1D5DB' },
-  disabledBtn: { backgroundColor: '#93C5FD', borderColor: '#93C5FD' },
+  primaryBtn: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
+  secondaryBtn: { backgroundColor: BRAND.surfacePanel, borderColor: BRAND.borderSoft },
+  disabledBtn: { backgroundColor: BRAND.darkPastelBlue, borderColor: BRAND.darkPastelBlue },
   actionTextPrimary: { ...F, color: '#FFFFFF' },
   actionTextSecondary: { ...F, color: '#111827' },
 });

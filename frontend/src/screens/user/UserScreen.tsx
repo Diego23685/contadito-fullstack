@@ -1,4 +1,4 @@
-// src/screens/UserScreen.tsx — perfil responsive con tema Apoka + fuente Apoka integrada como en Receivables
+// src/screens/UserScreen.tsx — perfil responsive con tema BRAND + fuente Apoka integrada
 import React, { useContext, useMemo, useState } from 'react';
 import {
   View,
@@ -17,26 +17,31 @@ import { useFonts } from 'expo-font';
 import { AuthContext } from '../../providers/AuthContext';
 import { api } from '../../api';
 
-/** ====== Apoka Theme (colores) ====== */
-const apoka = {
-  brand: '#7C3AED',
-  brandStrong: '#5B21B6',
-  brandSoftBg: '#F5F3FF',
-  brandSoftBorder: '#DDD6FE',
-  text: '#0F172A',
-  muted: '#64748B',
-  border: '#E5E7EB',
-  card: '#FFFFFF',
-  canvas: '#F8FAFC',
-  successBg: '#ECFDF5',
-  successText: '#065F46',
-  warnBg: '#FEF3C7',
-  warnText: '#92400E',
-  dangerBg: '#FEE2E2',
-  dangerText: '#991B1B',
-};
+/** ====== BRAND (unificado con el resto) ====== */
+const BRAND = {
+  hanBlue: '#4458C7',
+  iris: '#5A44C7',
+  cyanBlueAzure: '#4481C7',
+  maximumBlue: '#44AAC7',
+  darkPastelBlue: '#8690C7',
+  verdigris: '#43BFB7',
 
-/** ====== Fuente Apoka (igual que Receivables) ====== */
+  surfaceTint:  '#F3F6FF',
+  surfaceSubtle:'#F8FAFF',
+  surfacePanel: '#FCFDFF',
+  borderSoft:   '#E2E7FF',
+  borderSofter: '#E9EEFF',
+  trackSoft:    '#DEE6FB',
+
+  // Tonos auxiliares para pills/estados
+  text:   '#0F172A',
+  muted:  '#6B7280',
+  successBg: '#ECFDF5', successText: '#065F46', successBorder: '#D1FAE5',
+  warnBg:    '#FEF3C7', warnText:    '#92400E', warnBorder:    '#FDE68A',
+  dangerBg:  '#FEE2E2', dangerText:  '#991B1B', dangerBorder:  '#FCA5A5',
+} as const;
+
+/** ====== Fuente Apoka ====== */
 const F = Platform.select({
   ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
   default: { fontFamily: 'Apoka' },
@@ -144,9 +149,9 @@ function StatTile({ label, value, hint, pill, pillTone = 'neutral' as 'neutral' 
 
 function planPillStyle(plan?: string) {
   const p = (plan || '').toLowerCase();
-  if (p === 'pro')      return { backgroundColor: apoka.brandSoftBg, color: apoka.brandStrong, borderColor: apoka.brandSoftBorder };
-  if (p === 'business') return { backgroundColor: apoka.successBg, color: apoka.successText, borderColor: '#D1FAE5' };
-  return { backgroundColor: '#F3F4F6', color: apoka.text, borderColor: apoka.border };
+  if (p === 'pro')      return { backgroundColor: '#E9EDFF', color: BRAND.hanBlue, borderColor: BRAND.borderSoft };
+  if (p === 'business') return { backgroundColor: BRAND.successBg, color: BRAND.successText, borderColor: BRAND.successBorder };
+  return { backgroundColor: '#F3F4F6', color: BRAND.text, borderColor: BRAND.borderSoft };
 }
 
 export default function UserScreen({ navigation }: any) {
@@ -154,7 +159,7 @@ export default function UserScreen({ navigation }: any) {
   const maxW = 1200;
   const cols = width >= 1200 ? 3 : width >= 860 ? 2 : 1;
 
-  // Cargar fuente Apoka (igual que en Receivables)
+  // Fuente Apoka
   useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
   const auth = useContext(AuthContext) as any;
@@ -227,7 +232,7 @@ export default function UserScreen({ navigation }: any) {
   const sessionTone = expired ? 'bad' : minutesLeft <= 15 ? 'warn' : 'ok';
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: apoka.canvas }}>
+    <ScrollView style={{ flex: 1, backgroundColor: BRAND.surfaceTint }}>
       <View style={[styles.centerWrap, { maxWidth: maxW }]}>
 
         {/* ===== Hero Perfil ===== */}
@@ -241,12 +246,12 @@ export default function UserScreen({ navigation }: any) {
               <Text style={styles.heroSub}>{email}</Text>
 
               <View style={styles.heroBadges}>
-                <Text style={[styles.metaPill, { backgroundColor: apoka.brandSoftBg, color: apoka.brandStrong, borderColor: apoka.brandSoftBorder }]}>
+                <Text style={[styles.metaPill, { backgroundColor: '#E9EDFF', color: BRAND.hanBlue, borderColor: BRAND.borderSoft }]}>
                   Rol: {String(role)}
                 </Text>
                 <Text style={[styles.metaPill, planStyle]}>Plan: {String(plan)}</Text>
                 {jwtTenantId ? (
-                  <Text style={[styles.metaPill, { backgroundColor: '#ECFEFF', color: '#155E75', borderColor: '#BAE6FD' }]}>
+                  <Text style={[styles.metaPill, { backgroundColor: BRAND.surfaceSubtle, color: '#155E75', borderColor: '#BAE6FD' }]}>
                     Tenant ID: {jwtTenantId}
                   </Text>
                 ) : null}
@@ -288,7 +293,7 @@ export default function UserScreen({ navigation }: any) {
 
           {loading ? (
             <View style={{ paddingVertical: 12, alignItems: 'center' }}>
-              <ActivityIndicator />
+              <ActivityIndicator color={BRAND.hanBlue} />
             </View>
           ) : (
             <>
@@ -375,23 +380,23 @@ const styles = StyleSheet.create({
 
   // Hero
   heroCard: {
-    backgroundColor: apoka.card,
-    borderWidth: 1, borderColor: apoka.brandSoftBorder,
+    backgroundColor: BRAND.surfacePanel,
+    borderWidth: 1, borderColor: BRAND.borderSoft,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   heroLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatar: {
     width: 64, height: 64, borderRadius: 9999,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: apoka.brandSoftBg, borderWidth: 1, borderColor: apoka.brandSoftBorder,
+    backgroundColor: '#E9EDFF', borderWidth: 1, borderColor: BRAND.borderSoft,
   },
-  avatarTxt: { ...F, fontSize: 22, color: apoka.brandStrong },
-  heroTitle: { ...F, fontSize: 20, color: apoka.text },
-  heroSub: { ...F, color: apoka.muted, marginTop: 2 },
+  avatarTxt: { ...F, fontSize: 22, color: BRAND.hanBlue },
+  heroTitle: { ...F, fontSize: 20, color: BRAND.text, fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
+  heroSub: { ...F, color: BRAND.muted, marginTop: 2 },
   heroBadges: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
   metaPill: {
     ...F,
@@ -404,15 +409,15 @@ const styles = StyleSheet.create({
   chipBase: {
     paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1,
   },
-  chip: { backgroundColor: apoka.card, borderColor: apoka.border },
-  chipBrand: { backgroundColor: apoka.brand, borderColor: apoka.brand },
-  chipDanger: { backgroundColor: apoka.dangerBg, borderColor: '#FCA5A5' },
-  chipGhost: { backgroundColor: apoka.card, borderColor: apoka.border },
+  chip: { backgroundColor: BRAND.surfacePanel, borderColor: BRAND.borderSoft },
+  chipBrand: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
+  chipDanger: { backgroundColor: BRAND.dangerBg, borderColor: BRAND.dangerBorder },
+  chipGhost: { backgroundColor: BRAND.surfacePanel, borderColor: BRAND.borderSoft },
   chipTextBase: { ...F },
-  chipText: { ...F, color: apoka.text },
-  chipTextBrand: { ...F, color: '#fff' },
-  chipTextDanger: { ...F, color: apoka.dangerText },
-  chipTextGhost: { ...F, color: apoka.text },
+  chipText: { ...F, color: BRAND.text },
+  chipTextBrand: { ...F, color: '#fff', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  chipTextDanger: { ...F, color: BRAND.dangerText, fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
+  chipTextGhost: { ...F, color: BRAND.text },
 
   // Grid de stats
   grid: { gap: 12, flexDirection: 'row', flexWrap: 'wrap' },
@@ -421,47 +426,47 @@ const styles = StyleSheet.create({
   cols3: {},
   card: {
     flexGrow: 1, minWidth: 260,
-    backgroundColor: apoka.card,
+    backgroundColor: BRAND.surfacePanel,
     borderRadius: 12,
     padding: 12,
-    borderWidth: 1, borderColor: apoka.border,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
   statTile: { gap: 6 },
-  statLabel: { ...F, color: apoka.muted, fontSize: 12 },
-  statValue: { ...F, color: apoka.text, fontSize: 18 },
+  statLabel: { ...F, color: BRAND.muted, fontSize: 12 },
+  statValue: { ...F, color: BRAND.text, fontSize: 18 },
   statPill: {
     ...F,
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
     alignSelf: 'flex-start', overflow: 'hidden', borderWidth: 1,
   },
-  pillNeutral: { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0', color: apoka.text },
-  pillOk: { backgroundColor: apoka.successBg, borderColor: '#D1FAE5', color: apoka.successText },
-  pillWarn: { backgroundColor: apoka.warnBg, borderColor: '#FDE68A', color: apoka.warnText },
-  pillBad: { backgroundColor: apoka.dangerBg, borderColor: '#FCA5A5', color: apoka.dangerText },
-  statHint: { ...F, color: apoka.muted, fontSize: 12 },
+  pillNeutral: { backgroundColor: '#F1F5F9', borderColor: '#E2E8F0', color: BRAND.text },
+  pillOk:      { backgroundColor: BRAND.successBg, borderColor: BRAND.successBorder, color: BRAND.successText },
+  pillWarn:    { backgroundColor: BRAND.warnBg,    borderColor: BRAND.warnBorder,    color: BRAND.warnText },
+  pillBad:     { backgroundColor: BRAND.dangerBg,  borderColor: BRAND.dangerBorder,  color: BRAND.dangerText },
+  statHint: { ...F, color: BRAND.muted, fontSize: 12 },
 
   // Bloques
   block: { marginTop: 12 },
   blockHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  blockTitle: { ...F, color: apoka.text, fontSize: 16 },
-  subTitle: { ...F, color: apoka.text, fontSize: 13, marginBottom: 4 },
+  blockTitle: { ...F, color: BRAND.text, fontSize: 16, fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
+  subTitle: { ...F, color: BRAND.text, fontSize: 13, marginBottom: 4 },
 
   // Rows
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  rowLabel: { ...F, width: 140, color: apoka.muted, fontSize: 12 },
-  rowValue: { ...F, flex: 1, color: apoka.text },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: BRAND.borderSofter },
+  rowLabel: { ...F, width: 140, color: BRAND.muted, fontSize: 12 },
+  rowValue: { ...F, flex: 1, color: BRAND.text },
 
   // Preferencias
   prefRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
-  prefLabel: { ...F, color: apoka.text },
-  prefHint: { ...F, color: apoka.muted, fontSize: 12, marginTop: 6 },
+  prefLabel: { ...F, color: BRAND.text },
+  prefHint: { ...F, color: BRAND.muted, fontSize: 12, marginTop: 6 },
   pillBtn: {
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999,
-    borderWidth: 1, borderColor: apoka.border, backgroundColor: apoka.card
+    borderWidth: 1, borderColor: BRAND.borderSoft, backgroundColor: BRAND.surfacePanel
   },
-  pillBtnActive: { backgroundColor: apoka.brand, borderColor: apoka.brand },
-  pillBtnTxt: { ...F, color: apoka.text },
-  pillBtnTxtActive: { ...F, color: '#fff' },
+  pillBtnActive: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
+  pillBtnTxt: { ...F, color: BRAND.text },
+  pillBtnTxtActive: { ...F, color: '#fff', fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
 });

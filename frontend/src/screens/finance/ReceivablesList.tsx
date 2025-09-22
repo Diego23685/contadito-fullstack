@@ -21,6 +21,24 @@ type Item = {
 type Resp = { total: number; page: number; pageSize: number; items: Item[] };
 
 const PAGE_SIZE = 12;
+
+// ===== Paleta consistente con Home =====
+const BRAND = {
+  hanBlue: '#4458C7',
+  iris: '#5A44C7',
+  cyanBlueAzure: '#4481C7',
+  maximumBlue: '#44AAC7',
+  darkPastelBlue: '#8690C7',
+  verdigris: '#43BFB7',
+
+  surfaceTint:  '#F3F6FF',
+  surfaceSubtle:'#F8FAFF',
+  surfacePanel: '#FCFDFF',
+  borderSoft:   '#E2E7FF',
+  borderSofter: '#E9EEFF',
+  trackSoft:    '#DEE6FB',
+} as const;
+
 const F = Platform.select({
   ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
   default: { fontFamily: 'Apoka' },
@@ -51,7 +69,7 @@ const ActionBtn = ({ title, onPress, kind = 'primary', disabled }: {
     <Text style={[
       styles.btnText,
       kind === 'secondary' && styles.btnTextSecondary,
-      kind === 'danger' && styles.btnTextPrimary
+      (kind === 'primary' || kind === 'danger') && styles.btnTextPrimary
     ]}>{title}</Text>
   </Pressable>
 );
@@ -66,7 +84,6 @@ export default function ReceivablesList({ navigation }: any) {
   const columns = width >= 1280 ? 2 : 1;
   const isGrid = columns > 1;
 
-  // Carga la fuente (no bloquea render; se aplicará al estar lista)
   useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
   const [q, setQ] = useState('');
@@ -80,7 +97,7 @@ export default function ReceivablesList({ navigation }: any) {
 
   const debounceRef = useRef<any>(null);
 
-  // Pago modal
+  // Pago modal (simple overlay)
   const [payOpen, setPayOpen] = useState(false);
   const [payTarget, setPayTarget] = useState<Item | null>(null);
   const [payAmount, setPayAmount] = useState<string>('');
@@ -207,9 +224,9 @@ export default function ReceivablesList({ navigation }: any) {
             <Text style={styles.itemSub}>
               Total {currency(item.total)} · Pagado {currency(item.paid)} · Pendiente {currency(item.dueAmount)}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <Text style={[styles.badge, tag.style]}>{tag.label}</Text>
-              <Text style={styles.badge}>{currency(item.total)} total</Text>
+              <Text style={[styles.badge, styles.badgeOutline]}>{currency(item.total)} total</Text>
               {item.dueAmount > 0 && (
                 <ActionBtn title="Abonar" kind="secondary" onPress={() => openPay(item)} />
               )}
@@ -246,6 +263,7 @@ export default function ReceivablesList({ navigation }: any) {
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar por número o cliente"
+            placeholderTextColor="#9aa7c2"
             value={q}
             onChangeText={setQ}
             returnKeyType="search"
@@ -261,9 +279,9 @@ export default function ReceivablesList({ navigation }: any) {
       </View>
 
       <View style={styles.toolbarRow}>
-        <Chip label="Todas"     active={status === 'all'}    onPress={() => setStatus('all')} />
+        <Chip label="Todas"      active={status === 'all'}    onPress={() => setStatus('all')} />
         <Chip label="Pendientes" active={status === 'issued'} onPress={() => setStatus('issued')} />
-        <Chip label="Pagadas"   active={status === 'paid'}   onPress={() => setStatus('paid')} />
+        <Chip label="Pagadas"    active={status === 'paid'}   onPress={() => setStatus('paid')} />
       </View>
 
       <View style={styles.metaRow}>
@@ -321,6 +339,7 @@ export default function ReceivablesList({ navigation }: any) {
               onChangeText={setPayAmount}
               keyboardType="decimal-pad"
               placeholder="0.00"
+              placeholderTextColor="#9aa7c2"
               style={styles.input}
             />
 
@@ -342,12 +361,25 @@ export default function ReceivablesList({ navigation }: any) {
             <View style={{ height: 8 }} />
 
             <Text style={styles.muted}>Referencia (opcional)</Text>
-            <TextInput value={payRef} onChangeText={setPayRef} placeholder="#transacción, nota..." style={styles.input} />
+            <TextInput
+              value={payRef}
+              onChangeText={setPayRef}
+              placeholder="#transacción, nota..."
+              placeholderTextColor="#9aa7c2"
+              style={styles.input}
+            />
 
             <View style={{ height: 8 }} />
 
             <Text style={styles.muted}>Notas (opcional)</Text>
-            <TextInput value={payNotes} onChangeText={setPayNotes} placeholder="comentarios" style={[styles.input, { height: 80, textAlignVertical: 'top' }]} multiline />
+            <TextInput
+              value={payNotes}
+              onChangeText={setPayNotes}
+              placeholder="comentarios"
+              placeholderTextColor="#9aa7c2"
+              style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+              multiline
+            />
 
             <View style={{ height: 14 }} />
 
@@ -363,60 +395,118 @@ export default function ReceivablesList({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F6F7F9' },
+  // Fondo app con tinte de marca
+  screen: { flex: 1, backgroundColor: BRAND.surfaceTint },
 
-  toolbarContainer: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10, backgroundColor: '#F6F7F9' },
+  // Toolbar / header de la lista
+  toolbarContainer: {
+    paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10,
+    backgroundColor: BRAND.surfaceTint
+  },
   toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   toolbarLabel: { ...F, color: '#6B7280' },
 
+  // Buscador
   searchBox: { position: 'relative', flex: 1 },
-  searchInput: { ...F, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, height: 42, backgroundColor: '#fff' },
-  clearBtn: { position: 'absolute', right: 8, top: 6, width: 30, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: '#EEF2FF' },
+  searchInput: {
+    ...F,
+    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10,
+    paddingHorizontal: 12, height: 42,
+    backgroundColor: BRAND.surfacePanel, fontSize: 16
+  },
+  clearBtn: {
+    position: 'absolute', right: 8, top: 6, width: 30, height: 30,
+    alignItems: 'center', justifyContent: 'center',
+    borderRadius: 15, backgroundColor: BRAND.surfaceSubtle,
+    borderWidth: 1, borderColor: BRAND.borderSoft
+  },
   clearText: { ...F, fontSize: 18, lineHeight: 18, color: '#374151' },
 
-  chip: { borderWidth: 1, borderColor: '#D1D5DB', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: '#FFF' },
-  chipActive: { backgroundColor: '#0EA5E922', borderColor: '#0EA5E9' },
+  // Chips de filtro
+  chip: {
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    paddingHorizontal: 10, paddingVertical: 7,
+    borderRadius: 999, backgroundColor: BRAND.surfacePanel
+  },
+  chipActive: { backgroundColor: '#E9EDFF', borderColor: BRAND.hanBlue },
   chipText: { ...F, color: '#374151' },
-  chipTextActive: { ...F, color: '#0369A1' },
+  chipTextActive: { ...F, color: BRAND.hanBlue },
 
-  btn: { minWidth: 96, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0EA5E9' },
-  btnSecondary: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB' },
-  btnDanger: { backgroundColor: '#DC2626' },
+  // Botones
+  btn: {
+    minWidth: 96, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10,
+    backgroundColor: BRAND.hanBlue, borderWidth: 1, borderColor: BRAND.hanBlue
+  },
+  btnSecondary: { backgroundColor: BRAND.surfacePanel, borderWidth: 1, borderColor: BRAND.borderSoft },
+  btnDanger: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
   btnDisabled: { opacity: 0.6 },
-
-  btnText: { ...F, color: '#FFFFFF' },
+  btnText: { ...F },
   btnTextPrimary: { ...F, color: '#FFFFFF' },
   btnTextSecondary: { ...F, color: '#111827' },
 
-  card: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: Platform.select({ android: 2, default: 0 }) },
+  // Cards / items
+  card: {
+    flex: 1,
+    backgroundColor: BRAND.surfacePanel,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
+    elevation: Platform.select({ android: 2, default: 0 }),
+  },
 
-  itemTitle: { ...F, fontSize: 16, color: '#111827' },
+  itemTitle: { ...F, fontSize: 16, color: '#0f172a' },
   itemSub: { ...F, color: '#6B7280', fontSize: 12 },
 
-  badge: { ...F, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: '#eef2ff', color: '#1e3a8a' },
-  badgeInfo: { backgroundColor: '#dbeafe', color: '#1e40af' },
-  badgeSuccess: { backgroundColor: '#dcfce7', color: '#14532d' },
-  badgeNeutral: { backgroundColor: '#e5e7eb', color: '#1f2937' },
-  badgeDanger: { backgroundColor: '#fee2e2', color: '#991b1b' },
-  badgeWarning: { backgroundColor: '#fef3c7', color: '#92400e' },
-  badgeOrange: { backgroundColor: '#ffedd5', color: '#9a3412' },
+  // Badges coherentes con marca
+  badge: { ...F, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: '#E9EDFF', color: BRAND.hanBlue },
+  badgeOutline: { backgroundColor: BRAND.surfacePanel, borderWidth: 1, borderColor: BRAND.borderSoft, color: '#374151' },
+  badgeInfo:    { backgroundColor: '#DBEAFE', color: '#1E40AF' },
+  badgeSuccess: { backgroundColor: '#DCFCE7', color: '#065F46' },
+  badgeNeutral: { backgroundColor: '#E5E7EB', color: '#1F2937' },
+  badgeDanger:  { backgroundColor: '#FEE2E2', color: '#991B1B' },
+  badgeWarning: { backgroundColor: '#FEF3C7', color: '#92400E' },
+  badgeOrange:  { backgroundColor: '#FFEDD5', color: '#9A3412' },
 
-  rowItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, borderBottomColor: '#E5E7EB', borderBottomWidth: 1, backgroundColor: '#fff', gap: 10 },
-  rowTitle: { ...F, fontSize: 16, color: '#111827' },
+  // Lista en modo fila
+  rowItem: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 12, paddingHorizontal: 12,
+    borderBottomColor: BRAND.borderSofter, borderBottomWidth: 1,
+    backgroundColor: BRAND.surfacePanel, gap: 10
+  },
+  rowTitle: { ...F, fontSize: 16, color: '#0f172a' },
   rowSub: { ...F, color: '#6B7280', fontSize: 12 },
 
+  // Meta / vacío
   metaRow: { paddingHorizontal: 12, paddingBottom: 8 },
   metaText: { ...F, color: '#6B7280' },
 
   empty: { alignItems: 'center', padding: 32, gap: 6 },
   emptyEmoji: { ...F, fontSize: 40 },
-  emptyTitle: { ...F, fontSize: 18 },
+  emptyTitle: { ...F, fontSize: 18, color: '#0f172a' },
   emptyText: { ...F, color: '#6B7280', textAlign: 'center' },
 
-  input: { ...F, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, minHeight: 42, backgroundColor: '#fff' },
+  // Inputs generales (modal)
+  input: {
+    ...F,
+    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10,
+    paddingHorizontal: 12, minHeight: 42, backgroundColor: BRAND.surfacePanel, fontSize: 16
+  },
 
-  modalWrap: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center', padding: 16 },
-  modalCard: { width: '100%', maxWidth: 520, backgroundColor: '#fff', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#E5E7EB' },
-  modalTitle: { ...F, fontSize: 18 },
+  // Modal de pago
+  modalWrap: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.28)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  modalCard: {
+    width: '100%', maxWidth: 520,
+    backgroundColor: BRAND.surfacePanel,
+    borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    borderTopWidth: 3, borderTopColor: BRAND.hanBlue,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+    elevation: Platform.select({ android: 3, default: 0 }),
+  },
+  modalTitle: { ...F, fontSize: 18, color: BRAND.hanBlue },
   muted: { ...F, color: '#6B7280' },
 });

@@ -19,8 +19,24 @@ type Product = {
   trackStock?: boolean;
   listPrice?: number;
   stdCost?: number | null;
-  images?: string[]; // 👈 agregado
+  images?: string[];
 };
+
+const BRAND = {
+  hanBlue: '#4458C7',
+  iris: '#5A44C7',
+  cyanBlueAzure: '#4481C7',
+  maximumBlue: '#44AAC7',
+  darkPastelBlue: '#8690C7',
+  verdigris: '#43BFB7',
+
+  surfaceTint:  '#F3F6FF',
+  surfaceSubtle:'#F8FAFF',
+  surfacePanel: '#FCFDFF',
+  borderSoft:   '#E2E7FF',
+  borderSofter: '#E9EEFF',
+  trackSoft:    '#DEE6FB',
+} as const;
 
 const currency = (n: number | null | undefined) =>
   new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(Number(n || 0));
@@ -47,7 +63,6 @@ const Card: React.FC<{ children: React.ReactNode, style?: any }> = ({ children, 
 const Divider = () => <View style={styles.divider} />;
 
 const ProductForm: React.FC<any> = ({ route, navigation }) => {
-  // Carga de fuente (no bloquea; se aplica cuando esté lista)
   useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
   const id: number | undefined = route?.params?.id;
@@ -64,20 +79,25 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
   const [trackStock, setTrackStock] = useState(true);
   const [listPrice, setListPrice] = useState<string>('0');
   const [stdCost, setStdCost] = useState<string>('');
-  const [images, setImages] = useState<string[]>([]);      // 👈 imágenes del producto
-  const [uploadingImg, setUploadingImg] = useState(false); // 👈 estado de subida
-  const [urlToAdd, setUrlToAdd] = useState('');            // 👈 pegar URL directa
+  const [images, setImages] = useState<string[]>([]);
+  const [uploadingImg, setUploadingImg] = useState(false);
+  const [urlToAdd, setUrlToAdd] = useState('');
 
   const [errors, setErrors] = useState<{ [k: string]: string | null }>({});
 
-  // ---- Inventario (UI) ----
+  // ===== Inventario (UI edición) =====
   const [currentQty, setCurrentQty] = useState<number | null>(null);
-  const [inQty, setInQty] = useState<string>('');           // cantidad para IN
-  const [inCost, setInCost] = useState<string>('');         // costo unitario para IN
-  const [outQty, setOutQty] = useState<string>('');         // cantidad para OUT
-  const [warehouseId, setWarehouseId] = useState<string>(''); // opcional
+  const [inQty, setInQty] = useState<string>('');
+  const [inCost, setInCost] = useState<string>('');
+  const [outQty, setOutQty] = useState<string>('');
+  const [warehouseId, setWarehouseId] = useState<string>('');
   const [reference, setReference] = useState<string>('');
   const [reason, setReason] = useState<string>('');
+
+  // ===== Stock inicial (solo al crear) =====
+  const [initQty, setInitQty] = useState<string>('');               // cantidad inicial
+  const [initCost, setInitCost] = useState<string>('');             // costo unitario opcional
+  const [initWarehouseId, setInitWarehouseId] = useState<string>(''); // almacén opcional
 
   const fetchStock = async () => {
     if (!isEdit) return;
@@ -104,7 +124,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
         setTrackStock(!!p.trackStock);
         setListPrice(String(p.listPrice ?? 0));
         setStdCost(p.stdCost != null ? String(p.stdCost) : '');
-        setImages(p.images ?? (p as any).Images ?? []); // 👈 cargar imágenes existentes
+        setImages(p.images ?? (p as any).Images ?? []);
       } catch (e: any) {
         Alert.alert('Error', String(e?.response?.data || e?.message));
       } finally {
@@ -113,10 +133,8 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
     })();
   }, [id, isEdit]);
 
-  // trae stock al entrar / cuando cambie id
   useEffect(() => { fetchStock(); }, [id]);
 
-  // Cálculos precios
   const numPrice = useMemo(() => toNumber(listPrice), [listPrice]);
   const numCost = useMemo(() => (stdCost === '' ? null : toNumber(stdCost)), [stdCost]);
   const profit = useMemo(() => (numCost == null ? null : numPrice - numCost), [numPrice, numCost]);
@@ -127,8 +145,17 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
     if (!isEdit && !sku.trim()) next.sku = 'Requerido al crear';
     if (!name.trim()) next.name = 'Requerido';
     if (numPrice < 0) next.listPrice = 'No puede ser negativo';
-    if (stdCost !== '' && (numCost ?? 0) < 0) next.stdCost = 'No puede ser negativo';
+    const nc = stdCost === '' ? null : numCost;
+    if (stdCost !== '' && (nc ?? 0) < 0) next.stdCost = 'No puede ser negativo';
     if (isService && trackStock) next.trackStock = 'Un servicio no debería controlar stock';
+
+    // Validación básica de stock inicial (opcional)
+    if (!isEdit && !isService && trackStock && initQty.trim() !== '') {
+      const q0 = toNumber(initQty);
+      if (!(q0 > 0)) next.initQty = 'La cantidad inicial debe ser mayor a 0';
+      if (initCost.trim() !== '' && toNumber(initCost) < 0) next.initCost = 'Costo inválido';
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -204,14 +231,39 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
         trackStock: isService ? false : trackStock,
         listPrice: numPrice,
         stdCost: stdCost === '' ? null : numCost,
-        images, // 👈 guarda imágenes junto al producto
+        images,
       };
+
       if (isEdit) {
         await api.put(`/products/${id}`, payload);
-      } else {
-        await api.post('/products', { sku: sku.trim(), ...payload });
+        Alert.alert('Listo', 'Producto actualizado');
+        navigation.goBack();
+        return;
       }
-      Alert.alert('Listo', 'Producto guardado');
+
+      // --- Creación ---
+      const { data: created } = await api.post('/products', { sku: sku.trim(), ...payload });
+      const newId: number = created?.id ?? created?.Id ?? created?.productId ?? created?.ProductId;
+      const productId = Number(newId);
+
+      // --- Stock inicial (si aplica) ---
+      const qty0 = initQty.trim() === '' ? 0 : toNumber(initQty);
+      if (!isService && trackStock && Number.isFinite(productId) && qty0 > 0) {
+        const cost0 = initCost.trim() === '' ? null : toNumber(initCost);
+        const wh = initWarehouseId.trim() === '' ? null : Number(initWarehouseId);
+
+        await api.post('/inventory/adjust', {
+          productId,
+          warehouseId: wh,
+          movementType: 'in',
+          quantity: qty0,
+          unitCost: cost0,
+          reference: 'STOCK-INICIAL',
+          reason: 'Carga inicial de inventario',
+        });
+      }
+
+      Alert.alert('Listo', 'Producto creado');
       navigation.goBack();
     } catch (e: any) {
       Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo guardar'));
@@ -222,7 +274,6 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
 
   const cancel = () => navigation.goBack();
 
-  // ---- Handlers de inventario ----
   const postAdjust = async (movementType: 'in' | 'out') => {
     if (!isEdit) {
       Alert.alert('Primero guarda el producto', 'Debes crear el producto antes de ajustar inventario.');
@@ -251,7 +302,6 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
       await api.post('/inventory/adjust', payload);
       Alert.alert('Listo', movementType === 'in' ? 'Entrada registrada' : 'Salida registrada');
 
-      // limpiar inputs y refrescar stock
       if (movementType === 'in') {
         setInQty('');
         setInCost('');
@@ -296,6 +346,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                 onChangeText={setSku}
                 editable={!isEdit}
                 placeholder="Ej. CAF-001"
+                placeholderTextColor="#9aa7c2"
                 autoCapitalize="characters"
               />
               {!!errors.sku && <Text style={styles.error}>{errors.sku}</Text>}
@@ -304,14 +355,26 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
 
             <View style={styles.field}>
               <Text style={styles.label}>Nombre</Text>
-              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Ej. Café molido 500g" />
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Ej. Café molido 500g"
+                placeholderTextColor="#9aa7c2"
+              />
               {!!errors.name && <Text style={styles.error}>{errors.name}</Text>}
             </View>
 
             <View style={styles.row2}>
               <View style={[styles.field, styles.flex1]}>
                 <Text style={styles.label}>Unidad</Text>
-                <TextInput style={styles.input} value={unit} onChangeText={setUnit} placeholder="unidad, kg, lt" />
+                <TextInput
+                  style={styles.input}
+                  value={unit}
+                  onChangeText={setUnit}
+                  placeholder="unidad, kg, lt"
+                  placeholderTextColor="#9aa7c2"
+                />
               </View>
               <View style={[styles.field, styles.flex1]}>
                 <Text style={styles.label}>Tipo</Text>
@@ -335,6 +398,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                 onChangeText={setDescription}
                 multiline
                 placeholder="Notas, especificaciones, etc."
+                placeholderTextColor="#9aa7c2"
               />
             </View>
 
@@ -358,6 +422,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                   value={listPrice}
                   onChangeText={setListPrice}
                   placeholder="0.00"
+                  placeholderTextColor="#9aa7c2"
                 />
                 {!!errors.listPrice && <Text style={styles.error}>{errors.listPrice}</Text>}
                 <HelperText>Precio público sugerido.</HelperText>
@@ -370,6 +435,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                   placeholder="Opcional"
                   value={stdCost}
                   onChangeText={setStdCost}
+                  placeholderTextColor="#9aa7c2"
                 />
                 {!!errors.stdCost && <Text style={styles.error}>{errors.stdCost}</Text>}
                 <HelperText>Úsalo para estimar margen. Déjalo vacío si no aplica.</HelperText>
@@ -384,20 +450,28 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
           <Card>
             <SectionTitle>Imágenes</SectionTitle>
 
+            {/* Controles: permiten wrap sin desbordar */}
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <Pressable onPress={pickAndUpload} style={[styles.actionBtn, styles.secondaryBtn]}>
+              <Pressable
+                onPress={pickAndUpload}
+                style={[styles.actionBtn, styles.secondaryBtn]}
+              >
                 <Text style={styles.actionTextSecondary}>{uploadingImg ? 'Subiendo…' : 'Desde galería'}</Text>
               </Pressable>
 
-              <View style={{ flex: 1, flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+              <View style={styles.urlRow}>
                 <TextInput
-                  style={[styles.input, { flex: 1 }]}
+                  style={[styles.input, styles.urlInput]}
                   placeholder="Pegar URL de imagen"
+                  placeholderTextColor="#9aa7c2"
                   value={urlToAdd}
                   onChangeText={setUrlToAdd}
                   autoCapitalize="none"
                 />
-                <Pressable onPress={addByUrl} style={[styles.actionBtn, styles.primaryBtn]}>
+                <Pressable
+                  onPress={addByUrl}
+                  style={[styles.actionBtn, styles.primaryBtn, styles.addBtn]}
+                >
                   <Text style={styles.actionTextPrimary}>Agregar</Text>
                 </Pressable>
               </View>
@@ -423,6 +497,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
             )}
           </Card>
 
+          {/* ===== Resumen ===== */}
           <Card>
             <SectionTitle>Resumen</SectionTitle>
             <View style={styles.summaryRow}>
@@ -447,7 +522,55 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
             <HelperText>El margen se calcula como (Precio − Costo) / Precio. Si dejas el costo vacío, no se calcula.</HelperText>
           </Card>
 
-          {/* ===== Inventario ===== */}
+          {/* ===== Stock inicial (solo creación) ===== */}
+          {!isEdit && !isService && trackStock && (
+            <Card>
+              <SectionTitle>Stock inicial (opcional)</SectionTitle>
+
+              <Text style={[styles.label, { marginTop: 6 }]}>Almacén (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="ID de almacén (numérico) o vacío"
+                placeholderTextColor="#9aa7c2"
+                value={initWarehouseId}
+                onChangeText={setInitWarehouseId}
+                keyboardType="number-pad"
+              />
+
+              <View style={styles.row2}>
+                <View style={[styles.field, styles.flex1]}>
+                  <Text style={styles.label}>Cantidad</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ej. 10"
+                    placeholderTextColor="#9aa7c2"
+                    value={initQty}
+                    onChangeText={setInitQty}
+                    keyboardType="decimal-pad"
+                  />
+                  {!!errors.initQty && <Text style={styles.error}>{errors.initQty}</Text>}
+                </View>
+                <View style={[styles.field, styles.flex1]}>
+                  <Text style={styles.label}>Costo unitario (opcional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ej. 120.50"
+                    placeholderTextColor="#9aa7c2"
+                    value={initCost}
+                    onChangeText={setInitCost}
+                    keyboardType="decimal-pad"
+                  />
+                  {!!errors.initCost && <Text style={styles.error}>{errors.initCost}</Text>}
+                </View>
+              </View>
+
+              <HelperText>
+                Si ingresas una cantidad, al guardar se registrará una entrada con referencia <Text style={{fontWeight:'700'}}>STOCK-INICIAL</Text>.
+              </HelperText>
+            </Card>
+          )}
+
+          {/* ===== Inventario (solo edición) ===== */}
           {isEdit && trackStock && !isService && (
             <Card>
               <SectionTitle>Inventario</SectionTitle>
@@ -463,6 +586,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
               <TextInput
                 style={styles.input}
                 placeholder="ID de almacén (numérico) o vacío"
+                placeholderTextColor="#9aa7c2"
                 value={warehouseId}
                 onChangeText={setWarehouseId}
                 keyboardType="number-pad"
@@ -473,6 +597,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Ej. AJUSTE-001"
+                placeholderTextColor="#9aa7c2"
                 value={reference}
                 onChangeText={setReference}
               />
@@ -481,6 +606,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
               <TextInput
                 style={styles.input}
                 placeholder="Comentario del ajuste"
+                placeholderTextColor="#9aa7c2"
                 value={reason}
                 onChangeText={setReason}
               />
@@ -494,6 +620,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                   <TextInput
                     style={styles.input}
                     placeholder="Cantidad a ingresar"
+                    placeholderTextColor="#9aa7c2"
                     value={inQty}
                     onChangeText={setInQty}
                     keyboardType="decimal-pad"
@@ -503,6 +630,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                   <TextInput
                     style={styles.input}
                     placeholder="Costo unitario (opcional)"
+                    placeholderTextColor="#9aa7c2"
                     value={inCost}
                     onChangeText={setInCost}
                     keyboardType="decimal-pad"
@@ -521,6 +649,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                 <TextInput
                   style={styles.input}
                   placeholder="Cantidad a descontar"
+                  placeholderTextColor="#9aa7c2"
                   value={outQty}
                   onChangeText={setOutQty}
                   keyboardType="decimal-pad"
@@ -571,15 +700,15 @@ const F = Platform.select({
 });
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F6F7F9' },
+  screen: { flex: 1, backgroundColor: BRAND.surfaceTint },
 
   topBar: {
     paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
+    backgroundColor: BRAND.surfacePanel,
+    borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
   },
-  title: { ...F, fontSize: 20, fontWeight: '700' },
+  title: { ...F, fontSize: 20, color: BRAND.hanBlue },
 
   container: { padding: 16, gap: 16 },
   containerWide: { maxWidth: 1200, alignSelf: 'center', width: '100%', flexDirection: 'row' },
@@ -588,53 +717,56 @@ const styles = StyleSheet.create({
   colRight: { flex: 1, minWidth: 320 },
 
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BRAND.surfacePanel,
     borderRadius: 12,
     padding: 16,
-    borderWidth: 1, borderColor: '#E5E7EB',
-    shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    borderTopWidth: 3, borderTopColor: BRAND.hanBlue,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+    elevation: Platform.select({ android: 3, default: 0 }),
   },
 
-  sectionTitle: { ...F, fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  sectionTitle: { ...F, fontSize: 16, color: '#0f172a', marginBottom: 8 },
   field: { marginBottom: 12 },
-  label: { ...F, marginBottom: 6, color: '#111827', fontWeight: '600' },
+  label: { ...F, marginBottom: 6, color: '#0f172a' },
+
   input: {
     ...F,
-    borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, minHeight: 42,
-    backgroundColor: '#fff'
+    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10,
+    paddingHorizontal: 12, minHeight: 42, height: 42,
+    backgroundColor: BRAND.surfacePanel, fontSize: 16
   },
-  disabled: { backgroundColor: '#F3F4F6' },
+  disabled: { backgroundColor: BRAND.surfaceSubtle },
 
   row2: { flexDirection: 'row', gap: 12 },
   flex1: { flex: 1 },
 
   pillRow: { flexDirection: 'row', gap: 8 },
   pill: {
-    borderWidth: 1, borderColor: '#D1D5DB', paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 999, backgroundColor: '#FFF'
+    borderWidth: 1, borderColor: BRAND.borderSoft, paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 999, backgroundColor: BRAND.surfacePanel
   },
-  pillActive: { backgroundColor: '#0EA5E922', borderColor: '#0EA5E9' },
-  pillText: { ...F, color: '#374151', fontWeight: '600' },
-  pillTextActive: { ...F, color: '#0369A1', fontWeight: '600' },
+  pillActive: { backgroundColor: '#E9EDFF', borderColor: BRAND.hanBlue },
+  pillText: { ...F, color: '#374151' },
+  pillTextActive: { ...F, color: BRAND.hanBlue, fontWeight: Platform.OS === 'ios' ? '600' : 'bold' },
 
   helper: { ...F, marginTop: 6, color: '#6B7280', fontSize: 12 },
   error: { ...F, marginTop: 6, color: '#B91C1C', fontSize: 12 },
 
-  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 },
+  divider: { height: 1, backgroundColor: BRAND.borderSofter, marginVertical: 12 },
 
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   summaryLabel: { ...F, color: '#6B7280' },
-  summaryValue: { ...F, fontWeight: '700' },
+  summaryValue: { ...F, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '600' : 'bold' },
   negative: { color: '#B91C1C' },
 
   tip: { ...F, color: '#374151', marginBottom: 6 },
 
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: '#E5E7EB',
-    shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: -2 }, shadowRadius: 8,
+    backgroundColor: BRAND.surfacePanel,
+    borderTopWidth: 1, borderTopColor: BRAND.borderSoft,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06, shadowOffset: { width: 0, height: -2 }, shadowRadius: 8,
     elevation: 6,
   },
   footerInner: {
@@ -644,26 +776,39 @@ const styles = StyleSheet.create({
   },
   footerText: { ...F, color: '#6B7280' },
 
+  // Botones (misma altura que inputs)
   actionBtn: {
-    minWidth: 110, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 16, paddingVertical: 10,
+    minWidth: 96,
+    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 16, paddingVertical: 0,
+    height: 42,
     borderRadius: 10, borderWidth: 1
   },
-  primaryBtn: { backgroundColor: '#0EA5E9', borderColor: '#0EA5E9' },
-  secondaryBtn: { backgroundColor: '#FFFFFF', borderColor: '#D1D5DB' },
+  primaryBtn: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
+  secondaryBtn: { backgroundColor: BRAND.surfacePanel, borderColor: BRAND.borderSoft },
   disabledBtn: { backgroundColor: '#93C5FD', borderColor: '#93C5FD' },
-  actionTextPrimary: { ...F, color: '#FFFFFF', fontWeight: '700' },
-  actionTextSecondary: { ...F, color: '#111827', fontWeight: '700' },
+  actionTextPrimary: { ...F, color: '#FFFFFF' },
+  actionTextSecondary: { ...F, color: '#111827' },
 
-  // ===== Imágenes =====
+  // ===== Imágenes (fix overflow) =====
+  urlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    minWidth: 0,
+    flexWrap: 'wrap',
+  },
+  urlInput: { flex: 1, minWidth: 0 },
+  addBtn: { minWidth: 96, flexShrink: 0 },
+
   thumbGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   thumbItem: { width: 86 },
   thumbBox: {
     borderRadius: 10, overflow: 'hidden',
-    borderWidth: 1, borderColor: '#E5E7EB',
-    width: 86, height: 86, backgroundColor: '#F3F4F6'
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    width: 86, height: 86, backgroundColor: BRAND.surfaceSubtle
   },
   thumbImg: { width: '100%', height: '100%' },
-  removeTxt: { ...F, color: '#DC2626', fontWeight: '700' },
+  removeTxt: { ...F, color: '#DC2626', fontWeight: Platform.OS === 'ios' ? '600' : 'bold' },
 });
-

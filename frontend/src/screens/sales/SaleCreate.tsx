@@ -10,28 +10,38 @@ import {
   TouchableOpacity,
   View,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { api } from '../../api';
+import { useFonts } from 'expo-font';
 
 type Customer = { id: number; name: string };
 type Product = { id: number; name: string; sku: string; listPrice?: number };
 
-/** ====== APOKA THEME ====== */
-const apoka = {
-  brand: '#7C3AED',          // morado 600
-  brandStrong: '#5B21B6',    // morado 700
-  brandSoftBg: '#F5F3FF',    // morado muy claro
-  brandSoftBorder: '#DDD6FE',
-  text: '#111827',
-  muted: '#6B7280',
-  cardBg: '#FBFAFF',
-  border: '#E5E7EB',
-  neutralBg: '#F3F4F6',
-  danger: '#DC2626',
-  dangerBg: '#FEE2E2',
-};
+// ===== Paleta de marca (misma del app) =====
+const BRAND = {
+  hanBlue: '#4458C7',
+  iris: '#5A44C7',
+  cyanBlueAzure: '#4481C7',
+  maximumBlue: '#44AAC7',
+  darkPastelBlue: '#8690C7',
+  verdigris: '#43BFB7',
 
-/** Botón apoka */
+  surfaceTint:  '#F3F6FF',
+  surfaceSubtle:'#F8FAFF',
+  surfacePanel: '#FCFDFF',
+  borderSoft:   '#E2E7FF',
+  borderSofter: '#E9EEFF',
+  trackSoft:    '#DEE6FB',
+} as const;
+
+// Tipografía Apoka (peso uniforme para Android)
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
+
+/** Botón de marca */
 const AButton = ({
   title,
   onPress,
@@ -65,15 +75,18 @@ const AButton = ({
       disabled={disabled}
       style={[styles.btnBase, vStyle, disabled && { opacity: 0.6 }, style]}
     >
-      <Text style={[tStyle, { fontWeight: '800' }]}>{title}</Text>
+      <Text style={[tStyle, { fontWeight: Platform.OS === 'ios' ? '800' : 'bold' }, F]}>{title}</Text>
     </TouchableOpacity>
   );
 };
 
 export default function SaleCreate({ navigation }: any) {
+  // Cargar fuente Apoka sin bloquear render
+  useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
+
   const { width } = useWindowDimensions();
-  const isWide = width >= 820;   // breakpoint para 2 columnas
-  const isXL   = width >= 1100;  // más columnas para tablets muy grandes
+  const isWide = width >= 820;
+  const isXL = width >= 1100;
 
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -162,7 +175,6 @@ export default function SaleCreate({ navigation }: any) {
     );
   }, [q, products]);
 
-  // columnas responsive para el grid
   const numColumns = isXL ? 4 : isWide ? 3 : 1;
 
   const saveSale = async () => {
@@ -187,13 +199,7 @@ export default function SaleCreate({ navigation }: any) {
         };
       });
 
-      const payload = {
-        customerId: selectedCustomer.id,
-        currency: 'NIO',
-        items,
-        // taxRate / discountRate si tu backend los usa
-      };
-
+      const payload = { customerId: selectedCustomer.id, currency: 'NIO', items };
       const { data } = await api.post('/sales', payload);
       Alert.alert('Venta guardada', `Factura ${data.number} · Total ${money(data.total)}`);
       navigation.goBack();
@@ -245,19 +251,21 @@ export default function SaleCreate({ navigation }: any) {
       <View style={{ marginBottom: 8 }}>
         <Text style={styles.sub}>Cliente</Text>
         {!selectedCustomer ? (
-          <Text style={{ color: apoka.muted }}>Ninguno seleccionado.</Text>
+          <Text style={{ color: '#6B7280', ...F }}>Ninguno seleccionado.</Text>
         ) : (
-          <Text style={{ fontWeight: '700', color: apoka.text }}>{selectedCustomer.name}</Text>
+          <Text style={{ fontWeight: Platform.OS === 'ios' ? '700' : 'bold', color: '#0f172a', ...F }}>
+            {selectedCustomer.name}
+          </Text>
         )}
       </View>
 
-      <View style={{ borderTopWidth: 1, borderTopColor: apoka.border, paddingTop: 8, gap: 8 }}>
+      <View style={{ borderTopWidth: 1, borderTopColor: BRAND.borderSoft, paddingTop: 8, gap: 8 }}>
         {cartItems.length === 0 ? (
-          <Text style={{ color: apoka.muted }}>No hay productos en el carrito.</Text>
+          <Text style={{ color: '#6B7280', ...F }}>No hay productos en el carrito.</Text>
         ) : cartItems.map(it => (
           <View key={it.id} style={styles.cartRow}>
             <View style={{ flex: 1, paddingRight: 8 }}>
-              <Text numberOfLines={1} style={{ fontWeight: '600', color: apoka.text }}>{it.name}</Text>
+              <Text numberOfLines={1} style={{ fontWeight: Platform.OS === 'ios' ? '600' : 'bold', color: '#0f172a', ...F }}>{it.name}</Text>
               <Text style={styles.prodSub}>{it.sku}</Text>
               <Text style={styles.linePrice}>{money(it.price)} · {money(it.line)}</Text>
             </View>
@@ -279,10 +287,9 @@ export default function SaleCreate({ navigation }: any) {
 
       <View style={styles.totals}>
         <View style={styles.rowBetween}>
-          <Text style={{ color: apoka.muted }}>Subtotal</Text>
+          <Text style={styles.mutedTxt}>Subtotal</Text>
           <Text style={styles.totalNum}>{money(subtotal)}</Text>
         </View>
-        {/* Impuestos/descuentos aquí si aplica */}
       </View>
 
       <AButton
@@ -312,11 +319,11 @@ export default function SaleCreate({ navigation }: any) {
                 style={[styles.chip, active && styles.chipSelected]}
                 onPress={() => setSelectedCustomer(item)}
               >
-                <Text style={{ color: active ? '#fff' : apoka.text }}>{item.name}</Text>
+                <Text style={{ ...F, color: active ? '#fff' : '#0f172a' }}>{item.name}</Text>
               </TouchableOpacity>
             );
           }}
-          ListEmptyComponent={<Text style={{ color: apoka.muted }}>Sin clientes.</Text>}
+          ListEmptyComponent={<Text style={{ color: '#6B7280', ...F }}>Sin clientes.</Text>}
         />
       </View>
 
@@ -330,7 +337,7 @@ export default function SaleCreate({ navigation }: any) {
               value={q}
               onChangeText={setQ}
               style={styles.search}
-              placeholderTextColor={apoka.muted}
+              placeholderTextColor="#9aa7c2"
               returnKeyType="search"
             />
             <View style={{ width: 8 }} />
@@ -339,7 +346,7 @@ export default function SaleCreate({ navigation }: any) {
 
           <FlatList
             data={filteredProducts}
-            key={numColumns} // fuerza relayout al cambiar columnas
+            key={numColumns}
             keyExtractor={keyExtractor}
             renderItem={renderProduct}
             numColumns={numColumns}
@@ -347,7 +354,7 @@ export default function SaleCreate({ navigation }: any) {
             contentContainerStyle={{ paddingVertical: 8, gap: 12 }}
             refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
             ListEmptyComponent={
-              <Text style={{ color: apoka.muted, padding: 12 }}>
+              <Text style={{ color: '#6B7280', padding: 12, ...F }}>
                 {q ? 'No hay resultados para tu búsqueda.' : 'No hay productos.'}
               </Text>
             }
@@ -366,7 +373,7 @@ export default function SaleCreate({ navigation }: any) {
 
 const styles = StyleSheet.create({
   // Layout
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: BRAND.surfaceTint },
   header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   main: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
   mainWide: { flexDirection: 'row', gap: 16 },
@@ -376,106 +383,99 @@ const styles = StyleSheet.create({
   rightColWide: { flex: 5, marginTop: 0 },
 
   // Textos
-  title: { fontSize: 20, fontWeight: '800', marginBottom: 8, color: apoka.text },
-  sub: { color: '#374151', marginTop: 8, marginBottom: 4, fontWeight: '600' },
+  title: { ...F, fontSize: 20, color: BRAND.hanBlue, marginBottom: 8 },
+  sub: { ...F, color: '#374151', marginTop: 8, marginBottom: 4 },
 
   // Chips cliente
   chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: apoka.border,
-    borderRadius: 999,
-    marginRight: 8,
-    backgroundColor: '#fff',
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    borderRadius: 999, marginRight: 8,
+    backgroundColor: BRAND.surfacePanel,
   },
-  chipSelected: { backgroundColor: apoka.brand, borderColor: apoka.brand },
+  chipSelected: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
 
   // Búsqueda
   searchRow: { flexDirection: 'row', alignItems: 'center' },
   search: {
+    ...F,
     flex: 1,
-    borderWidth: 1, borderColor: apoka.border, borderRadius: 10,
-    paddingHorizontal: 12, minHeight: 42, color: apoka.text, backgroundColor: '#fff',
+    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10,
+    paddingHorizontal: 12, minHeight: 42,
+    color: '#0f172a', backgroundColor: BRAND.surfacePanel,
   },
 
   // Cards
   card: {
-    backgroundColor: apoka.cardBg,
+    backgroundColor: BRAND.surfacePanel,
     borderRadius: 12,
     padding: 12,
-    borderWidth: 1,
-    borderColor: apoka.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06, shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    elevation: Platform.select({ android: 3, default: 0 }),
   },
 
   // Producto
-  productCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  prodTitle: { fontSize: 16, fontWeight: '600', color: apoka.text },
-  prodSub: { fontSize: 12, color: apoka.muted },
-  prodPrice: { marginTop: 6, fontWeight: '800', color: apoka.text },
+  productCard: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  prodTitle: { ...F, fontSize: 16, color: '#0f172a' },
+  prodSub: { ...F, fontSize: 12, color: '#6B7280' },
+  prodPrice: { ...F, marginTop: 6, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
 
   // Stepper grande
   stepper: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: apoka.brandSoftBg, borderRadius: 10, borderWidth: 1, borderColor: apoka.brandSoftBorder, padding: 4,
+    backgroundColor: BRAND.surfaceSubtle, borderRadius: 10,
+    borderWidth: 1, borderColor: BRAND.borderSofter, padding: 4,
   },
   stepBtn: {
-    width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: apoka.brandSoftBorder,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff',
+    width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: BRAND.borderSofter,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: BRAND.surfacePanel,
   },
-  stepTxt: { fontSize: 18, fontWeight: '800', color: apoka.brandStrong },
-  qtyTxt: { minWidth: 28, textAlign: 'center', fontWeight: '700', color: apoka.text },
+  stepTxt: { ...F, fontSize: 18, color: BRAND.hanBlue, fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  qtyTxt: { ...F, minWidth: 28, textAlign: 'center', color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
 
   // Carrito (sidebar)
   cartPanel: { gap: 10 },
   cartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cartTitle: { fontSize: 16, fontWeight: '800', color: apoka.text },
-  clearLink: { color: apoka.danger, fontWeight: '700' },
+  cartTitle: { ...F, fontSize: 16, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  clearLink: { ...F, color: '#991b1b', fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
 
   cartRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1, borderColor: apoka.border, backgroundColor: '#fff',
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: BRAND.borderSoft, backgroundColor: BRAND.surfacePanel,
     borderRadius: 10, padding: 8, gap: 8,
   },
-  linePrice: { marginTop: 2, fontWeight: '600', color: apoka.text },
+  linePrice: { ...F, marginTop: 2, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '600' : 'bold' },
 
   // Stepper chico para carrito
   stepperSm: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   stepBtnSm: {
-    width: 28, height: 28, borderRadius: 6, borderWidth: 1, borderColor: apoka.brandSoftBorder,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: apoka.brandSoftBg,
+    width: 28, height: 28, borderRadius: 6, borderWidth: 1, borderColor: BRAND.borderSofter,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: BRAND.surfaceSubtle,
   },
 
   removeBtn: {
     width: 28, height: 28, borderRadius: 6,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: apoka.dangerBg,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FEE2E2',
   },
-  removeTxt: { color: '#991b1b', fontWeight: '800' },
+  removeTxt: { ...F, color: '#991b1b', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
 
   // Totales
   totals: { marginTop: 8, marginBottom: 8, gap: 6 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalNum: { fontSize: 16, fontWeight: '800', color: apoka.text },
+  mutedTxt: { ...F, color: '#6B7280' },
+  totalNum: { ...F, fontSize: 16, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
 
   // Botones
   btnBase: {
     minWidth: 110, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1,
   },
-  btnPrimary: { backgroundColor: apoka.brand, borderColor: apoka.brand },
-  btnSecondary: { backgroundColor: '#FFFFFF', borderColor: apoka.border },
+  btnPrimary: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
+  btnSecondary: { backgroundColor: BRAND.surfacePanel, borderColor: BRAND.borderSoft },
   btnGhost: { backgroundColor: 'transparent', borderColor: 'transparent' },
-  btnDanger: { backgroundColor: apoka.danger, borderColor: apoka.danger },
-  btnTextLight: { color: '#FFFFFF' },
-  btnTextDark: { color: apoka.text },
+  btnDanger: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
+  btnTextLight: { ...F, color: '#FFFFFF' },
+  btnTextDark: { ...F, color: '#0f172a' },
 });

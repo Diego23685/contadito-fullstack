@@ -11,32 +11,41 @@ import {
   Image,
   ScrollView,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useCart } from '../../providers/CartContext';
 import { api } from '../../api';
+import { useFonts } from 'expo-font';
 
-/** ====== APOKA THEME ====== */
-const apoka = {
-  brand: '#7C3AED',
-  brandStrong: '#5B21B6',
-  brandSoftBg: '#F5F3FF',
-  brandSoftBorder: '#DDD6FE',
-  text: '#0F172A',
-  muted: '#64748B',
-  border: '#E5E7EB',
-  cardBg: '#FFFFFF',
-  canvas: '#F8FAFC',
-  danger: '#DC2626',
-  dangerBg: '#FEE2E2',
-  dangerBorder: '#FECACA',
-};
+// ===== Paleta de marca (misma que las demás screens) =====
+const BRAND = {
+  hanBlue: '#4458C7',
+  iris: '#5A44C7',
+  cyanBlueAzure: '#4481C7',
+  maximumBlue: '#44AAC7',
+  darkPastelBlue: '#8690C7',
+  verdigris: '#43BFB7',
+
+  surfaceTint:  '#F3F6FF',
+  surfaceSubtle:'#F8FAFF',
+  surfacePanel: '#FCFDFF',
+  borderSoft:   '#E2E7FF',
+  borderSofter: '#E9EEFF',
+  trackSoft:    '#DEE6FB',
+} as const;
+
+// Tipografía Apoka helper
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
 
 const money = (n: number) =>
   new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 })
     .format(Number(n || 0));
 
-/** Botón Apoka */
+/** Botón BRAND */
 const AButton = ({
   title,
   onPress,
@@ -70,12 +79,15 @@ const AButton = ({
       disabled={disabled}
       style={[styles.btnBase, vStyle, disabled && { opacity: 0.6 }, style]}
     >
-      <Text style={[tStyle, { fontWeight: '900' }]}>{title}</Text>
+      <Text style={[tStyle, styles.btnTextWeight, F]}>{title}</Text>
     </Pressable>
   );
 };
 
 export default function CheckoutScreen() {
+  // Cargar fuente Apoka (no bloquea el primer render; se aplica cuando está lista)
+  useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
+
   const nav = useNavigation<any>();
   const route = useRoute<any>();
   const { width } = useWindowDimensions();
@@ -133,7 +145,7 @@ export default function CheckoutScreen() {
         items: items.map((i: any) => ({ productId: i.productId, quantity: i.qty })),
       };
       const { data } = await api.post(`/store/${slug}/orders`, payload);
-      clear(slug); // limpia el carrito para ese tenant si tu contexto lo soporta (si no, clear())
+      clear(slug);
       Alert.alert('Pedido creado', `Número: ${data.number}\nTotal: ${money(Number(data.total))}`);
       nav.reset({ index: 0, routes: [{ name: 'StoreFront', params: { slug } }] });
     } catch (e: any) {
@@ -151,7 +163,7 @@ export default function CheckoutScreen() {
           <Image source={{ uri: it.image }} style={styles.img} />
         ) : (
           <View style={[styles.img, styles.imgPh]}>
-            <Text style={{ color: apoka.muted }}>🛍️</Text>
+            <Text style={{ ...F, color: '#64748B' }}>🛍️</Text>
           </View>
         )}
         <View style={{ flex: 1 }}>
@@ -260,7 +272,9 @@ export default function CheckoutScreen() {
             <View style={styles.totalBox}>
               <View style={styles.rowBetween}>
                 <Text style={styles.muted}>Subtotal</Text>
-                <Text style={styles.bold}>{money(items.reduce((s: number, it: any) => s + Number(it.qty) * Number(it.price || 0), 0))}</Text>
+                <Text style={styles.bold}>
+                  {money(items.reduce((s: number, it: any) => s + Number(it.qty) * Number(it.price || 0), 0))}
+                </Text>
               </View>
               {/* Si manejas envío o impuestos, muéstralos aquí */}
               <View style={[styles.rowBetween, { marginTop: 6 }]}>
@@ -298,10 +312,10 @@ export default function CheckoutScreen() {
         </View>
       )}
 
-      {/* Overlay de loading si quieres bloquear toda la pantalla
+      {/* Overlay opcional de loading global
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={apoka.brand} />
+          <ActivityIndicator size="large" color={BRAND.hanBlue} />
         </View>
       )} */}
     </View>
@@ -331,8 +345,9 @@ function Field({
         style={[
           styles.input,
           multiline && { height: 100, textAlignVertical: 'top' },
-          error && { borderColor: apoka.dangerBorder, backgroundColor: '#FFF' },
+          error && { borderColor: '#FECACA', backgroundColor: '#FFF' },
         ]}
+        placeholderTextColor="#9aa7c2"
       />
       {!!helper && <Text style={styles.helper}>{helper}</Text>}
       {!!error && <Text style={styles.error}>{error}</Text>}
@@ -342,8 +357,8 @@ function Field({
 
 const styles = StyleSheet.create({
   // Layout
-  root: { flex: 1, backgroundColor: apoka.canvas, padding: 12 },
-  title: { fontSize: 20, fontWeight: '900', color: apoka.text },
+  root: { flex: 1, backgroundColor: BRAND.surfaceTint, padding: 12 },
+  title: { ...F, fontSize: 20, color: BRAND.hanBlue },
 
   main: { flex: 1, marginTop: 8 },
   mainWide: { flexDirection: 'row', gap: 12 },
@@ -354,32 +369,34 @@ const styles = StyleSheet.create({
 
   // Tarjetas
   card: {
-    backgroundColor: apoka.cardBg,
+    backgroundColor: BRAND.surfacePanel,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: apoka.border,
+    borderColor: BRAND.borderSoft,
     padding: 12,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: BRAND.hanBlue,
     shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    elevation: Platform.select({ android: 3, default: 0 }),
   },
-  cardTitle: { fontSize: 16, fontWeight: '800', color: apoka.text, marginBottom: 6 },
+  cardTitle: { ...F, fontSize: 16, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold', marginBottom: 6 },
 
   // Campos
-  label: { color: apoka.muted, fontSize: 12, marginBottom: 4 },
+  label: { ...F, color: '#6B7280', fontSize: 12, marginBottom: 4 },
   input: {
+    ...F,
     borderWidth: 1,
-    borderColor: apoka.border,
+    borderColor: BRAND.borderSoft,
     borderRadius: 10,
-    backgroundColor: '#fff',
+    backgroundColor: BRAND.surfacePanel,
     paddingHorizontal: 12,
     minHeight: 42,
+    color: '#0f172a',
   },
-  helper: { color: apoka.muted, fontSize: 12, marginTop: 4 },
-  error: { color: apoka.danger, fontSize: 12, marginTop: 4 },
+  helper: { ...F, color: '#6B7280', fontSize: 12, marginTop: 4 },
+  error: { ...F, color: '#DC2626', fontSize: 12, marginTop: 4 },
 
   // Resumen
   lineCard: {
@@ -388,22 +405,22 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: apoka.border,
-    backgroundColor: '#fff',
+    borderColor: BRAND.borderSoft,
+    backgroundColor: BRAND.surfacePanel,
     alignItems: 'center',
   },
   img: { width: 52, height: 52, borderRadius: 10, backgroundColor: '#fff' },
-  imgPh: { borderWidth: 1, borderColor: apoka.border, alignItems: 'center', justifyContent: 'center' },
-  itemName: { fontWeight: '800', color: apoka.text },
-  itemMeta: { color: apoka.muted, fontSize: 12 },
-  itemLineTotal: { fontWeight: '900', color: apoka.text },
+  imgPh: { borderWidth: 1, borderColor: BRAND.borderSoft, alignItems: 'center', justifyContent: 'center' },
+  itemName: { ...F, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  itemMeta: { ...F, color: '#6B7280', fontSize: 12 },
+  itemLineTotal: { ...F, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '900' : 'bold' },
 
-  totalBox: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: apoka.border, gap: 6 },
+  totalBox: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: BRAND.borderSoft, gap: 6 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  muted: { color: apoka.muted },
-  bold: { fontWeight: '800', color: apoka.text },
-  totalLabel: { color: apoka.muted, fontSize: 12 },
-  totalValue: { fontSize: 18, fontWeight: '900', color: apoka.text },
+  muted: { ...F, color: '#6B7280' },
+  bold: { ...F, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  totalLabel: { ...F, color: '#6B7280', fontSize: 12 },
+  totalValue: { ...F, fontSize: 18, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '900' : 'bold' },
 
   // Barra de checkout móvil
   checkoutBar: {
@@ -411,15 +428,15 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     bottom: 12,
-    backgroundColor: '#fff',
+    backgroundColor: BRAND.surfacePanel,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: apoka.border,
+    borderColor: BRAND.borderSoft,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    shadowColor: '#000',
+    shadowColor: BRAND.hanBlue,
     shadowOpacity: 0.08,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
@@ -427,9 +444,9 @@ const styles = StyleSheet.create({
   },
 
   // Empty
-  emptyEmoji: { fontSize: 56, marginBottom: 6 },
-  emptyTitle: { fontSize: 18, fontWeight: '900', color: apoka.text, marginBottom: 4 },
-  emptyText: { color: apoka.muted, textAlign: 'center' },
+  emptyEmoji: { ...F, fontSize: 56, marginBottom: 6 },
+  emptyTitle: { ...F, fontSize: 18, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '900' : 'bold', marginBottom: 4 },
+  emptyText: { ...F, color: '#6B7280', textAlign: 'center' },
 
   // Botones
   btnBase: {
@@ -440,12 +457,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  btnPrimary: { backgroundColor: apoka.brand, borderColor: apoka.brand },
-  btnSecondary: { backgroundColor: '#FFFFFF', borderColor: apoka.border },
+  btnPrimary: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
+  btnSecondary: { backgroundColor: BRAND.surfacePanel, borderColor: BRAND.borderSoft },
   btnGhost: { backgroundColor: 'transparent', borderColor: 'transparent' },
-  btnDanger: { backgroundColor: apoka.danger, borderColor: apoka.danger },
-  btnTextLight: { color: '#FFFFFF' },
-  btnTextDark: { color: apoka.text },
+  btnDanger: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
+  btnTextLight: { ...F, color: '#FFFFFF' },
+  btnTextDark: { ...F, color: '#0f172a' },
+  btnTextWeight: { fontWeight: Platform.OS === 'ios' ? '900' : 'bold' },
 
   // (Opcional) Overlay de loading
   loadingOverlay: {

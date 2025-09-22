@@ -2,26 +2,34 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator,
-  FlatList, RefreshControl, useWindowDimensions, Image,
+  FlatList, RefreshControl, useWindowDimensions, Image, Platform, ScrollView,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { api } from '../../api';
 import { useCart } from '../../providers/CartContext';
+import { useFonts } from 'expo-font';
 
-/** ===== Apoka theme ===== */
-const apoka = {
-  brand: '#7C3AED',
-  brandStrong: '#5B21B6',
-  brandSoftBg: '#F5F3FF',
-  brandSoftBorder: '#DDD6FE',
-  text: '#0F172A',
-  muted: '#64748B',
-  border: '#E5E7EB',
-  cardBg: '#FFFFFF',
-  canvas: '#F8FAFC',
-  dark: '#111827',
-  danger: '#DC2626',
-};
+/** ===== Paleta de marca (unificada con el resto) ===== */
+const BRAND = {
+  hanBlue: '#4458C7',
+  iris: '#5A44C7',
+  cyanBlueAzure: '#4481C7',
+  maximumBlue: '#44AAC7',
+  darkPastelBlue: '#8690C7',
+  verdigris: '#43BFB7',
+
+  surfaceTint:  '#F3F6FF',
+  surfaceSubtle:'#F8FAFF',
+  surfacePanel: '#FCFDFF',
+  borderSoft:   '#E2E7FF',
+  borderSofter: '#E9EEFF',
+  trackSoft:    '#DEE6FB',
+} as const;
+
+const F = Platform.select({
+  ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
+  default: { fontFamily: 'Apoka' },
+});
 
 type Item = {
   id?: number;
@@ -48,9 +56,13 @@ const djb2 = (s: string) => {
 };
 
 export default function StoreFront() {
+  // Carga de fuente Apoka (no bloquea; aplicará cuando esté lista)
+  useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
+
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
+  const isWide = width >= 1000; // breakpoint para sidebar
 
   // Cart context (tolerante)
   let cart: any = null; try { cart = useCart?.(); } catch {}
@@ -81,17 +93,18 @@ export default function StoreFront() {
   const [shadowQty, setShadowQty] = useState<Record<string, number>>({});
 
   const cols = useMemo(() => {
-    // en modo compacto mantén el grid apretado visualmente (thumbnails más bajos)
-    return width >= 1200 ? 4 : width >= 900 ? 3 : width >= 600 ? 2 : 1;
+    return width >= 1400 ? 5 : width >= 1200 ? 4 : width >= 900 ? 3 : width >= 600 ? 2 : 1;
   }, [width]);
 
   // Layout: padding contenedor + gutter + ancho de tarjeta fijo para grid estable
   const layout = useMemo(() => {
-    const padding = 12;        // contentContainerStyle padding (x2 laterales)
-    const gutter = 12;         // separación manual entre columnas
-    const cardWidth = Math.max(0, (width - padding * 2 - gutter * (cols - 1)) / cols);
-    return { padding, gutter, cardWidth };
-  }, [width, cols]);
+    const sidebarW = isWide ? 300 : 0;
+    const padding = 16;  // padding horizontal del contenedor
+    const gutter = 12;   // separación entre columnas
+    const available = width - sidebarW - padding * 2;
+    const cardWidth = Math.max(0, (available - gutter * (cols - 1)) / cols);
+    return { padding, gutter, cardWidth, sidebarW };
+  }, [width, cols, isWide]);
 
   const endpointBase = useMemo(
     () => (isNaN(Number(tenantRef)) ? `/store/${tenantRef}/products` : `/store/${Number(tenantRef)}/products`),
@@ -309,7 +322,7 @@ export default function StoreFront() {
         </Pressable>
         <Text style={styles.qtyText}>{qty}</Text>
         <Pressable onPress={() => inc(item)} style={[styles.stepBtn, styles.stepBtnRight]} accessibilityLabel="Agregar uno">
-          <Text style={styles.stepBtnText}>+</Text>
+          <Text style={styles.stepBtnText}>＋</Text>
         </Pressable>
       </View>
     );
@@ -322,7 +335,7 @@ export default function StoreFront() {
     return (
       <View style={[
         styles.card,
-        { width: layout.cardWidth },            // ancho fijo por columna
+        { width: layout.cardWidth },
         compact && styles.cardCompact
       ]}>
         <Pressable onPress={() => goDetail(item)} style={{ width: '100%' }} accessibilityLabel={`Ver ${item.name}`}>
@@ -332,7 +345,7 @@ export default function StoreFront() {
               : <View style={[styles.thumb, compact && styles.thumbCompact, { backgroundColor: '#e5e7eb' }]} />
             }
             <Pressable onPress={() => toggleLike(item.pid)} style={styles.likeBtn} accessibilityLabel="Favorito">
-              <Text style={{ fontSize: 16 }}>{liked ? '❤️' : '🤍'}</Text>
+              <Text style={{ ...F, fontSize: 16 }}>{liked ? '❤️' : '🤍'}</Text>
             </Pressable>
           </View>
           <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
@@ -366,7 +379,7 @@ export default function StoreFront() {
     </View>
   );
 
-  // Skeleton fila (sin gap)
+  // Skeleton fila
   const SkeletonRow = () => (
     <View style={styles.skeletonRow}>
       {Array.from({ length: cols }).map((_, i) => (
@@ -385,13 +398,64 @@ export default function StoreFront() {
     </View>
   );
 
+  // ===== Sidebar (solo wide) =====
+  const Sidebar = () => (
+    <View style={[styles.sidebar, { width: layout.sidebarW }]}>
+      <Text style={styles.sidebarTitle}>Opciones</Text>
+
+      <View style={styles.sidebarCard}>
+        <Text style={styles.sidebarLabel}>Ordenar</Text>
+        <View style={{ gap: 8 }}>
+          {sortOptions.map(o => {
+            const active = sort === o.key;
+            return (
+              <Pressable
+                key={o.key}
+                onPress={() => setSort(o.key)}
+                style={[styles.sideChip, active && styles.sideChipActive]}
+              >
+                <Text style={[styles.sideChipTxt, active && styles.sideChipTxtActive]}>{o.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={styles.sidebarCard}>
+        <Text style={styles.sidebarLabel}>Vista</Text>
+        <Pressable
+          onPress={() => setCompact(c => !c)}
+          style={[styles.sideChip, compact && styles.sideChipActive]}
+        >
+          <Text style={[styles.sideChipTxt, compact && styles.sideChipTxtActive]}>
+            {compact ? 'Compacto ✓' : 'Compacto'}
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.sidebarCard}>
+        <Text style={styles.sidebarLabel}>Carrito</Text>
+        <View style={styles.sidebarCartRow}>
+          <Text style={styles.sidebarMuted}>Total</Text>
+          <Text style={styles.sidebarTotal}>{stickyTotal}</Text>
+        </View>
+        <Pressable
+          onPress={() => navigation.navigate('Cart', { tenantRef })}
+          style={[styles.sidePrimaryBtn, { marginTop: 8 }]}
+        >
+          <Text style={styles.sidePrimaryTxt}>Ver carrito</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.root}>
       {/* Header */}
       <View style={styles.header} pointerEvents="box-none">
         <Text style={styles.title}>Tienda</Text>
 
-        {/* Controles: búsqueda / orden / vista */}
+        {/* Controles: búsqueda / orden */}
         <View style={styles.rowWrap}>
           <View style={styles.searchWrap}>
             <TextInput
@@ -401,10 +465,11 @@ export default function StoreFront() {
               onSubmitEditing={onSubmitSearch}
               style={styles.input}
               returnKeyType="search"
+              placeholderTextColor="#9aa7c2"
             />
             {!!query && (
               <Pressable onPress={onClear} style={styles.clearBtn} accessibilityLabel="Limpiar búsqueda">
-                <Text style={{ fontWeight: '900' }}>×</Text>
+                <Text style={{ ...F, fontWeight: '900' }}>×</Text>
               </Pressable>
             )}
           </View>
@@ -412,20 +477,11 @@ export default function StoreFront() {
           <View style={{ position: 'relative' }}>
             <Pressable onPress={() => setSortOpen(s => !s)} style={styles.sortBtn}>
               <Text style={styles.sortText}>
-                {sortOptions.find(o => o.key === sort)?.label ?? 'Ordenar'}
+                {({ label } = sortOptions.find(o => o.key === sort) || { label: 'Ordenar' }), label}
               </Text>
             </Pressable>
             {sortOpen && <SortMenu />}
           </View>
-
-          <Pressable
-            onPress={() => setCompact(c => !c)}
-            style={[styles.toggleChip, compact && styles.toggleChipActive]}
-          >
-            <Text style={[styles.toggleChipText, compact && styles.toggleChipTextActive]}>
-              {compact ? 'Compacto ✓' : 'Compacto'}
-            </Text>
-          </Pressable>
         </View>
 
         <Text style={styles.meta}>
@@ -433,42 +489,50 @@ export default function StoreFront() {
         </Text>
       </View>
 
-      {/* Body */}
-      {error ? (
-        <View style={{ padding: 16 }}>
-          <Text style={{ color: apoka.danger, fontWeight: '700' }}>{error}</Text>
-          <Pressable onPress={() => fetchPage(1, false)} style={[styles.detailBtn, { marginTop: 10 }]}>
-            <Text style={styles.detailBtnText}>Reintentar</Text>
-          </Pressable>
+      {/* Body con sidebar en wide */}
+      <View style={[styles.body, isWide && styles.bodyWide]}>
+        {/* GRID */}
+        <View style={[styles.gridCol, isWide && styles.gridColWide]}>
+          {error ? (
+            <View style={{ padding: 16 }}>
+              <Text style={{ ...F, color: '#DC2626', fontWeight: Platform.OS === 'ios' ? '700' : 'bold' }}>{error}</Text>
+              <Pressable onPress={() => fetchPage(1, false)} style={[styles.detailBtn, { marginTop: 10 }]}>
+                <Text style={styles.detailBtnText}>Reintentar</Text>
+              </Pressable>
+            </View>
+          ) : loading && !items.length ? (
+            <View style={{ paddingHorizontal: layout.padding, paddingTop: 12, paddingBottom: 12 }}>
+              <SkeletonRow />
+            </View>
+          ) : !items.length ? (
+            <View style={{ padding: 16 }}>
+              <Text style={{ ...F, color: '#6B7280' }}>No hay productos públicos.</Text>
+            </View>
+          ) : (
+            <FlatList
+              key={`grid-${cols}`} // fuerza re-mount al cambiar columnas
+              data={sortedItems}
+              renderItem={renderCard}
+              keyExtractor={keyExtractor}
+              numColumns={cols}
+              contentContainerStyle={{ paddingHorizontal: layout.padding, paddingTop: 12, paddingBottom: 12 }}
+              columnWrapperStyle={cols > 1 ? { justifyContent: 'space-between' } : undefined}
+              ItemSeparatorComponent={() => <View style={{ height: layout.gutter }} />}
+              removeClippedSubviews={false}
+              initialNumToRender={cols * 6}
+              windowSize={5}
+              onEndReached={() => !loadingMore && canLoadMore && fetchPage(page + 1, true)}
+              onEndReachedThreshold={0.4}
+              ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical: 12 }} /> : null}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+              extraData={{ shadowQty, sort, compact, likes, layoutCardWidth: layout.cardWidth }}
+            />
+          )}
         </View>
-      ) : loading && !items.length ? (
-        <View style={{ paddingHorizontal: layout.padding, paddingTop: 12, paddingBottom: 12 }}>
-          <SkeletonRow />
-        </View>
-      ) : !items.length ? (
-        <View style={{ padding: 16 }}>
-          <Text style={{ color: apoka.muted }}>No hay productos públicos.</Text>
-        </View>
-      ) : (
-        <FlatList
-          key={`grid-${cols}`} // 👈 fuerza re-mount al cambiar columnas
-          data={sortedItems}
-          renderItem={renderCard}
-          keyExtractor={keyExtractor}
-          numColumns={cols}
-          contentContainerStyle={{ paddingHorizontal: layout.padding, paddingTop: 12, paddingBottom: 12 }}
-          columnWrapperStyle={cols > 1 ? { justifyContent: 'space-between' } : undefined}
-          ItemSeparatorComponent={() => <View style={{ height: layout.gutter }} />}
-          removeClippedSubviews={false}              // 👈 evita clipping en web
-          initialNumToRender={cols * 6}
-          windowSize={5}
-          onEndReached={() => !loadingMore && canLoadMore && fetchPage(page + 1, true)}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical: 12 }} /> : null}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          extraData={{ shadowQty, sort, compact, likes, layoutCardWidth: layout.cardWidth }}
-        />
-      )}
+
+        {/* SIDEBAR */}
+        {isWide && <Sidebar />}
+      </View>
 
       {/* FAB carrito (desktop / tablets) */}
       <Pressable
@@ -485,7 +549,7 @@ export default function StoreFront() {
       </Pressable>
 
       {/* Mini-carrito fijo (móvil) */}
-      {cartCount > 0 && width < 900 && (
+      {cartCount > 0 && width < 1000 && (
         <View style={styles.checkoutBar}>
           <View style={{ flex: 1 }}>
             <Text style={styles.totalLabel}>Carrito</Text>
@@ -504,119 +568,153 @@ export default function StoreFront() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: apoka.canvas },
+  root: { flex: 1, backgroundColor: BRAND.surfaceTint },
   header: {
-    padding: 16, backgroundColor: apoka.cardBg,
-    borderBottomWidth: 1, borderBottomColor: '#eef2f7'
+    padding: 16,
+    backgroundColor: BRAND.surfacePanel,
+    borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft
   },
-  title: { fontWeight: '900', fontSize: 18, color: apoka.text },
-  meta: { color: apoka.muted, marginTop: 6, fontSize: 12 },
+  title: { ...F, fontWeight: Platform.OS === 'ios' ? '800' : 'bold', fontSize: 18, color: '#0F172A' },
+  meta: { ...F, color: '#6B7280', marginTop: 6, fontSize: 12 },
 
   rowWrap: { flexDirection: 'row', marginTop: 10, alignItems: 'center' },
   searchWrap: { position: 'relative', flex: 1, marginRight: 8 },
   input: {
-    borderWidth: 1, borderColor: apoka.border, borderRadius: 10,
-    paddingHorizontal: 12, minHeight: 42, backgroundColor: '#fff', paddingRight: 34
+    ...F,
+    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10,
+    paddingHorizontal: 12, minHeight: 42, backgroundColor: BRAND.surfacePanel, paddingRight: 34, color: '#0F172A'
   },
   clearBtn: {
     position: 'absolute', right: 6, top: 6, width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center'
+    backgroundColor: BRAND.surfaceSubtle, alignItems: 'center', justifyContent: 'center'
   },
 
   // Sort
   sortBtn: {
-    paddingHorizontal: 12, borderRadius: 10, backgroundColor: apoka.brand,
+    paddingHorizontal: 12, borderRadius: 10, backgroundColor: BRAND.hanBlue,
     minHeight: 42, alignItems: 'center', justifyContent: 'center', marginRight: 8
   },
-  sortText: { color: '#fff', fontWeight: '800' },
+  sortText: { ...F, color: '#fff', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
   sortMenuCard: {
     position: 'absolute', right: 0, top: 46, zIndex: 10,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: apoka.border,
+    backgroundColor: BRAND.surfacePanel, borderWidth: 1, borderColor: BRAND.borderSoft,
     borderRadius: 12, padding: 6, width: 160,
-    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 6 }, elevation: 3,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 6 }, elevation: 3,
     maxHeight: 300, overflow: 'hidden'
   },
   sortItem: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10 },
-  sortItemActive: { backgroundColor: apoka.brandSoftBg, borderColor: apoka.brandSoftBorder },
-  sortItemText: { color: apoka.text, fontWeight: '600' },
-  sortItemTextActive: { color: apoka.brandStrong },
+  sortItemActive: { backgroundColor: '#E9EDFF', borderColor: BRAND.hanBlue },
+  sortItemText: { ...F, color: '#0F172A', fontWeight: Platform.OS === 'ios' ? '600' : 'bold' },
+  sortItemTextActive: { ...F, color: BRAND.hanBlue },
 
-  // Compact toggle
-  toggleChip: {
-    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999,
-    borderWidth: 1, borderColor: apoka.border, backgroundColor: '#fff'
+  // Body + Sidebar
+  body: { flex: 1 },
+  bodyWide: { flexDirection: 'row' },
+  gridCol: { flex: 1 },
+  gridColWide: { flex: 1, borderRightWidth: 1, borderRightColor: BRAND.borderSofter },
+
+  sidebar: {
+    width: 300,
+    padding: 12,
+    backgroundColor: BRAND.surfacePanel,
   },
-  toggleChipActive: { backgroundColor: apoka.brandSoftBg, borderColor: apoka.brandSoftBorder },
-  toggleChipText: { color: apoka.text, fontWeight: '700' },
-  toggleChipTextActive: { color: apoka.brandStrong },
+  sidebarTitle: { ...F, fontSize: 14, color: '#0F172A', fontWeight: Platform.OS === 'ios' ? '800' : 'bold', marginBottom: 6 },
+  sidebarCard: {
+    backgroundColor: BRAND.surfacePanel,
+    borderRadius: 12,
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    padding: 12,
+    marginBottom: 10,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
+    elevation: Platform.select({ android: 2, default: 0 }),
+  },
+  sidebarLabel: { ...F, color: '#6B7280', marginBottom: 8 },
+  sideChip: {
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    backgroundColor: BRAND.surfacePanel,
+    paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999
+  },
+  sideChipActive: { backgroundColor: '#E9EDFF', borderColor: BRAND.hanBlue },
+  sideChipTxt: { ...F, color: '#0F172A', fontWeight: Platform.OS === 'ios' ? '600' : 'bold' },
+  sideChipTxtActive: { ...F, color: BRAND.hanBlue },
+  sidebarCartRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sidebarMuted: { ...F, color: '#6B7280' },
+  sidebarTotal: { ...F, fontWeight: Platform.OS === 'ios' ? '800' : 'bold', color: BRAND.hanBlue },
+  sidePrimaryBtn: {
+    borderWidth: 1, borderColor: BRAND.hanBlue,
+    backgroundColor: BRAND.hanBlue, borderRadius: 10, paddingVertical: 10, alignItems: 'center'
+  },
+  sidePrimaryTxt: { ...F, color: '#fff', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
 
-  // Cards
+  // Cards (productos)
   card: {
-    backgroundColor: apoka.cardBg, borderWidth: 1, borderColor: apoka.border,
-    borderRadius: 12, padding: 12, // ancho se define dinámicamente
+    backgroundColor: BRAND.surfacePanel, borderWidth: 1, borderColor: BRAND.borderSoft,
+    borderRadius: 12, padding: 12,
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.03, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
+    elevation: Platform.select({ android: 1, default: 0 }),
   },
   cardCompact: { padding: 10 },
   thumbWrap: { position: 'relative' },
-  thumb: { height: 140, borderRadius: 10, backgroundColor: '#e5e7eb', marginBottom: 8, width: '100%' },
-  thumbCompact: { height: 110 },
+  thumb: { height: 160, borderRadius: 10, backgroundColor: '#e5e7eb', marginBottom: 8, width: '100%' },
+  thumbCompact: { height: 120 },
   likeBtn: {
     position: 'absolute', right: 8, top: 8,
     width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#ffffffcc'
   },
-  name: { fontWeight: '800', color: apoka.text },
-  price: { marginTop: 4, fontWeight: '900', color: apoka.brandStrong },
-  desc: { marginTop: 6, color: apoka.muted, fontSize: 12 },
+  name: { ...F, fontWeight: Platform.OS === 'ios' ? '800' : 'bold', color: '#0F172A' },
+  price: { ...F, marginTop: 4, fontWeight: Platform.OS === 'ios' ? '900' : 'bold', color: BRAND.hanBlue },
+  desc: { ...F, marginTop: 6, color: '#6B7280', fontSize: 12 },
 
   addBtn: {
-    marginTop: 10, borderWidth: 1, borderColor: apoka.brand, borderRadius: 10,
-    paddingVertical: 10, alignItems: 'center', backgroundColor: apoka.brand
+    marginTop: 10, borderWidth: 1, borderColor: BRAND.hanBlue, borderRadius: 10,
+    paddingVertical: 10, alignItems: 'center', backgroundColor: BRAND.hanBlue
   },
-  addBtnText: { color: '#fff', fontWeight: '900' },
+  addBtnText: { ...F, color: '#fff', fontWeight: Platform.OS === 'ios' ? '900' : 'bold' },
 
   stepper: {
     marginTop: 10, flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: apoka.border, borderRadius: 10, overflow: 'hidden'
+    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10, overflow: 'hidden'
   },
-  stepBtn: { paddingVertical: 8, paddingHorizontal: 14, backgroundColor: '#f9fafb' },
-  stepBtnLeft: { borderRightWidth: 1, borderRightColor: apoka.border },
-  stepBtnRight: { borderLeftWidth: 1, borderLeftColor: apoka.border },
-  stepBtnText: { fontSize: 16, fontWeight: '900', color: apoka.dark },
-  qtyText: { minWidth: 36, textAlign: 'center', fontWeight: '900', color: apoka.text },
+  stepBtn: { paddingVertical: 8, paddingHorizontal: 14, backgroundColor: BRAND.surfaceSubtle },
+  stepBtnLeft: { borderRightWidth: 1, borderRightColor: BRAND.borderSoft },
+  stepBtnRight: { borderLeftWidth: 1, borderLeftColor: BRAND.borderSoft },
+  stepBtnText: { ...F, fontSize: 16, fontWeight: Platform.OS === 'ios' ? '900' : 'bold', color: '#111827' },
+  qtyText: { ...F, minWidth: 36, textAlign: 'center', fontWeight: Platform.OS === 'ios' ? '900' : 'bold', color: '#0F172A' },
 
   detailBtn: {
-    marginTop: 10, borderWidth: 1, borderColor: apoka.border, borderRadius: 10,
-    paddingVertical: 10, alignItems: 'center', backgroundColor: '#fff'
+    marginTop: 10, borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10,
+    paddingVertical: 10, alignItems: 'center', backgroundColor: BRAND.surfacePanel
   },
-  detailBtnText: { fontWeight: '800', color: apoka.dark },
+  detailBtnText: { ...F, fontWeight: Platform.OS === 'ios' ? '800' : 'bold', color: '#111827' },
 
-  skeletonRow: { flexDirection: 'row' }, // sin gap
+  skeletonRow: { flexDirection: 'row' },
 
   // FAB
   fab: {
-    position: 'absolute', right: 16, bottom: 88, // deja espacio al mini-carrito
-    width: 52, height: 52, borderRadius: 26, backgroundColor: apoka.brand,
+    position: 'absolute', right: 16, bottom: 88,
+    width: 52, height: 52, borderRadius: 26, backgroundColor: BRAND.hanBlue,
     alignItems: 'center', justifyContent: 'center', elevation: 4
   },
-  fabText: { color: '#fff', fontSize: 20 },
+  fabText: { ...F, color: '#fff', fontSize: 20 },
   badge: {
     position: 'absolute', top: -6, right: -6, minWidth: 20, height: 20, paddingHorizontal: 4,
     borderRadius: 10, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center'
   },
-  badgeText: { color: '#fff', fontWeight: '900', fontSize: 12 },
+  badgeText: { ...F, color: '#fff', fontWeight: Platform.OS === 'ios' ? '900' : 'bold', fontSize: 12 },
 
   // Mini-carrito móvil
   checkoutBar: {
     position: 'absolute', left: 12, right: 12, bottom: 12,
-    backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: apoka.border,
+    backgroundColor: BRAND.surfacePanel, borderRadius: 14, borderWidth: 1, borderColor: BRAND.borderSoft,
     padding: 12, flexDirection: 'row', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 3
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 3
   },
-  totalLabel: { color: apoka.muted, fontSize: 12 },
-  totalValue: { fontSize: 18, fontWeight: '900', color: apoka.text },
+  totalLabel: { ...F, color: '#6B7280', fontSize: 12 },
+  totalValue: { ...F, fontSize: 18, fontWeight: Platform.OS === 'ios' ? '900' : 'bold', color: '#0F172A' },
   checkoutBtn: {
-    backgroundColor: apoka.brand, borderColor: apoka.brand,
+    backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue,
     paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1
   },
-  checkoutBtnText: { color: '#fff', fontWeight: '900' },
+  checkoutBtnText: { ...F, color: '#fff', fontWeight: Platform.OS === 'ios' ? '900' : 'bold' },
 });

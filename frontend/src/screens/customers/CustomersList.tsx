@@ -30,7 +30,7 @@ const prettyPhone = (v?: string | null) => {
   return d.replace(/(\d{3,4})(\d{0,4})(\d{0,4})/, '$1 $2 $3').trim();
 };
 
-// Avatar simple con iniciales (sin dependencias)
+// Avatar simple
 const initials = (name: string) => {
   const parts = name.trim().split(/\s+/).slice(0, 2);
   return parts.map(p => p[0]?.toUpperCase() ?? '').join('');
@@ -42,11 +42,28 @@ const colorFrom = (s: string) => {
   return `hsl(${hue}, 70%, 85%)`;
 };
 
-// Helper de fuente (evita problemas con weights en Android)
+// Fuente
 const F = Platform.select({
   ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
   default: { fontFamily: 'Apoka' },
 });
+
+// ===== Paleta de marca (igual a Home) =====
+const BRAND = {
+  hanBlue: '#4458C7',        // primario
+  iris: '#5A44C7',
+  cyanBlueAzure: '#4481C7',
+  maximumBlue: '#44AAC7',
+  darkPastelBlue: '#8690C7',
+  verdigris: '#43BFB7',
+
+  surfaceTint:  '#F3F6FF',
+  surfaceSubtle:'#F8FAFF',
+  surfacePanel: '#FCFDFF',
+  borderSoft:   '#E2E7FF',
+  borderSofter: '#E9EEFF',
+  trackSoft:    '#DEE6FB',
+} as const;
 
 const Chip = ({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) => (
   <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
@@ -71,7 +88,7 @@ const ActionBtn = ({ title, onPress, kind = 'primary', disabled }: {
       style={[
         styles.btnText,
         kind === 'secondary' && styles.btnTextSecondary,
-        kind === 'danger' && styles.btnTextPrimary
+        (kind === 'primary' || kind === 'danger') && styles.btnTextPrimary
       ]}
     >
       {title}
@@ -89,10 +106,7 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
   const columns = width >= 1280 ? 3 : width >= 900 ? 2 : 1;
   const isGrid = columns > 1;
 
-  // Carga no-bloqueante de la fuente (se aplica cuando esté lista)
-  useFonts({
-    Apoka: require('../../../assets/fonts/apokaregular.ttf'),
-  });
+  useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
   const [q, setQ] = useState('');
   const [items, setItems] = useState<Customer[]>([]);
@@ -136,9 +150,8 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
     }
   }, [loading, page, items, logout, serverParams]);
 
-  useEffect(() => { load(true); /* primera carga */ }, []); // eslint-disable-line
+  useEffect(() => { load(true); }, []); // primera carga
 
-  // Debounce para búsqueda/filtros/orden
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => load(true), 350);
@@ -154,8 +167,6 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
   const onEndReached = () => {
     if (!loading && items.length < total) load(false);
   };
-
-  // --- FIX: separar doRemove y manejar web vs nativo en confirmRemove ---
 
   const doRemove = async (id: number) => {
     try {
@@ -249,6 +260,7 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
             value={q}
             onChangeText={setQ}
             returnKeyType="search"
+            placeholderTextColor="#9aa7c2"
           />
           {!!q && (
             <Pressable onPress={() => setQ('')} style={styles.clearBtn}>
@@ -322,12 +334,13 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
 export default CustomersList;
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F6F7F9' },
+  screen: { flex: 1, backgroundColor: BRAND.surfaceTint },
 
   // Header/toolbar
   toolbarContainer: {
     paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10,
-    backgroundColor: '#F6F7F9'
+    backgroundColor: BRAND.surfaceSubtle,
+    borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft,
   },
   toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   toolbarLabel: { ...F, color: '#6B7280' },
@@ -335,45 +348,47 @@ const styles = StyleSheet.create({
   searchBox: { position: 'relative', flex: 1 },
   searchInput: {
     ...F,
-    borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 10, paddingHorizontal: 12, height: 42,
-    backgroundColor: '#fff', fontSize: 16
+    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10, paddingHorizontal: 12, height: 42,
+    backgroundColor: BRAND.surfacePanel, fontSize: 16
   },
   clearBtn: {
     position: 'absolute', right: 8, top: 6, width: 30, height: 30,
-    alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: '#EEF2FF'
+    alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: BRAND.borderSofter
   },
   clearText: { ...F, fontSize: 18, lineHeight: 18, color: '#374151' },
 
   chip: {
-    borderWidth: 1, borderColor: '#D1D5DB', paddingHorizontal: 10, paddingVertical: 7,
-    borderRadius: 999, backgroundColor: '#FFF'
+    borderWidth: 1, borderColor: BRAND.borderSoft, paddingHorizontal: 10, paddingVertical: 7,
+    borderRadius: 999, backgroundColor: BRAND.surfacePanel
   },
-  chipActive: { backgroundColor: '#0EA5E922', borderColor: '#0EA5E9' },
+  chipActive: { backgroundColor: '#E9EDFF', borderColor: BRAND.hanBlue },
   chipText: { ...F, color: '#374151' },
-  chipTextActive: { ...F, color: '#0369A1' },
+  chipTextActive: { ...F, color: BRAND.hanBlue },
 
   // Botones
   btn: {
     minWidth: 96, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10,
-    backgroundColor: '#0EA5E9'
+    backgroundColor: BRAND.hanBlue, borderWidth: 1, borderColor: BRAND.hanBlue
   },
-  btnSecondary: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB' },
-  btnDanger: { backgroundColor: '#DC2626' },
+  btnSecondary: { backgroundColor: BRAND.surfacePanel, borderWidth: 1, borderColor: BRAND.borderSoft },
+  btnDanger: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
   btnDisabled: { opacity: 0.6 },
-  btnText: { ...F, color: '#FFFFFF' },
+  btnText: { ...F },
   btnTextPrimary: { ...F, color: '#FFFFFF' },
   btnTextSecondary: { ...F, color: '#111827' },
 
   // Grid card
   card: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BRAND.surfacePanel,
     borderRadius: 12,
     padding: 14,
-    borderWidth: 1, borderColor: '#E5E7EB',
-    shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
-    elevation: Platform.select({ android: 2, default: 0 }),
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    borderTopWidth: 3, borderTopColor: BRAND.hanBlue,   // acento
+    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+    elevation: Platform.select({ android: 3, default: 0 }),
   },
 
   avatar: {
@@ -388,13 +403,14 @@ const styles = StyleSheet.create({
   // Badges
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   badgeText: { ...F, fontSize: 11, color: '#fff' },
-  badgeInfo: { backgroundColor: '#3B82F6' },
-  badgeNeutral: { backgroundColor: '#6B7280' },
+  badgeInfo: { backgroundColor: BRAND.hanBlue },
+  badgeNeutral: { backgroundColor: BRAND.darkPastelBlue },
 
   // Row list
   rowItem: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12,
-    borderBottomColor: '#E5E7EB', borderBottomWidth: 1, backgroundColor: '#fff', gap: 10
+    borderBottomColor: BRAND.borderSofter, borderBottomWidth: 1,
+    backgroundColor: BRAND.surfacePanel, gap: 10
   },
   rowTitle: { ...F, fontSize: 16, color: '#111827' },
   rowSub: { ...F, color: '#6B7280', fontSize: 12 },
@@ -405,6 +421,6 @@ const styles = StyleSheet.create({
 
   empty: { alignItems: 'center', padding: 32, gap: 6 },
   emptyEmoji: { fontSize: 40 },
-  emptyTitle: { ...F, fontSize: 18 },
+  emptyTitle: { ...F, fontSize: 18, color: BRAND.hanBlue },
   emptyText: { ...F, color: '#6B7280', textAlign: 'center' },
 });

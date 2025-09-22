@@ -1,28 +1,45 @@
-// src/screens/warehouses/WarehousesList.tsx — fuente Apoka + UI mejorada
+// src/screens/warehouses/WarehousesList.tsx — UI mejorada + fuente Apoka + COLORES BRAND (no Apoka)
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, FlatList, Alert, StyleSheet, RefreshControl,
-  ActivityIndicator, Pressable, useWindowDimensions, Platform
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  Alert,
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+  Pressable,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useFonts } from 'expo-font';
 import { api } from '../../api';
 
-// ====== Theme rápido (match con otras pantallas mejoradas)
-const t = {
-  canvas: '#F6F7F9',
-  card: '#FFFFFF',
-  text: '#0F172A',
-  muted: '#6B7280',
-  border: '#E5E7EB',
-  brand: '#0EA5E9',
-  brandDark: '#0369A1',
+/** ====== BRAND (misma paleta que ProductForm) ====== */
+const BRAND = {
+  hanBlue: '#4458C7',
+  iris: '#5A44C7',
+  cyanBlueAzure: '#4481C7',
+  maximumBlue: '#44AAC7',
+  darkPastelBlue: '#8690C7',
+  verdigris: '#43BFB7',
+
+  surfaceTint:  '#F3F6FF',
+  surfaceSubtle:'#F8FAFF',
+  surfacePanel: '#FCFDFF',
+  borderSoft:   '#E2E7FF',
+  borderSofter: '#E9EEFF',
+
+  // Semánticos de feedback
+  okBg:   '#ECFDF5',
+  okText: '#065F46',
+  warnBg: '#FEF3C7',
+  warnText:'#92400E',
   danger: '#DC2626',
-  dangerBg: '#FEE2E2',
-  chipBg: '#FFFFFF',
-  chipBorder: '#D1D5DB',
 };
 
-// ====== Fuente Apoka (igual que Receivables)
+/** ====== Fuente Apoka (igual que Receivables) ====== */
 const F = Platform.select({
   ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
   default: { fontFamily: 'Apoka' },
@@ -39,10 +56,10 @@ function initialsOf(name?: string) {
 
 const WarehousesList: React.FC<any> = ({ navigation }) => {
   const { width } = useWindowDimensions();
-  const columns = width >= 1280 ? 3 : width >= 900 ? 2 : 1;
+  const columns = width >= 1280 ? 3 : width >= 980 ? 2 : 1;
   const isGrid = columns > 1;
 
-  // Fuente Apoka (no bloquea; se aplica al cargar)
+  // Fuente Apoka — no bloquea visualmente
   useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
   const [items, setItems] = useState<Warehouse[]>([]);
@@ -121,13 +138,20 @@ const WarehousesList: React.FC<any> = ({ navigation }) => {
     return list;
   }, [items, qEffective, onlyWithAddress, sort]);
 
+  /** ====== UI atoms ====== */
   const Chip = ({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) => (
-    <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
+    <Pressable
+      onPress={onPress}
+      style={[styles.chip, active && styles.chipActive]}
+      accessibilityRole="button"
+    >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
     </Pressable>
   );
 
-  const ActionBtn = ({ title, onPress, kind = 'primary', disabled }: {
+  const ActionBtn = ({
+    title, onPress, kind = 'primary', disabled,
+  }: {
     title: string; onPress?: () => void; kind?: 'primary' | 'secondary' | 'danger'; disabled?: boolean;
   }) => (
     <Pressable
@@ -137,14 +161,15 @@ const WarehousesList: React.FC<any> = ({ navigation }) => {
         styles.btn,
         kind === 'secondary' && styles.btnSecondary,
         kind === 'danger' && styles.btnDanger,
-        disabled && styles.btnDisabled
+        disabled && styles.btnDisabled,
       ]}
     >
       <Text style={[
         styles.btnText,
         kind === 'secondary' && styles.btnTextSecondary,
-        kind === 'danger' && styles.btnTextPrimary
-      ]}>{title}</Text>
+      ]}>
+        {title}
+      </Text>
     </Pressable>
   );
 
@@ -167,6 +192,7 @@ const WarehousesList: React.FC<any> = ({ navigation }) => {
     </Text>
   );
 
+  /** ====== Render item ====== */
   const renderItem = ({ item }: { item: Warehouse }) => {
     const hasAddr = !!item.address?.trim();
 
@@ -203,6 +229,7 @@ const WarehousesList: React.FC<any> = ({ navigation }) => {
 
   const cycleSort = () => setSort(s => (s === 'name_asc' ? 'name_desc' : 'name_asc'));
 
+  /** ====== Header de la lista (toolbar) ====== */
   const listHeader = (
     <View style={styles.toolbarContainer}>
       {/* Row 1: Búsqueda + acciones rápidas */}
@@ -216,17 +243,17 @@ const WarehousesList: React.FC<any> = ({ navigation }) => {
             returnKeyType="search"
           />
           {!!q && (
-            <Pressable onPress={() => setQ('')} style={styles.clearBtn}>
+            <Pressable onPress={() => setQ('')} style={styles.clearBtn} accessibilityLabel="Limpiar búsqueda">
               <Text style={styles.clearText}>×</Text>
             </Pressable>
           )}
         </View>
 
-        <Pressable onPress={cycleSort} style={styles.sortBtn}>
+        <Pressable onPress={cycleSort} style={styles.sortBtn} accessibilityLabel="Alternar orden alfabético">
           <Text style={styles.sortText}>{sort === 'name_asc' ? 'A–Z' : 'Z–A'}</Text>
         </Pressable>
 
-        <Pressable onPress={onRefresh} style={styles.refreshBtn}>
+        <Pressable onPress={onRefresh} style={styles.refreshBtn} accessibilityLabel="Refrescar">
           <Text style={styles.refreshText}>Refrescar</Text>
         </Pressable>
 
@@ -264,11 +291,11 @@ const WarehousesList: React.FC<any> = ({ navigation }) => {
             {Array.from({ length: isGrid ? columns : 1 }).map((_, i) => (
               <View key={`sk-${i}`} style={[styles.card, { flex: 1 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <View style={[styles.avatar, { backgroundColor: '#EEF2F7' }]} />
-                  <View style={{ height: 14, backgroundColor: '#EEF2F7', borderRadius: 6, flex: 1 }} />
+                  <View style={[styles.avatar, { backgroundColor: BRAND.borderSofter, borderColor: BRAND.borderSofter }]} />
+                  <View style={{ height: 14, backgroundColor: BRAND.borderSofter, borderRadius: 6, flex: 1 }} />
                 </View>
                 <View style={{ height: 10 }} />
-                <View style={{ height: 12, backgroundColor: '#EEF2F7', borderRadius: 6 }} />
+                <View style={{ height: 12, backgroundColor: BRAND.borderSofter, borderRadius: 6 }} />
               </View>
             ))}
           </View>
@@ -297,7 +324,11 @@ const WarehousesList: React.FC<any> = ({ navigation }) => {
           />
 
           {/* FAB Nuevo */}
-          <Pressable onPress={() => navigation.navigate('WarehouseForm')} style={styles.fab} accessibilityLabel="Nuevo almacén">
+          <Pressable
+            onPress={() => navigation.navigate('WarehouseForm')}
+            style={styles.fab}
+            accessibilityLabel="Nuevo almacén"
+          >
             <Text style={styles.fabText}>＋</Text>
           </Pressable>
         </>
@@ -309,86 +340,200 @@ const WarehousesList: React.FC<any> = ({ navigation }) => {
 export default WarehousesList;
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: t.canvas },
+  screen: { flex: 1, backgroundColor: BRAND.surfaceTint },
 
-  // Toolbar
-  toolbarContainer: { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 6, gap: 10, backgroundColor: t.canvas },
+  // ===== Toolbar
+  toolbarContainer: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 6,
+    gap: 10,
+    backgroundColor: BRAND.surfaceTint,
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND.borderSoft,
+  },
   toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
 
-  toolbarLabel: { ...F, color: t.muted },
-
   searchBox: { position: 'relative', flex: 1 },
-  searchInput: { ...F, borderWidth: 1, borderColor: t.chipBorder, borderRadius: 10, paddingHorizontal: 12, height: 42, backgroundColor: '#fff', paddingRight: 34 },
-  clearBtn: { position: 'absolute', right: 6, top: 6, width: 28, height: 28, borderRadius: 14, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
-  clearText: { ...F, fontSize: 18, lineHeight: 18, color: '#374151' },
+  searchInput: {
+    ...F,
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 42,
+    backgroundColor: '#fff',
+    paddingRight: 34,
+  },
+  clearBtn: {
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: BRAND.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+  },
+  clearText: { ...F, fontSize: 18, lineHeight: 18, color: BRAND.hanBlue },
 
-  sortBtn: { paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#111827', minHeight: 42, alignItems: 'center', justifyContent: 'center' },
+  sortBtn: {
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: BRAND.hanBlue,
+    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: BRAND.hanBlue,
+  },
   sortText: { ...F, color: '#fff', fontWeight: '800' },
 
-  refreshBtn: { paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: t.chipBorder, minHeight: 42, alignItems: 'center', justifyContent: 'center' },
-  refreshText: { ...F, color: t.text, fontWeight: '800' },
+  refreshBtn: {
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: BRAND.surfacePanel,
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refreshText: { ...F, color: '#0F172A', fontWeight: '800' },
 
-  // Stats pills
+  // ===== Stats pills
   statsRow: { flexDirection: 'row', gap: 6 },
-  statPill: { ...F, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#EEF2F7', color: '#0F172A' },
-  statOk: { backgroundColor: '#DCFCE7', color: '#14532D' },
-  statMuted: { backgroundColor: '#E5E7EB', color: '#1F2937' },
+  statPill: {
+    ...F,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#F1F5F9',
+    color: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  statOk: { backgroundColor: BRAND.okBg, color: BRAND.okText, borderColor: '#D1FAE5' },
+  statMuted: { backgroundColor: '#F3F4F6', color: '#1F2937', borderColor: '#E5E7EB' },
 
   metaRow: { paddingHorizontal: 12, paddingBottom: 8 },
-  metaText: { ...F, color: t.muted },
+  metaText: { ...F, color: '#64748B' },
 
-  // Chips
-  chip: { borderWidth: 1, borderColor: t.chipBorder, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: t.chipBg },
-  chipActive: { backgroundColor: '#0EA5E922', borderColor: t.brand },
-  chipText: { ...F, color: '#374151' },
-  chipTextActive: { ...F, color: t.brandDark },
+  // ===== Chips
+  chip: {
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: '#fff',
+  },
+  chipActive: { backgroundColor: BRAND.surfaceSubtle, borderColor: BRAND.hanBlue },
+  chipText: { ...F, color: '#0F172A' },
+  chipTextActive: { ...F, color: BRAND.hanBlue, fontWeight: '700' },
 
-  // Botones
-  btn: { minWidth: 96, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: t.brand },
-  btnSecondary: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: t.chipBorder },
-  btnDanger: { backgroundColor: t.danger },
+  // ===== Botones
+  btn: {
+    minWidth: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: BRAND.hanBlue,
+    borderWidth: 1,
+    borderColor: BRAND.hanBlue,
+  },
+  btnSecondary: { backgroundColor: '#FFFFFF', borderColor: BRAND.borderSoft },
+  btnDanger: { backgroundColor: BRAND.danger, borderColor: BRAND.danger },
   btnDisabled: { opacity: 0.6 },
 
   btnText: { ...F, color: '#FFFFFF', fontWeight: '800' },
-  btnTextPrimary: { ...F, color: '#FFFFFF', fontWeight: '800' },
   btnTextSecondary: { ...F, color: '#111827', fontWeight: '800' },
 
-  // Card (grid)
+  // ===== Card (grid)
   card: {
     flex: 1,
-    backgroundColor: t.card,
+    backgroundColor: BRAND.surfacePanel,
     borderRadius: 12,
     padding: 14,
-    borderWidth: 1, borderColor: t.border,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+    borderTopWidth: 3,
+    borderTopColor: BRAND.hanBlue,
+    shadowColor: BRAND.hanBlue,
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
     elevation: Platform.select({ android: 2, default: 0 }),
     gap: 8,
   },
   rowHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E0E7FF' },
-  avatarTxt: { ...F, fontWeight: '900', color: '#3730A3' },
-  itemTitle: { ...F, fontSize: 16, fontWeight: '800', color: t.text },
-  itemSub: { ...F, color: t.muted, fontSize: 12 },
-  badge: { ...F, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: '#E5E7EB', color: '#1F2937' },
-  badgeOk: { backgroundColor: '#DCFCE7', color: '#14532D' },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: BRAND.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+  },
+  avatarTxt: { ...F, fontWeight: '900', color: BRAND.hanBlue },
+  itemTitle: { ...F, fontSize: 16, fontWeight: '800', color: '#0F172A' },
+  itemSub: { ...F, color: '#64748B', fontSize: 12 },
+  badge: {
+    ...F,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: '#E5E7EB',
+    color: '#1F2937',
+  },
+  badgeOk: { backgroundColor: BRAND.okBg, color: BRAND.okText },
   badgeMuted: { backgroundColor: '#F3F4F6', color: '#374151' },
   cardFooter: { marginTop: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
-  // Row (lista)
-  rowItem: { gap: 6, paddingVertical: 12, paddingHorizontal: 12, borderBottomColor: t.border, borderBottomWidth: 1, backgroundColor: '#fff' },
-  rowSub: { ...F, color: t.muted, fontSize: 12 },
+  // ===== Row (lista)
+  rowItem: {
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomColor: BRAND.borderSoft,
+    borderBottomWidth: 1,
+    backgroundColor: '#fff',
+  },
+  rowSub: { ...F, color: '#64748B', fontSize: 12 },
   rowFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
-  // Empty
+  // ===== Empty
   empty: { alignItems: 'center', padding: 32, gap: 6 },
   emptyEmoji: { ...F, fontSize: 40 },
-  emptyTitle: { ...F, fontSize: 18, fontWeight: '900', color: t.text },
-  emptyText: { ...F, color: t.muted, textAlign: 'center' },
+  emptyTitle: { ...F, fontSize: 18, fontWeight: '900', color: '#0F172A' },
+  emptyText: { ...F, color: '#64748B', textAlign: 'center' },
 
-  // Skeleton
+  // ===== Skeleton
   skeletonRow: { flexDirection: 'row' },
 
-  // FAB
-  fab: { position: 'absolute', right: 16, bottom: 16, width: 52, height: 52, borderRadius: 26, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', elevation: 4 },
+  // ===== FAB
+  fab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: BRAND.hanBlue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: BRAND.hanBlue,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
   fabText: { ...F, color: '#fff', fontSize: 24, fontWeight: '900', lineHeight: 24 },
 });
