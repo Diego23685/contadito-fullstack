@@ -5,6 +5,10 @@
       "PackagePath": "staticwebassets\\uploads\\5\\2025\\09\\31fa8250017b4ab68247616b48538530.jpg"
     },
     {
+      "Id": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\wwwroot\\uploads\\5\\2025\\09\\649cb3b4f941440fb3a5e677ff146778.jpg",
+      "PackagePath": "staticwebassets\\uploads\\5\\2025\\09\\649cb3b4f941440fb3a5e677ff146778.jpg"
+    },
+    {
       "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.Contadito.Api.Microsoft.AspNetCore.StaticWebAssets.props",
       "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
     },

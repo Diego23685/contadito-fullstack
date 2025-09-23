@@ -12,6 +12,7 @@ import {
   ScrollView,
   useWindowDimensions,
   Platform,
+  Linking,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useCart } from '../../providers/CartContext';
@@ -55,18 +56,15 @@ const AButton = ({
 }: {
   title: string;
   onPress?: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'whatsapp';
   disabled?: boolean;
   style?: any;
 }) => {
-  const vStyle =
-    variant === 'secondary'
-      ? styles.btnSecondary
-      : variant === 'ghost'
-      ? styles.btnGhost
-      : variant === 'danger'
-      ? styles.btnDanger
-      : styles.btnPrimary;
+  let vStyle = styles.btnPrimary;
+  if (variant === 'secondary') vStyle = styles.btnSecondary;
+  else if (variant === 'ghost') vStyle = styles.btnGhost;
+  else if (variant === 'danger') vStyle = styles.btnDanger;
+  else if (variant === 'whatsapp') vStyle = styles.btnWhatsApp;
 
   const tStyle =
     variant === 'secondary' || variant === 'ghost'
@@ -84,6 +82,27 @@ const AButton = ({
   );
 };
 
+/** Checkbox simple */
+const Checkbox = ({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) => (
+  <Pressable
+    onPress={() => onChange(!checked)}
+    style={styles.checkboxRow}
+  >
+    <View style={[styles.checkboxBox, checked && styles.checkboxBoxChecked]}>
+      {checked ? <Text style={styles.checkboxTick}>✓</Text> : null}
+    </View>
+    <Text style={[F, { color: '#0f172a' }]}>{label}</Text>
+  </Pressable>
+);
+
 export default function CheckoutScreen() {
   // Cargar fuente Apoka (no bloquea el primer render; se aplica cuando está lista)
   useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
@@ -93,12 +112,11 @@ export default function CheckoutScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
 
-  // Alineado con el Carrito (lee varias posibles props)
+  // Slug solo para contexto/front (el envío por WhatsApp no depende del backend)
   const slug: string =
     route.params?.slug ??
-    route.params?.tenantRef ??
-    route.params?.tenantId ??
     route.params?.slugOrName ??
+    route.params?.tenantRef ??
     'DemoPyme';
 
   const { items, total, clear } = useCart();
@@ -112,6 +130,12 @@ export default function CheckoutScreen() {
 
   const [errors, setErrors] = useState<Record<string, string | null>>({});
 
+  // ===== Opciones “checkboxes” solicitadas =====
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [needInvoice, setNeedInvoice] = useState(false);
+  const [delivery, setDelivery] = useState<'envio' | 'retiro'>('envio');
+  const [payMethod, setPayMethod] = useState<'contra' | 'transferencia' | 'tarjeta'>('contra');
+
   const hasItems = items && items.length > 0;
 
   // Validaciones simples
@@ -123,6 +147,7 @@ export default function CheckoutScreen() {
     if (!phone.trim()) next.phone = 'El teléfono es requerido';
     if (phone && !/^\+?\d{7,15}$/.test(onlyDigitsPlus(phone))) next.phone = 'Teléfono inválido';
     if (email && !isEmail(email)) next.email = 'Correo inválido';
+    if (!acceptTerms) next.terms = 'Debes aceptar términos y condiciones';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -142,9 +167,13 @@ export default function CheckoutScreen() {
         phone: phone.trim(),
         shippingAddress: addr.trim() || undefined,
         notes: notes.trim() || undefined,
+        delivery,
+        payMethod,
+        needInvoice,
         items: items.map((i: any) => ({ productId: i.productId, quantity: i.qty })),
       };
-      const { data } = await api.post(`/store/${slug}/orders`, payload);
+      // Mantengo el submit por si quieres registrar en backend además de WhatsApp.
+      const { data } = await api.post(`/store/${encodeURIComponent(slug)}/orders`, payload);
       clear(slug);
       Alert.alert('Pedido creado', `Número: ${data.number}\nTotal: ${money(Number(data.total))}`);
       nav.reset({ index: 0, routes: [{ name: 'StoreFront', params: { slug } }] });
@@ -152,6 +181,81 @@ export default function CheckoutScreen() {
       Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo crear el pedido'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ===== WhatsApp =====
+  const WHATSAPP_TO = '57379929'; // número solicitado
+
+  function normalizeWhatsAppNumber(raw: string) {
+    let s = String(raw).replace(/[^\d+]/g, '');
+    if (s.startsWith('00')) s = '+' + s.slice(2);
+    // Si vienen 8 dígitos (Nicaragua), intenta prefijar +505
+    if (!s.startsWith('+') && s.length === 8) s = '505' + s;
+    // wa.me pide solo dígitos (sin +)
+    return s.replace('+', '');
+  }
+
+  const buildWhatsAppMessage = () => {
+    const lines: string[] = [];
+    lines.push(`🧾 *Nuevo pedido desde la tienda* (${slug})`);
+    lines.push('');
+    lines.push(`👤 *Cliente:* ${name.trim()}`);
+    if (email.trim()) lines.push(`📧 *Correo:* ${email.trim()}`);
+    lines.push(`📱 *Tel:* ${phone.trim()}`);
+    if (addr.trim()) lines.push(`🏠 *Dirección:* ${addr.trim()}`);
+    if (notes.trim()) lines.push(`📝 *Notas:* ${notes.trim()}`);
+    lines.push('');
+    lines.push(`🚚 *Entrega:* ${delivery === 'envio' ? 'Envío a domicilio' : 'Retiro en tienda'}`);
+    const pm =
+      payMethod === 'contra' ? 'Pago contra entrega' :
+      payMethod === 'transferencia' ? 'Transferencia bancaria' :
+      'Tarjeta';
+    lines.push(`💳 *Pago:* ${pm}`);
+    lines.push(`📄 *Factura:* ${needInvoice ? 'Sí' : 'No'}`);
+    lines.push('');
+    lines.push('*Productos*');
+    items.forEach((it: any, idx: number) => {
+      const line = Number(it.qty) * Number(it.price || 0);
+      lines.push(`${idx + 1}. ${it.name}  x${it.qty}  · ${money(Number(it.price || 0))}  = ${money(line)}`);
+    });
+    lines.push('');
+    lines.push(`🟣 *Total:* ${money(Number(total))}`);
+    lines.push('');
+    lines.push('Gracias por su compra 🙌');
+
+    return lines.join('\n');
+  };
+
+  const sendWhatsApp = async () => {
+    if (!hasItems) {
+      Alert.alert('Carrito vacío', 'Agrega productos antes de continuar.');
+      return;
+    }
+    // No forzamos las mismas validaciones estrictas que el submit, pero sí las básicas
+    if (!name.trim()) { Alert.alert('Falta nombre', 'Ingresa tu nombre.'); return; }
+    if (!phone.trim()) { Alert.alert('Falta teléfono', 'Ingresa tu teléfono.'); return; }
+
+    const msg = buildWhatsAppMessage();
+    const num = normalizeWhatsAppNumber(WHATSAPP_TO);
+    const encoded = encodeURIComponent(msg);
+
+    // Intenta app nativa, si no, wa.me (web)
+    const appUrl = `whatsapp://send?phone=${num}&text=${encoded}`;
+    const webUrl = `https://wa.me/${num}?text=${encoded}`;
+
+    try {
+      const canNative = await Linking.canOpenURL('whatsapp://send');
+      if (canNative) {
+        await Linking.openURL(appUrl);
+      } else {
+        await Linking.openURL(webUrl);
+      }
+    } catch (e) {
+      Alert.alert(
+        'No se pudo abrir WhatsApp',
+        'Verifica que WhatsApp esté instalado o que el número tenga código de país.'
+      );
     }
   };
 
@@ -241,14 +345,30 @@ export default function CheckoutScreen() {
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Envío</Text>
+            <View style={styles.segmentWrap}>
+              <Pressable
+                onPress={() => setDelivery('envio')}
+                style={[styles.segmentBtn, delivery === 'envio' && styles.segmentBtnActive]}
+              >
+                <Text style={[F, delivery === 'envio' ? styles.segmentTextActive : styles.segmentText]}>Envío a domicilio</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setDelivery('retiro')}
+                style={[styles.segmentBtn, delivery === 'retiro' && styles.segmentBtnActive]}
+              >
+                <Text style={[F, delivery === 'retiro' ? styles.segmentTextActive : styles.segmentText]}>Retiro en tienda</Text>
+              </Pressable>
+            </View>
+
             <Field
               label="Dirección de envío"
               value={addr}
               onChangeText={setAddr}
               multiline
               placeholder="Barrio, calle, referencias"
-              helper="Si prefieres recoger en tienda, déjalo en blanco y coméntalo en las notas."
+              helper="Si prefieres recoger en tienda, puedes dejarlo en blanco."
             />
+
             <Field
               label="Notas (opcional)"
               value={notes}
@@ -256,6 +376,43 @@ export default function CheckoutScreen() {
               multiline
               placeholder="Indicaciones para la entrega, horarios, etc."
             />
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Pago</Text>
+
+            <View style={styles.segmentWrap}>
+              <Pressable
+                onPress={() => setPayMethod('contra')}
+                style={[styles.segmentBtn, payMethod === 'contra' && styles.segmentBtnActive]}
+              >
+                <Text style={[F, payMethod === 'contra' ? styles.segmentTextActive : styles.segmentText]}>Contra entrega</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setPayMethod('transferencia')}
+                style={[styles.segmentBtn, payMethod === 'transferencia' && styles.segmentBtnActive]}
+              >
+                <Text style={[F, payMethod === 'transferencia' ? styles.segmentTextActive : styles.segmentText]}>Transferencia</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setPayMethod('tarjeta')}
+                style={[styles.segmentBtn, payMethod === 'tarjeta' && styles.segmentBtnActive]}
+              >
+                <Text style={[F, payMethod === 'tarjeta' ? styles.segmentTextActive : styles.segmentText]}>Tarjeta</Text>
+              </Pressable>
+            </View>
+
+            <Checkbox
+              label="Necesito factura a nombre de mi empresa/persona"
+              checked={needInvoice}
+              onChange={setNeedInvoice}
+            />
+            <Checkbox
+              label="Acepto términos y condiciones"
+              checked={acceptTerms}
+              onChange={(v) => { setAcceptTerms(v); if (errors.terms) setErrors(s => ({ ...s, terms: null })); }}
+            />
+            {!!errors.terms && <Text style={styles.error}>{errors.terms}</Text>}
           </View>
         </ScrollView>
 
@@ -282,25 +439,30 @@ export default function CheckoutScreen() {
                   {money(items.reduce((s: number, it: any) => s + Number(it.qty) * Number(it.price || 0), 0))}
                 </Text>
               </View>
-              {/* Si manejas envío o impuestos, muéstralos aquí */}
               <View style={[styles.rowBetween, { marginTop: 6 }]}>
                 <Text style={styles.totalLabel}>Total</Text>
                 <Text style={styles.totalValue}>{totalFmt}</Text>
               </View>
             </View>
 
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+              <AButton
+                title="Enviar por WhatsApp"
+                variant="whatsapp"
+                onPress={sendWhatsApp}
+                style={{ flexGrow: 1 }}
+              />
               <AButton
                 title="Editar carrito"
                 variant="secondary"
                 onPress={() => nav.goBack()}
-                style={{ flex: 1 }}
+                style={{ flexGrow: 1, minWidth: 140 }}
               />
               <AButton
-                title={loading ? 'Procesando…' : 'Confirmar pedido'}
+                title={loading ? 'Procesando…' : 'Confirmar pedido (API)'}
                 onPress={submit}
                 disabled={loading}
-                style={{ flex: 1 }}
+                style={{ flexGrow: 1, minWidth: 180 }}
               />
             </View>
           </View>
@@ -314,7 +476,7 @@ export default function CheckoutScreen() {
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalValue}>{totalFmt}</Text>
           </View>
-          <AButton title="Confirmar" onPress={submit} disabled={loading} style={{ minWidth: 140 }} />
+          <AButton title="WhatsApp" variant="whatsapp" onPress={sendWhatsApp} style={{ minWidth: 120 }} />
         </View>
       )}
     </View>
@@ -362,9 +524,8 @@ const styles = StyleSheet.create({
   main: { flex: 1, marginTop: 8 },
   mainWide: { flexDirection: 'row', gap: 12 },
   leftCol: { flex: 1 },
-  leftColWide: { flex: 7, minWidth: 0 }, // evita estiramientos del form
+  leftColWide: { flex: 7, minWidth: 0 },
   rightCol: { marginTop: 12 },
-  // 👉 sidebar con ancho máximo para que no “se estire”
   rightColWide: { flex: 5, marginTop: 0, maxWidth: 420, alignSelf: 'flex-start' },
 
   // Tarjetas
@@ -463,15 +624,35 @@ const styles = StyleSheet.create({
   btnSecondary: { backgroundColor: BRAND.surfacePanel, borderColor: BRAND.borderSoft },
   btnGhost: { backgroundColor: 'transparent', borderColor: 'transparent' },
   btnDanger: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
+  btnWhatsApp: { backgroundColor: '#25D366', borderColor: '#25D366' },
   btnTextLight: { ...F, color: '#FFFFFF' },
   btnTextDark: { ...F, color: '#0f172a' },
   btnTextWeight: { fontWeight: Platform.OS === 'ios' ? '900' : 'bold' },
 
-  // (Opcional) Overlay de loading
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.75)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  // Segment (píldoras)
+  segmentWrap: { flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap' },
+  segmentBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+    backgroundColor: BRAND.surfacePanel,
   },
+  segmentBtnActive: {
+    backgroundColor: BRAND.hanBlue,
+    borderColor: BRAND.hanBlue,
+  },
+  segmentText: { color: '#0f172a' },
+  segmentTextActive: { color: '#fff' },
+
+  // Checkbox
+  checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6 },
+  checkboxBox: {
+    width: 18, height: 18, borderRadius: 4,
+    borderWidth: 1, borderColor: BRAND.borderSoft,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff'
+  },
+  checkboxBoxChecked: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
+  checkboxTick: { color: '#fff', fontSize: 12 },
 });

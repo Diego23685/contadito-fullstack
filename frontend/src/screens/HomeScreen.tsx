@@ -1,4 +1,4 @@
-// src/screens/HomeScreen.tsx — panel lateral pro + centrado + Apoka manual
+// src/screens/HomeScreen.tsx — Panel lateral pro + centrado + Apoka + Asesor IA (animado) + GiftedCharts
 import React, { useCallback, useEffect, useMemo, useRef, useState, useContext } from 'react';
 import {
   Alert,
@@ -19,6 +19,12 @@ import {
 import { useFonts } from 'expo-font';
 import { api } from '../api';
 import { AuthContext } from '../providers/AuthContext';
+
+// Gradiente + (opcional) animaciones declarativas futuras
+import { LinearGradient } from 'expo-linear-gradient';
+
+// CHARTS: sin Skia, compatibles con React 18 / Expo
+import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 
 // ---------------- Tipos ----------------
 type Dashboard = {
@@ -63,7 +69,18 @@ type Dashboard = {
 
 type Props = { navigation: any };
 
-// ------------- Colores de marca ---------------
+// === IA local (Ollama) ===
+const OLLAMA_BASE =
+  Platform.OS === 'android' ? 'http://10.0.2.2:11434' : 'http://localhost:11434';
+const OLLAMA_MODEL = 'qwen2.5:3b-instruct';
+
+type AiInsights = {
+  resumen?: string;
+  prioridadGeneral?: 'alta' | 'media' | 'baja';
+  acciones?: { titulo: string; detalle?: string; prioridad?: 'alta' | 'media' | 'baja' }[];
+  texto?: string;
+};
+
 // ------------- Colores de marca ---------------
 const BRAND = {
   hanBlue: '#4458C7',
@@ -80,9 +97,8 @@ const BRAND = {
   borderSofter: '#E9EEFF',
   trackSoft:    '#DEE6FB',
 
-  // acentos extra para dar vida (derivados de tu paleta)
-  accent:       '#4458C7', // Han Blue
-  accentAlt:    '#5A44C7', // Iris
+  accent:       '#4458C7',
+  accentAlt:    '#5A44C7',
 };
 
 // ------------- Utilidades ---------------
@@ -91,7 +107,7 @@ const moneyNI = (v?: number | null) => {
   try {
     return new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(n);
   } catch {
-    return `C$ ${n.toFixed(2)}`; // fallback
+    return `C$ ${n.toFixed(2)}`;
   }
 };
 
@@ -99,8 +115,7 @@ function timeAgo(iso?: string) {
   if (!iso) return '—';
   const dt = new Date(iso);
   const diff = Date.now() - dt.getTime();
-  const sec = Math.max(1, Math.floor(diff / 1000));
-  const mins = Math.floor(sec / 60);
+  const mins = Math.floor(diff / 60000);
   const hours = Math.floor(mins / 60);
   const days = Math.floor(hours / 24);
   if (days > 0) return `hace ${days} d`;
@@ -137,6 +152,17 @@ const Card: React.FC<{ style?: any; children: React.ReactNode; onPress?: () => v
     </Comp>
   );
 };
+
+const GradientCard: React.FC<{ children: React.ReactNode; style?: any }>
+= ({ children, style }) => (
+  <LinearGradient
+    colors={['#ffffff', '#f7f8ff']}
+    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+    style={[styles.card, { borderTopColor: BRAND.iris }, style]}
+  >
+    {children}
+  </LinearGradient>
+);
 
 const Section: React.FC<{ title: string; right?: React.ReactNode; children: React.ReactNode; style?: any; subtitle?: string }>
 = ({ title, right, children, style, subtitle }) => (
@@ -188,7 +214,163 @@ const Skeleton: React.FC<{ height?: number; width?: number; style?: any }>
   <View style={[{ height, width, backgroundColor: '#eef0f4', borderRadius: 8 }, style]} />
 );
 
-// ---------- Panel Lateral Moderno ----------
+/* ================= Animaciones mínimas (propio) ================= */
+
+const ShimmerLine: React.FC<{ width?: number | string; height?: number; style?: any; radius?: number }>
+= ({ width = '100%', height = 14, style, radius = 8 }) => {
+  const trans = useRef(new Animated.Value(-60)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(trans, { toValue: 260, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [trans]);
+  return (
+    <View style={[{ width, height, borderRadius: radius, overflow: 'hidden', backgroundColor: '#eef0f4' }, style]}>
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0, bottom: 0, width: 120,
+          transform: [{ translateX: trans }],
+          backgroundColor: 'rgba(255,255,255,0.6)',
+          opacity: 0.6,
+        }}
+      />
+    </View>
+  );
+};
+
+const Typewriter: React.FC<{ text?: string; speed?: number; style?: any }>
+= ({ text = '', speed = 14, style }) => {
+  const [slice, setSlice] = useState('');
+  useEffect(() => {
+    setSlice('');
+    if (!text) return;
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setSlice(text.slice(0, i));
+      if (i >= text.length) clearInterval(id);
+    }, Math.max(8, 1000 / speed));
+    return () => clearInterval(id);
+  }, [text, speed]);
+  return <Text style={style}>{slice}</Text>;
+};
+
+const PriorityPulse: React.FC<{ prioridad?: 'alta' | 'media' | 'baja' | string }>
+= ({ prioridad }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.06, duration: 380, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 380, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [scale]);
+
+  let bg = '#E9EDFF'; let fg = BRAND.hanBlue;
+  if (prioridad === 'alta') { bg = '#fee2e2'; fg = '#991b1b'; }
+  else if (prioridad === 'media') { bg = '#fef3c7'; fg = '#92400e'; }
+  else if (prioridad === 'baja') { bg = '#dcfce7'; fg = '#065f46'; }
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Text style={[styles.badge, { backgroundColor: bg, color: fg }]}>
+        prioridad {prioridad || '—'}
+      </Text>
+    </Animated.View>
+  );
+};
+
+const StaggerItem: React.FC<{ delay?: number; children: React.ReactNode }>
+= ({ delay = 0, children }) => {
+  const opa = useRef(new Animated.Value(0)).current;
+  const ty = useRef(new Animated.Value(8)).current;
+  useEffect(() => {
+    Animated.timing(opa, { toValue: 1, duration: 260, delay, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    Animated.timing(ty, { toValue: 0, duration: 260, delay, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+  }, [opa, ty, delay]);
+  return <Animated.View style={{ opacity: opa, transform: [{ translateY: ty }] }}>{children}</Animated.View>;
+};
+
+const MiniBar: React.FC<{ label: string; value: number; max: number }>
+= ({ label, value, max }) => {
+  const w = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const pct = max > 0 ? Math.min(1, value / max) : 0;
+    Animated.timing(w, { toValue: pct, duration: 520, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+  }, [value, max, w]);
+  const widthInterpolate = w.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
+  return (
+    <View style={{ marginTop: 6 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <Text style={[F, { color: '#0f172a' }]}>{label}</Text>
+        <Text style={[F, { color: '#6b7280' }]}>{value}</Text>
+      </View>
+      <View style={{ height: 8, borderRadius: 6, backgroundColor: '#eef2ff', overflow: 'hidden' }}>
+        <Animated.View style={{ height: '100%', width: widthInterpolate, backgroundColor: BRAND.iris }} />
+      </View>
+    </View>
+  );
+};
+
+/* ================= Helpers de datos (para charts) ================= */
+
+function bucketReceivables(arr?: Dashboard['receivablesDueSoon']) {
+  const data = { vencido: 0, hoy: 0, pronto: 0, semana: 0 };
+  if (Array.isArray(arr)) {
+    for (const r of arr) {
+      if (r.dueInDays < 0) data.vencido += r.dueAmount ?? 0;
+      else if (r.dueInDays === 0) data.hoy += r.dueAmount ?? 0;
+      else if (r.dueInDays <= 3) data.pronto += r.dueAmount ?? 0;
+      else data.semana += r.dueAmount ?? 0;
+    }
+  }
+  return [
+    { label: 'Vencido', value: data.vencido, color: BRAND.hanBlue },
+    { label: 'Hoy',     value: data.hoy,     color: BRAND.iris },
+    { label: '1–3d',    value: data.pronto,  color: BRAND.maximumBlue },
+    { label: '4–7d',    value: data.semana,  color: BRAND.verdigris },
+  ];
+}
+
+function lastNDaysLabels(n: number) {
+  const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const out: { key: string; label: string; date: string }[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const label = days[d.getDay()];
+    const key = d.toISOString().slice(0,10);
+    out.push({ key, label, date: key });
+  }
+  return out;
+}
+
+function activityToSeries(arr?: Dashboard['activity']) {
+  const labels = lastNDaysLabels(7);
+  const map = new Map(labels.map(l => [l.key, 0]));
+  if (Array.isArray(arr)) {
+    arr.forEach(a => {
+      const k = String(a.whenAt).slice(0,10);
+      if (map.has(k)) map.set(k, (map.get(k) || 0) + 1);
+    });
+  }
+  // Para LineChart de GiftedCharts usamos {value}
+  return {
+    values: labels.map(l => ({ value: map.get(l.key) || 0 })),
+    labels: labels.map(l => l.label),
+  };
+}
+
+/* ================= Fin helpers ================= */
+
+// ---------- Panel Lateral ----------
 const PanelRow: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, value }) => (
   <View style={styles.panelRow}>
     <Text style={styles.panelRowLabel}>{label}</Text>
@@ -311,15 +493,12 @@ export default function HomeScreen({ navigation }: Props) {
   const auth = useContext(AuthContext) as any;
   const currentUserEmail: string | null = auth?.user?.email ?? auth?.email ?? null;
 
-  // Carga de fuente Apoka (cacheada por expo-font)
-  useFonts({
-    Apoka: require('../../assets/fonts/apokaregular.ttf'),
-  });
+  // Fuente Apoka
+  useFonts({ Apoka: require('../../assets/fonts/apokaregular.ttf') });
 
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
   const isXL = width >= 1200;
-  const huge = width >= 1440;
 
   const panelWidth = Math.min(360, Math.max(300, Math.floor(width * 0.26)));
   const panelPinned = width >= 1200;
@@ -330,6 +509,11 @@ export default function HomeScreen({ navigation }: Props) {
   const [loadingFirst, setLoadingFirst] = useState(true);
   const [polling, setPolling] = useState(true);
   const [panelOpen, setPanelOpen] = useState(false);
+
+  // ---- IA en Alertas ----
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [ai, setAi] = useState<AiInsights | null>(null);
 
   const appState = useRef(AppState.currentState);
   const searchTimer = useRef<NodeJS.Timeout | null>(null);
@@ -412,8 +596,85 @@ export default function HomeScreen({ navigation }: Props) {
     { label: 'Almacenes', value: String(dashboard?.warehousesTotal ?? '—'), to: () => navigation.navigate('WarehousesList') },
   ]), [dashboard, navigation]);
 
+  // ===== IA: construir contexto y analizar =====
+  const buildAiContext = useCallback((d: Dashboard) => {
+    const take = <T,>(arr: T[] | undefined, n: number) => (Array.isArray(arr) ? arr.slice(0, n) : []);
+    return JSON.stringify({
+      tenant: d.tenantName,
+      plan: d.plan,
+      kpis: {
+        salesToday: d.salesToday,
+        marginToday: d.marginToday,
+        ticketsToday: d.ticketsToday,
+        salesMonth: d.salesMonth,
+        marginMonth: d.marginMonth,
+        avgTicketMonth: d.avgTicketMonth,
+      },
+      lowStock: take(d.lowStock, 10),
+      receivablesDueSoon: take(d.receivablesDueSoon, 10),
+    });
+  }, []);
+
+  const analyzeAlerts = useCallback(async () => {
+    if (!dashboard) { setAiError('No hay datos para analizar.'); return; }
+    try {
+      setAiLoading(true);
+      setAiError(null);
+
+      const context = buildAiContext(dashboard);
+      const system =
+        'Eres un asesor de negocios para pymes. Prioriza y sugiere acciones concretas. Responde en español.';
+      const user = `Analiza este estado JSON del negocio y propone acciones que pueda ejecutar hoy.
+Devuelve SOLO JSON válido con esta forma:
+{
+  "resumen": "2-3 líneas",
+  "acciones": [
+    { "titulo": "texto corto", "detalle": "qué hacer y por qué", "prioridad": "alta|media|baja" }
+  ],
+  "prioridadGeneral": "alta|media|baja"
+}
+Estado: ${context}`;
+
+      const res = await fetch(`${OLLAMA_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: OLLAMA_MODEL,
+          stream: false,
+          messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        }),
+      });
+
+      if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+      const data = await res.json();
+      const text = data?.message?.content ?? data?.response ?? '';
+
+      let parsed: AiInsights | null = null;
+      try {
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start >= 0 && end > start) parsed = JSON.parse(text.slice(start, end + 1));
+      } catch { /* noop */ }
+
+      setAi(parsed ?? { texto: String(text) });
+    } catch (e: any) {
+      setAiError(e?.message || 'Error al consultar la IA');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [dashboard, buildAiContext]);
+
   const sticky: number[] = [1];
   const onTogglePanel = () => setPanelOpen(o => !o);
+
+  // Mini máximos para barras IA
+  const lowCount = Number(dashboard?.lowStock?.length ?? 0);
+  const dueCount = Number(dashboard?.receivablesDueSoon?.length ?? 0);
+  const maxAlertCount = Math.max(1, lowCount, dueCount);
+
+  // Datasets para charts
+  const receivablesData = useMemo(() => bucketReceivables(dashboard?.receivablesDueSoon), [dashboard]);
+  const activity = useMemo(() => activityToSeries(dashboard?.activity), [dashboard]);
 
   return (
     <View style={{ flex: 1, backgroundColor: BRAND.surfaceTint }}>
@@ -431,7 +692,7 @@ export default function HomeScreen({ navigation }: Props) {
         onTogglePolling={() => setPolling(p => !p)}
       />
 
-      {/* Contenido principal con centrado cuando el panel está anclado */}
+      {/* Contenido principal */}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={[
@@ -517,11 +778,11 @@ export default function HomeScreen({ navigation }: Props) {
                         </Card>
                       ))
                     : kpisHoy.items.map(k => (
-                        <Card key={k.label}>
+                        <GradientCard key={k.label}>
                           <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
                           <Text style={[styles.kpiValue, isXL && styles.kpiValueXL]}>{k.fmt(k.value)}</Text>
                           <Bar value={k.value} max={kpisHoy.max} />
-                        </Card>
+                        </GradientCard>
                       ))}
                 </View>
               </Section>
@@ -538,11 +799,11 @@ export default function HomeScreen({ navigation }: Props) {
                         </Card>
                       ))
                     : kpisMes.items.map(k => (
-                        <Card key={k.label}>
+                        <GradientCard key={k.label}>
                           <Label muted style={{ marginBottom: 6 }}>{k.label}</Label>
                           <Text style={[styles.kpiValue, isXL && styles.kpiValueXL]}>{k.fmt(k.value)}</Text>
                           <Bar value={k.value} max={kpisMes.max} />
-                        </Card>
+                        </GradientCard>
                       ))}
                 </View>
               </Section>
@@ -554,7 +815,7 @@ export default function HomeScreen({ navigation }: Props) {
               >
                 <View style={[styles.grid, styles.cols3]}>
                   {(loadingFirst ? [0,1,2] : totals).map((k: any, idx: number) => (
-                    <Card key={k?.label ?? `skt-${idx}`} onPress={k?.to}>
+                    <GradientCard key={k?.label ?? `skt-${idx}`} >
                       {loadingFirst ? (
                         <>
                           <Skeleton width={90} />
@@ -566,7 +827,7 @@ export default function HomeScreen({ navigation }: Props) {
                           <Text style={[styles.kpiValue, isXL && styles.kpiValueXL]}>{k.value}</Text>
                         </>
                       )}
-                    </Card>
+                    </GradientCard>
                   ))}
                 </View>
               </Section>
@@ -600,12 +861,121 @@ export default function HomeScreen({ navigation }: Props) {
                   </View>
                 )}
               </Section>
+
+              {/* Comparativa rápida: Ventas vs Margen (hoy) */}
+              <Section title="Comparativa rápida" subtitle="Ventas vs Margen (hoy)">
+                <Card>
+                  <View style={{ paddingHorizontal: 6 }}>
+                    <BarChart
+                      barWidth={28}
+                      noOfSections={4}
+                      spacing={40}
+                      yAxisThickness={0}
+                      xAxisThickness={0}
+                      rulesColor={BRAND.borderSoft}
+                      data={[
+                        { value: Number(dashboard?.salesToday || 0), label: 'Ventas', frontColor: BRAND.hanBlue },
+                        { value: Number(dashboard?.marginToday || 0), label: 'Margen', frontColor: BRAND.verdigris },
+                      ]}
+                      yAxisTextStyle={{ ...F, color: '#6b7280' } as any}
+                      xAxisLabelTextStyle={{ ...F, color: '#6b7280' } as any}
+                      showValuesAsTopLabel
+                      valueTextStyle={{ ...F, color: '#0f172a' } as any}
+                      renderTooltip={(item: any) => (
+                        <View style={{ backgroundColor: '#fff', borderColor: BRAND.borderSoft, borderWidth: 1, padding: 6, borderRadius: 8 }}>
+                          <Text style={[F, { color: '#0f172a' }]}>{item.label}</Text>
+                          <Text style={[F, { color: '#6b7280' }]}>{moneyNI(item.value)}</Text>
+                        </View>
+                      )}
+                    />
+                  </View>
+                </Card>
+              </Section>
             </View>
 
             {/* Columna derecha */}
             <View style={[styles.col, isWide && styles.colRight]}>
               {/* Alertas */}
               <Section title="Alertas" subtitle="Riesgos y pendientes" right={<View style={styles.row}><SmallBtn title="Refrescar" onPress={fetchDashboard} /></View>}>
+
+                {/* Asesor IA (animado) */}
+                <GradientCard style={{ marginBottom: 12 }}>
+                  <View style={styles.rowBetween}>
+                    <Text style={styles.panelTitle}>Asesor IA (beta)</Text>
+                    {aiLoading ? (
+                      <ActivityIndicator />
+                    ) : (
+                      <SmallBtn title={ai ? 'Re-analizar' : 'Analizar con IA'} onPress={analyzeAlerts} />
+                    )}
+                  </View>
+
+                  {ai?.prioridadGeneral && (
+                    <View style={{ marginTop: 8 }}>
+                      <PriorityPulse prioridad={ai.prioridadGeneral} />
+                    </View>
+                  )}
+
+                  {aiError ? <Text style={[F, { color: '#b91c1c', marginTop: 10 }]}>{aiError}</Text> : null}
+
+                  {aiLoading && (
+                    <View style={{ marginTop: 10, gap: 8 }}>
+                      <ShimmerLine width="85%" height={16} />
+                      <ShimmerLine width="70%" height={12} />
+                      <ShimmerLine width="92%" height={12} />
+                      <View style={{ marginTop: 8 }}>
+                        <ShimmerLine width="55%" height={12} />
+                        <ShimmerLine width="48%" height={12} style={{ marginTop: 6 }} />
+                        <ShimmerLine width="60%" height={12} style={{ marginTop: 6 }} />
+                      </View>
+                    </View>
+                  )}
+
+                  {!!ai?.resumen && !aiLoading && (
+                    <View style={{ marginTop: 10 }}>
+                      <Typewriter text={ai.resumen} style={[styles.itemSub, { color: '#0f172a' }]} />
+                    </View>
+                  )}
+
+                  {!aiLoading && (
+                    <View style={{ marginTop: 12 }}>
+                      <MiniBar label="Productos con stock bajo" value={lowCount} max={maxAlertCount} />
+                      <MiniBar label="Cuentas por cobrar (7 días)" value={dueCount} max={maxAlertCount} />
+                    </View>
+                  )}
+
+                  {!!ai?.acciones?.length && !aiLoading && (
+                    <View style={{ marginTop: 12, gap: 8 }}>
+                      {ai.acciones.map((a, idx) => (
+                        <StaggerItem key={`${a.titulo}-${idx}`} delay={idx * 80}>
+                          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                            <Text style={[F, { color: '#6b7280' }]}>•</Text>
+                            <Text style={[F, { flex: 1 }]}>
+                              <Text style={{ fontWeight: '700' }}>{a.titulo}</Text>
+                              {a.prioridad ? ` (${a.prioridad})` : ''}{a.detalle ? ` — ${a.detalle}` : ''}
+                            </Text>
+                          </View>
+                        </StaggerItem>
+                      ))}
+                    </View>
+                  )}
+
+                  {!ai?.resumen && !!ai?.texto && !aiLoading && (
+                    <Text style={[F, { color: '#0f172a', marginTop: 10 }]}>{ai.texto}</Text>
+                  )}
+
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                    <SmallBtn title="Productos críticos" onPress={() => navigation.navigate('ProductsList', { filter: 'lowStock' })} />
+                    <SmallBtn title="Cuentas por cobrar" onPress={() => navigation.navigate('ReceivablesList')} />
+                    <SmallBtn title="Crear promoción" onPress={() => navigation.navigate('SaleCreate')} />
+                  </View>
+
+                  {!ai && !aiLoading && !aiError && (
+                    <Label muted style={{ marginTop: 8 }}>
+                      La IA prioriza alertas y sugiere acciones ejecutables hoy. Toca “Analizar con IA”.
+                    </Label>
+                  )}
+                </GradientCard>
+
                 {/* Stock bajo */}
                 <Card style={{ marginBottom: 12 }}>
                   <View style={styles.rowBetween}>
@@ -699,7 +1069,69 @@ export default function HomeScreen({ navigation }: Props) {
                 </Card>
               </Section>
 
-              {/* Actividad */}
+              {/* Tablero visual (charts) */}
+              <Section title="Tablero visual" subtitle="Más vistas de tus datos">
+                <View style={[styles.grid, styles.cols2]}>
+                  {/* Donut de por cobrar */}
+                  <Card>
+                    <Text style={[styles.itemTitle, { marginBottom: 8 }]}>Vencimientos (monto)</Text>
+                    <View style={{ alignItems: 'center' }}>
+                      <PieChart
+                        data={receivablesData.map(d => ({
+                          value: d.value,
+                          color: d.color,
+                          text: `${d.label}\n${moneyNI(d.value)}`,
+                        }))}
+                        donut
+                        radius={110}
+                        innerRadius={70}
+                        showText
+                        textColor="#0f172a"
+                        textSize={10}
+                        focusOnPress
+                        sectionAutoFocus
+                        centerLabelComponent={() => (
+                          <View style={{ alignItems: 'center' }}>
+                            <Text style={[F, { color: '#6b7280', fontSize: 12 }]}>Total</Text>
+                            <Text style={[F, { color: '#0f172a', fontSize: 14 }]}>
+                              {moneyNI(receivablesData.reduce((s, d) => s + d.value, 0))}
+                            </Text>
+                          </View>
+                        )}
+                      />
+                    </View>
+                  </Card>
+
+                  {/* Línea con área de actividad (7 días) */}
+                  <Card>
+                    <Text style={[styles.itemTitle, { marginBottom: 8 }]}>Actividad (últimos 7 días)</Text>
+                    <LineChart
+                      data={activity.values}
+                      areaChart
+                      hideDataPoints={false}
+                      dataPointsHeight={6}
+                      dataPointsWidth={6}
+                      startFillColor="#e6e8ff"
+                      endFillColor="#e6e8ff00"
+                      startOpacity={1}
+                      endOpacity={0.1}
+                      thickness={2}
+                      color={BRAND.hanBlue}
+                      xAxisLabelTexts={activity.labels}
+                      yAxisThickness={0}
+                      xAxisColor={BRAND.borderSoft}
+                      yAxisColor={BRAND.borderSoft}
+                      xAxisLabelTextStyle={{ ...F, color: '#6b7280' } as any}
+                      rulesColor={BRAND.borderSoft}
+                      initialSpacing={20}
+                      spacing={28}
+                      noOfSections={4}
+                    />
+                  </Card>
+                </View>
+              </Section>
+
+              {/* Actividad reciente */}
               <Section title="Actividad reciente" subtitle="Últimos movimientos en el sistema">
                 {loadingFirst ? (
                   <View style={{ gap: 8 }}>
@@ -764,7 +1196,6 @@ const EmptyState: React.FC<{ title: string; subtitle?: string; actionLabel?: str
 
 // ---------------- Helpers de estilo ----------------
 function planColor(plan?: string) {
-  // Mantiene tu lógica, solo usa acentos de la paleta para el texto
   switch ((plan || '').toLowerCase()) {
     case 'pro':       return { backgroundColor: '#dbeafe', color: BRAND.hanBlue };
     case 'business':  return { backgroundColor: '#dcfce7', color: BRAND.verdigris };
@@ -816,7 +1247,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: 8,
   },
-  sectionTitle: { ...F, fontSize: 16, color: BRAND.darkPastelBlue }, // acento suave
+  sectionTitle: { ...F, fontSize: 16, color: BRAND.darkPastelBlue },
   sectionSub: { ...F, fontSize: 12, color: '#6b7280', marginTop: 2 },
 
   // Main grid
@@ -863,10 +1294,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: BRAND.borderSoft,
-    // ribete superior para “vida”
     borderTopWidth: 3,
-    borderTopColor: BRAND.accent,      // sutil acento en todas las cards
-    // sombra azulada
+    borderTopColor: BRAND.accent,
     shadowColor: BRAND.accent,
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -880,7 +1309,7 @@ const styles = StyleSheet.create({
 
   // Barras
   barTrack: { height: 8, backgroundColor: BRAND.trackSoft, borderRadius: 6, overflow: 'hidden' },
-  barFill:  { height: '100%', backgroundColor: BRAND.iris }, // un poco más vibrante
+  barFill:  { height: '100%', backgroundColor: BRAND.iris },
 
   // Paneles (cards)
   panelTitle: { ...F, color: '#0f172a' },
@@ -919,7 +1348,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BRAND.borderSoft,
     backgroundColor: BRAND.surfacePanel,
-    // leve glow en web/iOS
     shadowColor: BRAND.accentAlt,
     shadowOpacity: 0.03,
     shadowRadius: 8,
@@ -927,7 +1355,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   smallBtnDanger: { backgroundColor: '#fff1f2', borderColor: '#fecdd3' },
-  smallBtnText: { ...F, color: BRAND.hanBlue }, // texto de botón con acento
+  smallBtnText: { ...F, color: BRAND.hanBlue },
 
   // ===== Panel lateral =====
   panelPinnedWrap: {
@@ -963,7 +1391,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     borderTopWidth: 3,
-    borderTopColor: BRAND.accentAlt, // iris para diferenciar panel
+    borderTopColor: BRAND.accentAlt,
   },
   panelCardTitle: { ...F, color: '#0f172a' },
   panelCardSub: { ...F, color: '#6f7b94', marginTop: 6 },
