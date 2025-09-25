@@ -1,9 +1,11 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+// src/screens/receivables/ReceivableCreate.tsx
+import React, { useContext, useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, StyleSheet, Alert, Pressable, Platform,
   useWindowDimensions, ScrollView, Modal, FlatList, ActivityIndicator
 } from 'react-native';
 import { useFonts } from 'expo-font';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { api } from '../../api';
 import { AuthContext } from '../../providers/AuthContext';
 
@@ -32,7 +34,7 @@ type Customer = {
   phone?: string | null;
 };
 
-// Helper de fuente
+// Fuente
 const F = Platform.select({
   ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
   default: { fontFamily: 'Apoka' },
@@ -52,14 +54,14 @@ const ActionBtn = ({ title, onPress, kind='primary', disabled }: any) => (
   </Pressable>
 );
 
+// ---------- Utils ----------
+const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+const toISODate = (d?: Date | null) =>
+  d ? `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` : '';
+
 /** -------------------------
- *  Selector de Cliente
- *  -------------------------
- *  - Abre Modal
- *  - Busca por nombre/email
- *  - Trae lista de /customers (paginado simple por ahora)
- *  - Retorna {id, name}
- */
+ *  Selector de Cliente (Modal)
+ *  ------------------------- */
 const CustomerPicker = ({
   value,
   displayName,
@@ -96,16 +98,11 @@ const CustomerPicker = ({
     }
   };
 
-  // abrir -> cargar primera vez
   useEffect(() => {
-    if (open) {
-      setItems([]); setPage(1); setTotal(0);
-      fetchList(true);
-    }
+    if (open) { setItems([]); setPage(1); setTotal(0); fetchList(true); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // debounce búsqueda
   useEffect(() => {
     if (!open) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -116,7 +113,6 @@ const CustomerPicker = ({
 
   return (
     <>
-      {/* Campo clickable */}
       <Pressable onPress={() => setOpen(true)} style={styles.inputSelect}>
         <View style={{ flex: 1 }}>
           <Text style={styles.labelSmall}>Cliente</Text>
@@ -127,11 +123,9 @@ const CustomerPicker = ({
         <View style={styles.selectBadge}><Text style={styles.selectBadgeText}>{value ?? '—'}</Text></View>
       </Pressable>
 
-      {/* Modal selector */}
       <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)} transparent>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            {/* Header modal */}
             <View style={styles.modalTop}>
               <Text style={styles.modalTitle}>Seleccionar cliente</Text>
               <Pressable onPress={() => setOpen(false)} style={styles.modalClose}>
@@ -139,7 +133,6 @@ const CustomerPicker = ({
               </Pressable>
             </View>
 
-            {/* Buscador */}
             <View style={{ paddingHorizontal: 12, paddingBottom: 10 }}>
               <View style={styles.searchBox}>
                 <TextInput
@@ -158,7 +151,6 @@ const CustomerPicker = ({
               </View>
             </View>
 
-            {/* Lista */}
             <FlatList
               data={items}
               keyExtractor={(c) => String(c.id)}
@@ -181,18 +173,8 @@ const CustomerPicker = ({
               onEndReached={() => { if (!loading && canLoadMore) fetchList(false); }}
               refreshing={refreshing}
               onRefresh={async () => { setRefreshing(true); await fetchList(true); setRefreshing(false); }}
-              ListFooterComponent={
-                <View style={{ paddingVertical: 12, alignItems: 'center' }}>
-                  {loading ? <ActivityIndicator /> : null}
-                </View>
-              }
-              ListEmptyComponent={
-                !loading ? (
-                  <View style={{ alignItems: 'center', padding: 24 }}>
-                    <Text style={{ ...F, color: '#6B7280' }}>Sin resultados</Text>
-                  </View>
-                ) : null
-              }
+              ListFooterComponent={<View style={{ paddingVertical: 12, alignItems: 'center' }}>{loading ? <ActivityIndicator /> : null}</View>}
+              ListEmptyComponent={!loading ? (<View style={{ alignItems: 'center', padding: 24 }}><Text style={{ ...F, color: '#6B7280' }}>Sin resultados</Text></View>) : null}
             />
           </View>
         </View>
@@ -206,20 +188,23 @@ export default function ReceivableCreate({ navigation }: any) {
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
 
-  // Cargar Apoka sin bloquear la UI
-  useFonts({
-    Apoka: require('../../../assets/fonts/apokaregular.ttf'),
-  });
+  useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
-  // Sustituimos customerId "a mano" por picker
+  // Cliente
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [customerName, setCustomerName] = useState<string>('');
 
+  // Campos
   const [number, setNumber] = useState('');
-  const [dueAt, setDueAt] = useState('');               // 'YYYY-MM-DD' opcional
+  const [dueAtDate, setDueAtDate] = useState<Date | null>(null);   // Date real
+  const [showPicker, setShowPicker] = useState(false);             // modal calendario
   const [total, setTotal] = useState('0');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const openPicker = () => setShowPicker(true);
+  const closePicker = () => setShowPicker(false);
+  const onConfirmDate = (d: Date) => { setDueAtDate(d); closePicker(); };
 
   const save = async () => {
     const cid = Number(customerId);
@@ -234,7 +219,8 @@ export default function ReceivableCreate({ navigation }: any) {
       await api.post('/receivables', {
         customerId: cid,
         number: number || undefined,
-        dueAt: dueAt ? new Date(dueAt) : undefined,
+        // Enviamos fecha como YYYY-MM-DD (sin hora)
+        dueAt: dueAtDate ? toISODate(dueAtDate) : undefined,
         total: tot,
         notes: notes || undefined,
       });
@@ -251,7 +237,7 @@ export default function ReceivableCreate({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: BRAND.surfaceTint }}>
-      {/* Header con acciones (se apila en mobile) */}
+      {/* Header con acciones */}
       <View style={styles.topBar}>
         <Text style={styles.title}>Nueva cuenta por cobrar</Text>
         <View style={styles.topActions}>
@@ -264,7 +250,6 @@ export default function ReceivableCreate({ navigation }: any) {
         {/* Columna izquierda: Formulario */}
         <View style={[styles.col, isWide && styles.colLeft]}>
           <View style={styles.card}>
-
             {/* Selector de cliente */}
             <CustomerPicker
               value={customerId ?? undefined}
@@ -285,19 +270,62 @@ export default function ReceivableCreate({ navigation }: any) {
                 />
               </View>
 
+              {/* --- Fecha con minicalendario + quitar --- */}
               <View style={styles.flex1}>
-                <Text style={styles.label}>Vence (YYYY-MM-DD)</Text>
-                <TextInput
-                  value={dueAt}
-                  onChangeText={setDueAt}
-                  placeholder="2025-09-30"
-                  style={styles.input}
-                  placeholderTextColor="#9aa7c2"
-                />
+                <Text style={styles.label}>Vence</Text>
+
+                {Platform.OS !== 'web' ? (
+                  <>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Pressable style={[styles.input, styles.dateInput]} onPress={openPicker}>
+                        <Text style={[F, { color: dueAtDate ? '#0f172a' : '#9aa7c2', fontSize: 16 }]}>
+                          {dueAtDate ? toISODate(dueAtDate) : 'Seleccionar fecha'}
+                        </Text>
+                        <Text style={[F, styles.calendarGlyph]} aria-hidden>📅</Text>
+                      </Pressable>
+
+                      {dueAtDate && (
+                        <Pressable onPress={() => setDueAtDate(null)} style={styles.clearDateBtn}>
+                          <Text style={[F, styles.clearDateText]}>Quitar</Text>
+                        </Pressable>
+                      )}
+                    </View>
+
+                    <DateTimePickerModal
+                      isVisible={showPicker}
+                      mode="date"
+                      display={Platform.OS === 'android' ? 'calendar' : 'inline'}
+                      date={dueAtDate || new Date()}
+                      minimumDate={new Date()}            // <- mínimo hoy (quita esta línea si permites pasado)
+                      onConfirm={onConfirmDate}
+                      onCancel={closePicker}
+                    />
+                  </>
+                ) : (
+                  // WEB: input nativo de fecha con botón Quitar
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    {/* @ts-ignore: RNW permite elementos DOM en web */}
+                    <input
+                      type="date"
+                      value={dueAtDate ? toISODate(dueAtDate) : ''}
+                      min={toISODate(new Date())}          // <- mínimo hoy (quita si no lo quieres)
+                      onChange={(e: any) => {
+                        const v = e?.target?.value as string;
+                        setDueAtDate(v ? new Date(v) : null);
+                      }}
+                      style={styles.webDateInput as any}
+                    />
+                    {dueAtDate && (
+                      <Pressable onPress={() => setDueAtDate(null)} style={styles.clearDateBtn}>
+                        <Text style={[F, styles.clearDateText]}>Quitar</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                )}
               </View>
             </View>
 
-            {/* Total destacado para jerarquía visual */}
+            {/* Total destacado */}
             <View style={styles.field}>
               <Text style={styles.label}>Total</Text>
               <TextInput
@@ -324,14 +352,14 @@ export default function ReceivableCreate({ navigation }: any) {
           </View>
         </View>
 
-        {/* Columna derecha: Resumen contextual */}
+        {/* Columna derecha: Resumen */}
         <View style={[styles.col, isWide && styles.colRight]}>
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Resumen</Text>
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Cliente</Text><Text style={styles.summaryValue}>{customerName || '—'}</Text></View>
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>ID Cliente</Text><Text style={styles.summaryValue}>{customerId ?? '—'}</Text></View>
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Número</Text><Text style={styles.summaryValue}>{number || '—'}</Text></View>
-            <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Vence</Text><Text style={styles.summaryValue}>{dueAt || '—'}</Text></View>
+            <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Vence</Text><Text style={styles.summaryValue}>{toISODate(dueAtDate) || '—'}</Text></View>
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Total</Text><Text style={[styles.summaryValue, styles.summaryStrong]}>{total || '0.00'}</Text></View>
             <View style={[styles.divider, { marginTop: 8 }]} />
             <Text style={styles.helper}>Verifica los datos antes de guardar. Podrás editarlos luego.</Text>
@@ -437,12 +465,34 @@ const styles = StyleSheet.create({
     elevation: Platform.select({ android: 2, default: 0 }),
   },
 
+  // Date input (presionable)
+  dateInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  calendarGlyph: { fontSize: 16, color: '#0f172a' },
+
+  // Botón quitar fecha
+  clearDateBtn: {
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 10, borderWidth: 1, borderColor: BRAND.borderSoft,
+    backgroundColor: BRAND.surfacePanel
+  },
+  clearDateText: { color: '#111827' },
+
+  // Web: input nativo
+  webDateInput: {
+    height: 42, paddingHorizontal: 12, borderRadius: 10,
+    borderWidth: 1, borderColor: BRAND.borderSoft, backgroundColor: BRAND.surfacePanel,
+    fontFamily: (F as any)?.fontFamily || 'sans-serif', fontSize: 16, color: '#0f172a'
+  },
+
   // Resumen
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
   summaryLabel: { ...F, color: '#6B7280' },
   summaryValue: { ...F, color: '#0f172a' },
   summaryStrong: { fontWeight: Platform.OS === 'ios' ? '600' : 'bold', color: BRAND.hanBlue },
-  notesPreview: { ...F, color: '#374151' },
   helper: { ...F, marginTop: 8, color: '#6B7280', fontSize: 12 },
   divider: { height: 1, backgroundColor: BRAND.borderSofter },
 
@@ -466,7 +516,7 @@ const styles = StyleSheet.create({
   btnText: { ...F, color: '#FFFFFF' },
   btnTextSecondary: { ...F, color: '#111827' },
 
-  // Modal
+  // Modal (selector clientes)
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.25)',

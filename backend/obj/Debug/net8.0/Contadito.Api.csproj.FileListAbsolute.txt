@@ -1,16 +1,25 @@
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\appsettings.Development.json
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\appsettings.json
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.staticwebassets.runtime.json
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.exe
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.deps.json
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.runtimeconfig.json
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.pdb
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\BCrypt.Net-Next.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Humanizer.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.CSharp.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.CSharp.Workspaces.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.Workspaces.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Abstractions.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Design.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.InMemory.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Relational.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.Extensions.DependencyModel.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.Abstractions.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.JsonWebTokens.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.Logging.dll
@@ -18,49 +27,19 @@ C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\De
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.OpenApi.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Mono.TextTemplating.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\MySqlConnector.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Pomelo.EntityFrameworkCore.MySql.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Swashbuckle.AspNetCore.Swagger.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerUI.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.csproj.AssemblyReference.cache
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.AssemblyInfoInputs.cache
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.AssemblyInfo.cs
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.csproj.CoreCompileInputs.cache
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.MvcApplicationPartsAssemblyInfo.cs
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.sourcelink.json
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets.build.json
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets.development.json
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets\msbuild.Contadito.Api.Microsoft.AspNetCore.StaticWebAssets.props
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets\msbuild.build.Contadito.Api.props
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.Contadito.Api.props
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.Contadito.Api.props
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets.pack.json
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\scopedcss\bundle\Contadito.Api.styles.css
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadit.E04B8E39.Up2Date
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\refint\Contadito.Api.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.pdb
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.genruntimeconfig.cache
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\ref\Contadito.Api.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Humanizer.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.Bcl.AsyncInterfaces.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.CSharp.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.CSharp.Workspaces.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.Workspaces.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Design.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.Extensions.DependencyModel.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Mono.TextTemplating.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\System.CodeDom.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\System.Composition.AttributedModel.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\System.Composition.Convention.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\System.Composition.Hosting.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\System.Composition.Runtime.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\System.Composition.TypedParts.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\cs\Microsoft.CodeAnalysis.resources.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\de\Microsoft.CodeAnalysis.resources.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\es\Microsoft.CodeAnalysis.resources.dll
@@ -113,122 +92,25 @@ C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\De
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.Workspaces.resources.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.resources.dll
 C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.resources.dll
-C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.staticwebassets.runtime.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\appsettings.Development.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\appsettings.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.staticwebassets.runtime.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.staticwebassets.endpoints.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.exe
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.deps.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.runtimeconfig.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Contadito.Api.pdb
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\BCrypt.Net-Next.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Humanizer.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.Bcl.AsyncInterfaces.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.CSharp.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.CSharp.Workspaces.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.CodeAnalysis.Workspaces.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Abstractions.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Design.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.InMemory.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Relational.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.Extensions.DependencyModel.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.Abstractions.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.JsonWebTokens.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.Logging.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.IdentityModel.Tokens.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Microsoft.OpenApi.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Mono.TextTemplating.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\MySqlConnector.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Pomelo.EntityFrameworkCore.MySql.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Swashbuckle.AspNetCore.Swagger.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerGen.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\Swashbuckle.AspNetCore.SwaggerUI.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\System.CodeDom.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\System.Composition.AttributedModel.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\System.Composition.Convention.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\System.Composition.Hosting.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\System.Composition.Runtime.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\System.Composition.TypedParts.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\cs\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\de\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\es\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\fr\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\it\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ja\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ko\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\pl\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\pt-BR\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ru\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\cs\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\de\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\es\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\fr\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\it\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ja\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ko\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\pl\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\pt-BR\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ru\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.CSharp.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\cs\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\de\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\es\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\fr\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\it\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ja\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ko\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\pl\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\pt-BR\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ru\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\cs\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\de\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\es\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\fr\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\it\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ja\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ko\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\pl\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\pt-BR\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\ru\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\tr\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.resources.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.csproj.AssemblyReference.cache
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\rpswa.dswa.cache.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.GeneratedMSBuildEditorConfig.editorconfig
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.AssemblyInfoInputs.cache
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.AssemblyInfo.cs
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.csproj.CoreCompileInputs.cache
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.MvcApplicationPartsAssemblyInfo.cs
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.MvcApplicationPartsAssemblyInfo.cache
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.sourcelink.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\rjimswa.dswa.cache.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\rjsmrazor.dswa.cache.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\rjsmcshtml.dswa.cache.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\scopedcss\bundle\Contadito.Api.styles.css
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets.build.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets.build.json.cache
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets.development.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets.build.endpoints.json
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadit.E04B8E39.Up2Date
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\refint\Contadito.Api.dll
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.pdb
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.genruntimeconfig.cache
-L:\Programming\Visual Studio Code\Web Development\PapuThink\contadito-fullstack\backend\obj\Debug\net8.0\ref\Contadito.Api.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.csproj.AssemblyReference.cache
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.AssemblyInfoInputs.cache
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.AssemblyInfo.cs
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.csproj.CoreCompileInputs.cache
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.sourcelink.json
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets.build.json
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets.development.json
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets\msbuild.Contadito.Api.Microsoft.AspNetCore.StaticWebAssets.props
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets\msbuild.build.Contadito.Api.props
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.Contadito.Api.props
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.Contadito.Api.props
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\staticwebassets.pack.json
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\scopedcss\bundle\Contadito.Api.styles.css
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadit.E04B8E39.Up2Date
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\refint\Contadito.Api.dll
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.pdb
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\Contadito.Api.genruntimeconfig.cache
+C:\Users\diego\Downloads\ELVERDADEROCONTADITO\contadito-fullstack\backend\obj\Debug\net8.0\ref\Contadito.Api.dll
