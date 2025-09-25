@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "uPk3tHrKaTPSsQpZ2RFzJz93ldnrccOaeHjASDVXvOw=",
+  "Hash": "veEKWbgoTo6hbvar3Jkhjs0nBwXnF4Zy013i2doNUYc=",
   "Source": "Contadito.Api",
   "BasePath": "_content/Contadito.Api",
   "Mode": "Default",
@@ -16,6 +16,25 @@
     }
   ],
   "Assets": [
+    {
+      "Identity": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\wwwroot\\uploads\\5\\2025\\09\\2fec7ffd41f941acb87eb06eb9f48c49.jpg",
+      "SourceId": "Contadito.Api",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\wwwroot\\",
+      "BasePath": "_content/Contadito.Api",
+      "RelativePath": "uploads/5/2025/09/2fec7ffd41f941acb87eb06eb9f48c49.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\5\\2025\\09\\2fec7ffd41f941acb87eb06eb9f48c49.jpg"
+    },
     {
       "Identity": "C:\\Users\\diego\\Downloads\\ELVERDADEROCONTADITO\\contadito-fullstack\\backend\\wwwroot\\uploads\\5\\2025\\09\\31fa8250017b4ab68247616b48538530.jpg",
       "SourceId": "Contadito.Api",

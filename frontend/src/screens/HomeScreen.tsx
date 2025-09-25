@@ -1,4 +1,4 @@
-// src/screens/HomeScreen.tsx — Panel lateral pro + centrado + Apoka + Asesor IA (animado) + GiftedCharts
+// src/screens/HomeScreen.tsx — Panel lateral pro + centrado + Apoka + Asesor IA (animado) + GiftedCharts + Tutorial
 import React, { useCallback, useEffect, useMemo, useRef, useState, useContext } from 'react';
 import {
   Alert,
@@ -25,6 +25,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 // CHARTS: sin Skia, compatibles con React 18 / Expo
 import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
+
+// === Tutorial de primer uso ===
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import TutorialOverlay, { TutorialStep } from './TutorialOverlay';
 
 // ---------------- Tipos ----------------
 type Dashboard = {
@@ -518,6 +522,10 @@ export default function HomeScreen({ navigation }: Props) {
   const appState = useRef(AppState.currentState);
   const searchTimer = useRef<NodeJS.Timeout | null>(null);
 
+  // ---- Tutorial ----
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialSeen, setTutorialSeen] = useState<boolean | null>(null);
+
   const fetchDashboard = useCallback(async () => {
     try {
       setRefreshing(true);
@@ -557,6 +565,26 @@ export default function HomeScreen({ navigation }: Props) {
     if (polling) interval = setInterval(fetchDashboard, 60000);
     return () => { if (interval) clearInterval(interval); };
   }, [polling, fetchDashboard]);
+
+  // Mostrar tutorial solo la primera vez
+  useEffect(() => {
+    (async () => {
+      try {
+        const seen = await AsyncStorage.getItem('ctd_tutorial_v1_done');
+        if (seen === '1') { setTutorialSeen(true); return; }
+        setTutorialSeen(false);
+        setShowTutorial(true);
+      } catch {
+        setTutorialSeen(false);
+      }
+    })();
+  }, []);
+
+  const closeTutorial = useCallback(async () => {
+    try { await AsyncStorage.setItem('ctd_tutorial_v1_done', '1'); } catch {}
+    setShowTutorial(false);
+    setTutorialSeen(true);
+  }, []);
 
   const goSearch = useCallback(() => {
     const q = search?.trim();
@@ -676,6 +704,48 @@ Estado: ${context}`;
   const receivablesData = useMemo(() => bucketReceivables(dashboard?.receivablesDueSoon), [dashboard]);
   const activity = useMemo(() => activityToSeries(dashboard?.activity), [dashboard]);
 
+  // Pasos del tutorial
+  const tutorialSteps: TutorialStep[] = useMemo(() => [
+    {
+      key: 'bienvenida',
+      title: '¡Bienvenido a Contadito! 👋',
+      body: 'Este breve recorrido te muestra lo imprescindible para arrancar: buscar, crear tu primer producto y usar el panel lateral.',
+    },
+    {
+      key: 'buscar',
+      title: 'Búsqueda global',
+      body: 'Usa la barra superior para encontrar productos, clientes o SKU. Presiona Enter o toca "Buscar".',
+      cta: 'Ir a Buscar',
+      onCta: () => navigation.navigate('GlobalSearch'),
+    },
+    {
+      key: 'accionesRapidas',
+      title: 'Acciones rápidas',
+      body: 'Desde aquí puedes crear una Venta, Compra, Producto o Cliente en un toque.',
+      cta: 'Crear producto',
+      onCta: () => navigation.navigate('ProductForm'),
+    },
+    {
+      key: 'panel',
+      title: 'Panel lateral',
+      body: 'Abre el panel para ver tu empresa, plan y accesos directos. En pantallas anchas queda fijado a la izquierda.',
+      cta: 'Abrir panel',
+      onCta: () => setPanelOpen(true),
+    },
+    {
+      key: 'alertasIA',
+      title: 'Alertas e IA',
+      body: 'La sección de Alertas destaca stock bajo y por cobrar. Con "Analizar con IA" obtienes acciones priorizadas para hoy.',
+      cta: 'Ver alertas',
+      onCta: () => {},
+    },
+    {
+      key: 'listo',
+      title: '¡Listo para empezar!',
+      body: 'Crea tu primer producto o registra una venta. Puedes reabrir este tutorial desde el botón "Tutorial" en el encabezado.',
+    },
+  ], [navigation]);
+
   return (
     <View style={{ flex: 1, backgroundColor: BRAND.surfaceTint }}>
 
@@ -720,6 +790,7 @@ Estado: ${context}`;
                 <SmallBtn title="Usuario" onPress={() => navigation.navigate('UserScreen')} />
                 <SmallBtn title="Chat IA" onPress={() => navigation.navigate('OllamaChat')} />
                 <SmallBtn title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
+                <SmallBtn title="Tutorial" onPress={() => setShowTutorial(true)} />
                 <SmallBtn title="Cerrar sesión" onPress={logout} danger />
               </View>
             </View>
@@ -1178,6 +1249,9 @@ Estado: ${context}`;
           </View>
         </View>
       </ScrollView>
+
+      {/* Overlay del tutorial */}
+      <TutorialOverlay visible={showTutorial} onClose={closeTutorial} steps={tutorialSteps} />
     </View>
   );
 }
