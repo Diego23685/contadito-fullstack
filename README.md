@@ -49,7 +49,7 @@ Este repositorio contiene tanto el frontend como el backend del proyecto **Conta
 
 ### Frontend
 
-- [Node.js](https://nodejs.org/) >= 18.x
+- [Node.js](https://nodejs.org/) >= 20.x
 - [npm](https://www.npmjs.com/) >= 9.x
 - [Expo CLI](https://docs.expo.dev/get-started/installation/) (para React Native)
 - Emulador Android/iOS o dispositivo físico
