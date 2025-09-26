@@ -30,21 +30,41 @@ type SortKey = 'name' | 'price';
 const currency = (v?: number) =>
   new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(Number(v ?? 0));
 
-// ===== Paleta de marca (alineada con otras pantallas) =====
+// ===== Paleta de marca (la que pasaste) =====
 const BRAND = {
-  hanBlue: '#4458C7',
-  iris: '#5A44C7',
-  cyanBlueAzure: '#4481C7',
-  maximumBlue: '#44AAC7',
-  darkPastelBlue: '#8690C7',
-  verdigris: '#43BFB7',
+  primary:       '#2563EB',
+  primary500:    '#3B82F6',
+  primary600:    '#2563EB',
+  primary700:    '#1D4ED8',
+  purple:        '#7C3AED',
+  purple600:     '#6D28D9',
+  teal:          '#14B8A6',
+  green:         '#10B981',
+  slate900:      '#0F172A',
+  slate700:      '#334155',
+  slate500:      '#64748B',
 
-  surfaceTint:  '#F3F6FF',
-  surfaceSubtle:'#F8FAFF',
-  surfacePanel: '#FCFDFF',
-  borderSoft:   '#E2E7FF',
-  borderSofter: '#E9EEFF',
-  trackSoft:    '#DEE6FB',
+  bg:            '#EEF2FF',
+  surface:       '#FFFFFF',
+  surfaceSubtle: '#F7F9FF',
+  surfacePanel:  '#FFFFFF',
+
+  cardShadow: 'rgba(37, 99, 235, 0.16)',   // sombra azul tenue
+  cardShadowLg: 'rgba(37, 99, 235, 0.22)', // para hover/tooltip
+
+  border:        '#E6EBFF',
+  borderSoft:    '#E6EBFF',
+  borderSofter:  '#EDF1FF',
+  trackSoft:     '#ECF2FF',
+
+  // compat con nombres previos
+  hanBlue:       '#4458C7',
+  iris:          '#5A44C7',
+  maximumBlue:   '#44AAC7',
+  verdigris:     '#43BFB7',
+  surfaceTint:   '#EEF2FF',
+  accent:        '#3B82F6',
+  accentAlt:     '#5A44C7',
 } as const;
 
 // Tipografía Apoka
@@ -75,7 +95,7 @@ const ActionBtn = ({ title, onPress, kind = 'primary', disabled }: {
     <Text style={[
       styles.btnText,
       kind === 'secondary' && styles.btnTextSecondary,
-      kind === 'danger' && styles.btnTextPrimary
+      (kind === 'primary' || kind === 'danger') && styles.btnTextPrimary
     ]}>{title}</Text>
   </Pressable>
 );
@@ -95,7 +115,6 @@ const StockBadge = ({ qty, unit, low }: { qty?: number; unit?: string | null; lo
 };
 
 const ProductsList: React.FC<any> = ({ navigation }) => {
-  // Cargar fuente Apoka (no bloqueamos render)
   useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
   const { logout } = useContext(AuthContext);
@@ -380,26 +399,31 @@ const ProductsList: React.FC<any> = ({ navigation }) => {
 export default ProductsList;
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: BRAND.surfaceTint },
+  screen: { flex: 1, backgroundColor: BRAND.bg },
 
-  // Toolbar
+  // Toolbar (fondo lechoso + sombra azul)
   toolbarContainer: {
     paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10,
-    backgroundColor: BRAND.surfaceTint
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft,
+    shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+    // @ts-ignore (RNW)
+    backdropFilter: 'saturate(140%) blur(6px)',
   },
   toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-  toolbarLabel: { color: '#6B7280', ...F },
+  toolbarLabel: { color: BRAND.slate500, ...F },
 
   searchBox: { position: 'relative', flex: 1, minWidth: 220 },
   searchInput: {
     borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10,
-    paddingHorizontal: 12, height: 42, backgroundColor: BRAND.surfacePanel, ...F
+    paddingHorizontal: 12, height: 42, backgroundColor: BRAND.surfacePanel, ...F, color: BRAND.slate900
   },
   clearBtn: {
     position: 'absolute', right: 8, top: 6, width: 30, height: 30,
-    alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: BRAND.surfaceSubtle
+    alignItems: 'center', justifyContent: 'center', borderRadius: 15,
+    backgroundColor: BRAND.surfaceSubtle, borderWidth: 1, borderColor: BRAND.borderSoft
   },
-  clearText: { fontSize: 18, lineHeight: 18, color: '#374151', ...F },
+  clearText: { fontSize: 18, lineHeight: 18, color: BRAND.slate700, ...F },
 
   // Chips
   chip: {
@@ -407,65 +431,65 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999,
     backgroundColor: BRAND.surfacePanel
   },
-  chipActive: { backgroundColor: '#E9EDFF', borderColor: BRAND.hanBlue },
-  chipText: { color: '#374151', fontWeight: '600', ...F },
-  chipTextActive: { color: BRAND.hanBlue, ...F },
+  chipActive: { backgroundColor: '#E9EDFF', borderColor: BRAND.primary600 },
+  chipText: { color: BRAND.slate700, ...F },
+  chipTextActive: { color: BRAND.primary600, fontWeight: Platform.OS === 'ios' ? '600' : 'bold', ...F },
 
   // Botones
   btn: {
     minWidth: 96, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 10, backgroundColor: BRAND.hanBlue, borderWidth: 1, borderColor: BRAND.hanBlue
+    borderRadius: 10, backgroundColor: BRAND.primary600, borderWidth: 1, borderColor: BRAND.primary600
   },
   btnSecondary: { backgroundColor: BRAND.surfacePanel, borderWidth: 1, borderColor: BRAND.borderSoft },
   btnDanger: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
   btnDisabled: { opacity: 0.6 },
 
-  btnText: { color: '#FFFFFF', fontWeight: '700', ...F },
-  btnTextPrimary: { color: '#FFFFFF', fontWeight: '700', ...F },
-  btnTextSecondary: { color: '#111827', fontWeight: '700', ...F },
+  btnText: { ...F },
+  btnTextPrimary: { color: '#FFFFFF', fontWeight: Platform.OS === 'ios' ? '600' : 'bold', ...F },
+  btnTextSecondary: { color: BRAND.slate900, fontWeight: Platform.OS === 'ios' ? '600' : 'bold', ...F },
 
-  // Card
+  // Card (sombra azul y borde superior acento)
   card: {
     flex: 1,
     backgroundColor: BRAND.surfacePanel,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 14,
     borderWidth: 1, borderColor: BRAND.borderSoft,
-    borderTopWidth: 3, borderTopColor: BRAND.hanBlue,
-    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+    borderTopWidth: 3, borderTopColor: BRAND.primary600,
+    shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowOffset: { width: 0, height: 6 }, shadowRadius: 12,
     elevation: Platform.select({ android: 3, default: 0 }),
   },
 
   // Texto
-  itemTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a', ...F },
-  itemSub: { color: '#6B7280', fontSize: 12, ...F },
-  price: { fontSize: 16, fontWeight: '800', color: BRAND.hanBlue, ...F },
+  itemTitle: { fontSize: 16, color: BRAND.slate900, fontWeight: Platform.OS === 'ios' ? '600' : 'bold', ...F },
+  itemSub: { color: BRAND.slate500, fontSize: 12, ...F },
+  price: { fontSize: 16, fontWeight: Platform.OS === 'ios' ? '700' : '800', color: BRAND.primary600, ...F },
 
   // Badges
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   badgeText: { fontSize: 11, color: '#fff', fontWeight: '700', ...F },
-  badgeInfo: { backgroundColor: BRAND.cyanBlueAzure },
-  badgeSuccess: { backgroundColor: '#10B981' },
-  badgeNeutral: { backgroundColor: BRAND.darkPastelBlue },
+  badgeInfo: { backgroundColor: BRAND.accentAlt },
+  badgeSuccess: { backgroundColor: BRAND.green },
+  badgeNeutral: { backgroundColor: BRAND.slate500 },
   badgeDanger: { backgroundColor: '#DC2626' },
 
   // Lista en filas
   rowItem: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 12, paddingHorizontal: 12,
-    borderBottomColor: BRAND.borderSoft, borderBottomWidth: 1,
+    borderBottomColor: BRAND.borderSofter, borderBottomWidth: 1,
     backgroundColor: BRAND.surfacePanel, gap: 10
   },
-  rowTitle: { fontSize: 16, fontWeight: '600', color: '#0f172a', ...F },
-  rowSub: { color: '#6B7280', fontSize: 12, ...F },
+  rowTitle: { fontSize: 16, color: BRAND.slate900, fontWeight: Platform.OS === 'ios' ? '600' : 'bold', ...F },
+  rowSub: { color: BRAND.slate500, fontSize: 12, ...F },
 
   // Meta / Empty
   metaRow: { paddingHorizontal: 12, paddingBottom: 8 },
-  metaText: { color: '#6B7280', ...F },
+  metaText: { color: BRAND.slate500, ...F },
 
   empty: { alignItems: 'center', padding: 32, gap: 6 },
   emptyEmoji: { fontSize: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#0f172a', ...F },
-  emptyText: { color: '#6B7280', textAlign: 'center', ...F },
+  emptyTitle: { fontSize: 18, fontWeight: Platform.OS === 'ios' ? '600' : 'bold', color: BRAND.slate900, ...F },
+  emptyText: { color: BRAND.slate500, textAlign: 'center', ...F },
 });

@@ -22,21 +22,22 @@ type Resp = { total: number; page: number; pageSize: number; items: Item[] };
 
 const PAGE_SIZE = 12;
 
-// ===== Paleta consistente con Home =====
+// ===== Paleta alineada al Home (azules bonitos) =====
 const BRAND = {
-  hanBlue: '#4458C7',
-  iris: '#5A44C7',
-  cyanBlueAzure: '#4481C7',
-  maximumBlue: '#44AAC7',
-  darkPastelBlue: '#8690C7',
-  verdigris: '#43BFB7',
+  // primarios
+  primary600:    '#2563EB',
+  purple600:     '#6D28D9',
+  hanBlue:       '#4458C7',
 
-  surfaceTint:  '#F3F6FF',
-  surfaceSubtle:'#F8FAFF',
-  surfacePanel: '#FCFDFF',
-  borderSoft:   '#E2E7FF',
-  borderSofter: '#E9EEFF',
-  trackSoft:    '#DEE6FB',
+  // superficies / bordes
+  surfaceTint:   '#EEF2FF',
+  surfaceSubtle: '#F7F9FF',
+  surfacePanel:  '#FFFFFF',
+  borderSoft:    '#E6EBFF',
+  borderSofter:  '#EDF1FF',
+
+  // sombra azul suave
+  cardShadow: 'rgba(37, 99, 235, 0.16)',
 } as const;
 
 const F = Platform.select({
@@ -44,8 +45,14 @@ const F = Platform.select({
   default: { fontFamily: 'Apoka' },
 });
 
-const currency = (v?: number) =>
-  new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(Number(v ?? 0));
+const moneyNI = (v?: number) => {
+  const n = Number(v ?? 0);
+  try {
+    return new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(n);
+  } catch {
+    return `C$ ${n.toFixed(2)}`;
+  }
+};
 
 const Chip = ({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) => (
   <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
@@ -66,11 +73,15 @@ const ActionBtn = ({ title, onPress, kind = 'primary', disabled }: {
       disabled && styles.btnDisabled
     ]}
   >
-    <Text style={[
-      styles.btnText,
-      kind === 'secondary' && styles.btnTextSecondary,
-      (kind === 'primary' || kind === 'danger') && styles.btnTextPrimary
-    ]}>{title}</Text>
+    <Text
+      style={[
+        styles.btnText,
+        kind === 'secondary' && styles.btnTextSecondary,
+        (kind === 'primary' || kind === 'danger') && styles.btnTextPrimary
+      ]}
+    >
+      {title}
+    </Text>
   </Pressable>
 );
 
@@ -93,7 +104,7 @@ export default function ReceivablesList({ navigation }: any) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(0 as any);
 
   const debounceRef = useRef<any>(null);
 
@@ -188,9 +199,9 @@ export default function ReceivablesList({ navigation }: any) {
   }, [load]);
 
   const onRefresh = async () => {
-    setRefreshing(true);
+    setRefreshing(true as any);
     await load(true);
-    setRefreshing(false);
+    setRefreshing(false as any);
   };
   const onEndReached = () => {
     if (!loading && items.length < total) load(false);
@@ -222,11 +233,11 @@ export default function ReceivablesList({ navigation }: any) {
               #{item.number || item.invoiceId} · {item.customerName || 'Cliente'}
             </Text>
             <Text style={styles.itemSub}>
-              Total {currency(item.total)} · Pagado {currency(item.paid)} · Pendiente {currency(item.dueAmount)}
+              Total {moneyNI(item.total)} · Pagado {moneyNI(item.paid)} · Pendiente {moneyNI(item.dueAmount)}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <Text style={[styles.badge, tag.style]}>{tag.label}</Text>
-              <Text style={[styles.badge, styles.badgeOutline]}>{currency(item.total)} total</Text>
+              <Text style={[styles.badge, styles.badgeOutline]}>{moneyNI(item.total)} total</Text>
               {item.dueAmount > 0 && (
                 <ActionBtn title="Abonar" kind="secondary" onPress={() => openPay(item)} />
               )}
@@ -243,7 +254,7 @@ export default function ReceivablesList({ navigation }: any) {
             #{item.number || item.invoiceId} · {item.customerName || 'Cliente'}
           </Text>
           <Text style={styles.rowSub} numberOfLines={1}>
-            Total {currency(item.total)} · Pagado {currency(item.paid)} · Pendiente {currency(item.dueAmount)}
+            Total {moneyNI(item.total)} · Pagado {moneyNI(item.paid)} · Pendiente {moneyNI(item.dueAmount)}
           </Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
@@ -300,7 +311,7 @@ export default function ReceivablesList({ navigation }: any) {
         columnWrapperStyle={isGrid ? { paddingHorizontal: 8 } : undefined}
         ListHeaderComponent={listHeader}
         renderItem={renderItem}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} />}
         onEndReachedThreshold={0.3}
         onEndReached={onEndReached}
         ListFooterComponent={
@@ -328,7 +339,7 @@ export default function ReceivablesList({ navigation }: any) {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Registrar pago</Text>
             <Text style={styles.muted}>
-              Factura #{payTarget?.number || payTarget?.invoiceId} · Pendiente {currency(payTarget?.dueAmount)}
+              Factura #{payTarget?.number || payTarget?.invoiceId} · Pendiente {moneyNI(payTarget?.dueAmount)}
             </Text>
 
             <View style={{ height: 10 }} />
@@ -398,10 +409,13 @@ const styles = StyleSheet.create({
   // Fondo app con tinte de marca
   screen: { flex: 1, backgroundColor: BRAND.surfaceTint },
 
-  // Toolbar / header de la lista
+  // Toolbar / header de la lista (lechoso)
   toolbarContainer: {
     paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10,
-    backgroundColor: BRAND.surfaceTint
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft,
+    // @ts-ignore (web/iOS): frosted
+    backdropFilter: 'saturate(140%) blur(6px)',
   },
   toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   toolbarLabel: { ...F, color: '#6B7280' },
@@ -445,16 +459,18 @@ const styles = StyleSheet.create({
   btnTextPrimary: { ...F, color: '#FFFFFF' },
   btnTextSecondary: { ...F, color: '#111827' },
 
-  // Cards / items
+  // Cards / items con sombra azul suave
   card: {
     flex: 1,
     backgroundColor: BRAND.surfacePanel,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 14,
-    borderWidth: 1, borderColor: BRAND.borderSoft,
-    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 }, shadowRadius: 6,
-    elevation: Platform.select({ android: 2, default: 0 }),
+    borderWidth: 0,
+    shadowColor: BRAND.cardShadow,
+    shadowOpacity: 1,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: Platform.select({ android: 3, default: 0 }),
   },
 
   itemTitle: { ...F, fontSize: 16, color: '#0f172a' },
@@ -496,16 +512,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, minHeight: 42, backgroundColor: BRAND.surfacePanel, fontSize: 16
   },
 
-  // Modal de pago
+  // Modal de pago con acento superior
   modalWrap: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.28)', alignItems: 'center', justifyContent: 'center', padding: 16 },
   modalCard: {
     width: '100%', maxWidth: 520,
     backgroundColor: BRAND.surfacePanel,
-    borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: BRAND.borderSoft,
-    borderTopWidth: 3, borderTopColor: BRAND.hanBlue,
-    shadowColor: BRAND.hanBlue, shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+    borderRadius: 16, padding: 16,
+    borderWidth: 0,
+    shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowRadius: 14, shadowOffset: { width: 0, height: 8 },
     elevation: Platform.select({ android: 3, default: 0 }),
+    // ribete superior
+    borderTopWidth: 3, borderTopColor: BRAND.hanBlue,
   },
   modalTitle: { ...F, fontSize: 18, color: BRAND.hanBlue },
   muted: { ...F, color: '#6B7280' },

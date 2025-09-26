@@ -155,9 +155,9 @@ export default function LoginScreen() {
             style={[
               styles.leftWrap,
               {
-                borderTopLeftRadius: 16,
-                borderBottomLeftRadius: isWide ? 16 : 0,
-                borderTopRightRadius: isWide ? 0 : 16,
+                borderTopLeftRadius: 20,
+                borderBottomLeftRadius: isWide ? 20 : 0,
+                borderTopRightRadius: isWide ? 0 : 20,
                 transform: [{ translateY: float.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
               },
             ]}
@@ -174,9 +174,9 @@ export default function LoginScreen() {
                     <Stop offset="100%" stopColor="#ffffff" stopOpacity="0.2" />
                   </SvgLinearGradient>
                 </Defs>
-                <Circle cx="18%" cy="20%" r="36" fill="url(#bubble)" />
-                <Circle cx="70%" cy="28%" r="60" fill="url(#bubble)" />
-                <Circle cx="30%" cy="70%" r="54" fill="url(#bubble)" />
+                <Circle cx="18%" cy="20%" r="64" fill="url(#bubble)" />
+                <Circle cx="72%" cy="28%" r="88" fill="url(#bubble)" />
+                <Circle cx="32%" cy="70%" r="72" fill="url(#bubble)" />
               </Svg>
 
               <Animated.View style={[styles.welcomeBox, { opacity: fade }]}>
@@ -192,80 +192,99 @@ export default function LoginScreen() {
             style={[
               styles.right,
               {
-                borderTopRightRadius: 16,
-                borderBottomRightRadius: isWide ? 16 : 0,
-                borderBottomLeftRadius: isWide ? 0 : 16,
+                borderTopRightRadius: 20,
+                borderBottomRightRadius: isWide ? 20 : 0,
+                borderBottomLeftRadius: isWide ? 0 : 20,
               },
             ]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled">
               <View style={styles.formCard}>
-                <Text style={styles.hello}>¡Hola!</Text>
-                <Text style={styles.morning}>Bienvenido de nuevo</Text>
-                <Text style={styles.lead}>
-                  <Text style={[styles.lead, { color: P.text }]}>Inicia sesión en </Text>
-                  <Text style={[styles.leadBold]}>tu cuenta</Text>
-                </Text>
+                {/* Header del formulario */}
+                <Text style={styles.signInOverline}>Sign in</Text>
+                <Text style={styles.signInTitle}>Welcome back</Text>
+                <Text style={styles.signInSub}>Enter your email and password to continue</Text>
 
-                <Field label="Correo electrónico">
+                {/* Email */}
+                <View style={styles.inputBox}>
+                  <Text style={styles.inputLabel}>Email</Text>
                   <TextInput
-                    style={styles.input}
+                    style={styles.inputField}
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
                     keyboardType="email-address"
                     placeholder="you@email.com"
                     returnKeyType="next"
+                    placeholderTextColor="#9aa7c2"
                   />
-                  <LinearGradient colors={[P.violet, P.cyan]} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.underline} />
-                </Field>
+                </View>
 
-                <Field label="Contraseña">
-                  <View>
+                {/* Password */}
+                <View style={styles.inputBox}>
+                  <Text style={styles.inputLabel}>Password</Text>
+                  <View style={{ position: 'relative' }}>
                     <TextInput
-                      style={styles.input}
+                      style={styles.inputField}
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry={!showPass}
                       placeholder="••••••••"
                       returnKeyType="go"
                       onSubmitEditing={handleLogin}
+                      placeholderTextColor="#9aa7c2"
                     />
-                    <LinearGradient colors={[P.blue, P.cyan]} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.underline} />
                     <Pressable onPress={() => setShowPass(s => !s)} style={styles.eyeBtn} accessibilityLabel={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
                       <Text style={styles.eyeEmoji}>{showPass ? '🙈' : '👁️'}</Text>
                     </Pressable>
                   </View>
-                </Field>
+                </View>
 
+                {/* Remember + Forgot */}
                 <View style={styles.rowBetween}>
                   <Pressable onPress={() => setRemember(r => !r)} style={styles.rememberRow}>
                     <View style={[styles.checkbox, remember && styles.checkboxOn]}>{remember && <Text style={styles.tick}>✓</Text>}</View>
-                    <Text style={styles.rememberText}>Recordarme</Text>
+                    <Text style={styles.rememberText}>Remember me</Text>
                   </Pressable>
-                  <Pressable onPress={() => Alert.alert('Recuperar contraseña', 'Implementa navegación a ForgotPassword')}>
-                    <Text style={styles.forgot}>¿Olvidaste tu contraseña?</Text>
+                  <Pressable onPress={() => Alert.alert('Forgot password', 'Implementa navegación a ForgotPassword')}>
+                    <Text style={styles.forgot}>Forgot Password?</Text>
                   </Pressable>
                 </View>
 
                 {!!error && <Text style={styles.error}>{error}</Text>}
 
-                <Pressable onPress={handleLogin} disabled={loading || !formValid} style={[styles.submit, (loading || !formValid) && { opacity: 0.6 }]}>
-                  <LinearGradient colors={[P.blue, P.cyan]} start={{x:0,y:0}} end={{x:1,y:0}} style={styles.submitBG} />
+                {/* Botón principal */}
+                <Pressable onPress={handleLogin} disabled={loading || !formValid} style={[styles.primaryBtn, (loading || !formValid) && { opacity: 0.6 }]}>
                   {loading ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <ActivityIndicator color={P.white} />
-                      <Text style={styles.submitText}>INGRESANDO…</Text>
+                      <Text style={styles.primaryBtnText}>Signing in…</Text>
                     </View>
                   ) : (
-                    <Text style={styles.submitText}>INICIAR SESIÓN</Text>
+                    <Text style={styles.primaryBtnText}>Sign in</Text>
                   )}
                 </Pressable>
 
-                <Pressable onPress={() => navigation.navigate('Register')} style={{ marginTop: 10 }}>
-                  <Text style={styles.create}>Crear cuenta</Text>
+                {/* Divider */}
+                <View style={styles.dividerRow}>
+                  <View style={styles.divider} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.divider} />
+                </View>
+
+                {/* Botón secundario */}
+                <Pressable style={styles.secondaryBtn} onPress={() => Alert.alert('Other Sign in', 'Social / SSO')}>
+                  <Text style={styles.secondaryBtnText}>Sign in with other</Text>
                 </Pressable>
+
+                {/* Sign up */}
+                <View style={{ marginTop: 14, alignItems: 'center' }}>
+                  <Text style={styles.signupText}>
+                    Don’t have an account?{' '}
+                    <Text style={styles.signupLink} onPress={() => navigation.navigate('Register')}>Sign up</Text>
+                  </Text>
+                </View>
               </View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -292,25 +311,24 @@ const styles = StyleSheet.create({
     padding: 16,
   },
 
-  // Caja contenedora con bordes redondeados
+  // Caja contenedora con bordes redondeados y sombra
   card: {
     width: '100%',
     maxWidth: 1080,
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     backgroundColor: '#fff',
-    // Borde + sombra sutil (sobre fondo oscuro)
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: Platform.select({ android: 6, default: 0 }),
+    borderColor: 'rgba(14,30,80,0.06)',
+    shadowColor: '#0b1020',
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: Platform.select({ android: 8, default: 0 }),
   },
 
   // Panel izquierdo
-  leftWrap: { flex: 1.25, minHeight: 300 },
+  leftWrap: { flex: 1.2, minHeight: 320 },
   left: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   welcomeBox: {
     backgroundColor: 'rgba(255,255,255,0.15)',
@@ -319,6 +337,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.35)',
     marginHorizontal: 16,
+    maxWidth: 380,
   },
   welcomeTitle: { ...F, color: '#fff', fontSize: 26 },
   welcomeSub: { ...F, color: 'rgba(255,255,255,0.9)', marginTop: 6 },
@@ -326,18 +345,63 @@ const styles = StyleSheet.create({
 
   // Panel derecho (form)
   right: { flex: 1, backgroundColor: P.white },
-  formWrap: { padding: 24, alignItems: 'center', minHeight: '100%', justifyContent: 'center' },
-  formCard: { width: '100%', maxWidth: 520, padding: 22 },
+  formWrap: { padding: 28, alignItems: 'center', minHeight: '100%', justifyContent: 'center' },
+  formCard: { width: '100%', maxWidth: 460, padding: 6 },
 
-  hello: { ...F, color: '#111827', opacity: 0.7 },
-  morning: { ...F, color: P.violet, marginBottom: 4 },
-  lead: { ...F, color: P.sub, marginBottom: 16 },
-  leadBold: { ...F, color: P.text },
+  // Encabezado Sign in
+  signInOverline: { ...F, color: '#1e293b', opacity: 0.7, marginBottom: 4 },
+  signInTitle:    { ...F, color: '#0f172a', fontSize: 22, marginBottom: 4 },
+  signInSub:      { ...F, color: '#64748b', marginBottom: 16 },
 
-  label: { ...F, color: P.sub, marginBottom: 6 },
-  input: { ...F, backgroundColor: 'transparent', paddingVertical: 10, paddingRight: 42, fontSize: 16, color: P.text },
-  underline: { height: 2, borderRadius: 2 },
+  // Inputs “card-like”
+  inputBox: { marginTop: 10 },
+  inputLabel: { ...F, color: '#475569', marginBottom: 6, fontSize: 13 },
+  inputField: {
+    ...F,
+    backgroundColor: '#F8FAFF',
+    borderWidth: 1,
+    borderColor: '#E6EBFF',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingRight: 44,
+    fontSize: 16,
+    color: '#0f172a',
+  },
 
+  // Botones
+  primaryBtn: {
+    marginTop: 16,
+    backgroundColor: '#2563EB',
+    borderRadius: 12,
+    alignItems: 'center',
+    paddingVertical: 12,
+    shadowColor: 'rgba(37,99,235,0.35)',
+    shadowOpacity: 1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
+  primaryBtnText: { ...F, color: '#FFFFFF', fontSize: 16 },
+
+  secondaryBtn: {
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E6EBFF',
+  },
+  secondaryBtnText: { ...F, color: '#0f172a', fontSize: 16 },
+
+  // Divider
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  divider: { flex: 1, height: 1, backgroundColor: '#E6EBFF' },
+  dividerText: { ...F, color: '#64748B' },
+
+  // Elementos ya existentes / compat
+  label: { ...F, color: P.sub, marginBottom: 6 }, // para Field (no usado en el nuevo layout, pero lo mantenemos)
   eyeBtn: { position: 'absolute', right: 4, top: 6, padding: 8, borderRadius: 10 },
   eyeEmoji: { ...F },
 
@@ -347,14 +411,12 @@ const styles = StyleSheet.create({
   checkboxOn: { backgroundColor: '#E0F2FE', borderColor: '#BAE6FD' },
   tick: { ...F, color: P.blue, fontSize: 12 },
 
-  rememberText: { ...F, color: P.text },
-  forgot: { ...F, color: P.violet },
+  rememberText: { ...F, color: '#0f172a' },
+  forgot: { ...F, color: '#2563EB' },
 
   error: { ...F, color: P.danger, marginTop: 10 },
 
-  submit: { marginTop: 18, borderRadius: 10, overflow: 'hidden', alignItems: 'center', paddingVertical: 14 },
-  submitBG: { ...StyleSheet.absoluteFillObject },
-  submitText: { ...F, color: P.white, letterSpacing: 1 },
-
-  create: { ...F, color: P.violet, textAlign: 'center' },
+  // Sign up
+  signupText: { ...F, color: '#475569' },
+  signupLink: { ...F, color: '#2563EB' },
 });

@@ -9,21 +9,29 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { api } from '../../api';
 import { AuthContext } from '../../providers/AuthContext';
 
-// ===== Paleta de marca (misma que Home) =====
+// ===== Paleta (alineada con Home) =====
 const BRAND = {
-  hanBlue: '#4458C7',
-  iris: '#5A44C7',
-  cyanBlueAzure: '#4481C7',
-  maximumBlue: '#44AAC7',
-  darkPastelBlue: '#8690C7',
-  verdigris: '#43BFB7',
+  // primarios
+  primary600:    '#2563EB',
+  purple600:     '#6D28D9',
+  green:         '#10B981',
+  hanBlue:       '#4458C7',
 
-  surfaceTint:  '#F3F6FF',
-  surfaceSubtle:'#F8FAFF',
-  surfacePanel: '#FCFDFF',
-  borderSoft:   '#E2E7FF',
-  borderSofter: '#E9EEFF',
-  trackSoft:    '#DEE6FB',
+  // neutrales
+  slate700:      '#334155',
+
+  // superficies/bordes
+  surfaceTint:   '#EEF2FF',
+  surfaceSubtle: '#F7F9FF',
+  surfacePanel:  '#FFFFFF',
+  borderSoft:    '#E6EBFF',
+  borderSofter:  '#EDF1FF',
+
+  // acentos heredados
+  cyanBlueAzure: '#4481C7',
+
+  // sombras
+  cardShadow: 'rgba(37, 99, 235, 0.16)',
 } as const;
 
 // Tipos mínimos para clientes
@@ -40,24 +48,77 @@ const F = Platform.select({
   default: { fontFamily: 'Apoka' },
 });
 
-const ActionBtn = ({ title, onPress, kind='primary', disabled }: any) => (
-  <Pressable
-    onPress={onPress}
-    disabled={disabled}
-    style={[
-      styles.btn,
-      kind === 'secondary' && styles.btnSecondary,
-      disabled && { opacity: 0.6 }
-    ]}
-  >
-    <Text style={[styles.btnText, kind === 'secondary' && styles.btnTextSecondary]}>{title}</Text>
-  </Pressable>
-);
-
 // ---------- Utils ----------
 const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
 const toISODate = (d?: Date | null) =>
-  d ? `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` : '';
+  d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : '';
+
+const parseNumber = (s: string) => {
+  // normaliza comas a puntos y deja dígitos/punto
+  const norm = s.replace(',', '.').replace(/[^\d.]/g, '');
+  const n = Number(norm);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const moneyNI = (v?: number | null) => {
+  const n = Number(v ?? 0);
+  try {
+    return new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(n);
+  } catch {
+    return `C$ ${n.toFixed(2)}`;
+  }
+};
+
+// Avatar utils
+const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('') || 'U';
+const colorFrom = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  const hue = Math.abs(h) % 360;
+  return `hsl(${hue}, 70%, 90%)`;
+};
+
+/** Botón pequeño reutilizable (alineado con Home/CustomersList) */
+const SmallBtn: React.FC<{
+  title: string;
+  onPress?: () => void;
+  variant?: 'primary' | 'purple' | 'gray' | 'danger' | 'outline' | 'success';
+  disabled?: boolean;
+  loading?: boolean;
+  style?: any;
+}> = ({ title, onPress, variant = 'gray', disabled, loading, style }) => {
+  const isFilled = ['primary', 'purple', 'gray', 'danger', 'success'].includes(variant);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      disabled={disabled || loading}
+      android_ripple={{ color: '#e5e7eb' }}
+      style={[
+        styles.smallBtn,
+        variant === 'primary' && styles.btnBlue,
+        variant === 'purple' && styles.btnPurple,
+        variant === 'gray' && styles.btnGray,
+        variant === 'danger' && styles.btnDanger,
+        variant === 'outline' && styles.btnOutline,
+        variant === 'success' && styles.btnSuccess,
+        (disabled || loading) && { opacity: 0.7 },
+        style,
+      ]}
+    >
+      {loading ? <ActivityIndicator /> : (
+        <Text style={isFilled ? styles.smallBtnTextAlt : styles.smallBtnText}>{title}</Text>
+      )}
+    </Pressable>
+  );
+};
+
+// ---------- Chips sencillos ----------
+const Chip = ({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) => (
+  <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
+    <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+  </Pressable>
+);
 
 /** -------------------------
  *  Selector de Cliente (Modal)
@@ -114,9 +175,9 @@ const CustomerPicker = ({
   return (
     <>
       <Pressable onPress={() => setOpen(true)} style={styles.inputSelect}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.labelSmall}>Cliente</Text>
-          <Text style={[styles.selectText, !displayName && { color: '#9aa7c2' }]}>
+          <Text style={[styles.selectText, !displayName && { color: '#9aa7c2' }]} numberOfLines={1}>
             {displayName || 'Seleccionar cliente…'}
           </Text>
         </View>
@@ -154,21 +215,24 @@ const CustomerPicker = ({
             <FlatList
               data={items}
               keyExtractor={(c) => String(c.id)}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => { onChange({ id: item.id, name: item.name }); setOpen(false); }}
-                  style={styles.rowItem}
-                >
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{item.name.trim().split(/\s+/).map(p=>p[0]).slice(0,2).join('').toUpperCase()}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.rowTitle} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.rowSub} numberOfLines={1}>{item.email || '—'}{item.phone ? ` · ${item.phone}` : ''}</Text>
-                  </View>
-                  <View style={styles.pickPill}><Text style={styles.pickPillText}>Elegir</Text></View>
-                </Pressable>
-              )}
+              renderItem={({ item }) => {
+                const bg = colorFrom(item.name || String(item.id));
+                return (
+                  <Pressable
+                    onPress={() => { onChange({ id: item.id, name: item.name }); setOpen(false); }}
+                    style={styles.rowItem}
+                  >
+                    <View style={[styles.avatar, { backgroundColor: bg }]}>
+                      <Text style={styles.avatarText}>{initials(item.name)}</Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>{item.name}</Text>
+                      <Text style={styles.rowSub} numberOfLines={1}>{item.email || '—'}{item.phone ? ` · ${item.phone}` : ''}</Text>
+                    </View>
+                    <View style={styles.pickPill}><Text style={styles.pickPillText}>Elegir</Text></View>
+                  </Pressable>
+                );
+              }}
               onEndReachedThreshold={0.3}
               onEndReached={() => { if (!loading && canLoadMore) fetchList(false); }}
               refreshing={refreshing}
@@ -202,26 +266,32 @@ export default function ReceivableCreate({ navigation }: any) {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Errores inline
+  const [errTotal, setErrTotal] = useState<string | null>(null);
+  const [errCustomer, setErrCustomer] = useState<string | null>(null);
+
   const openPicker = () => setShowPicker(true);
   const closePicker = () => setShowPicker(false);
   const onConfirmDate = (d: Date) => { setDueAtDate(d); closePicker(); };
 
-  const save = async () => {
-    const cid = Number(customerId);
-    const tot = Number(total);
-    if (!cid || tot <= 0) {
-      Alert.alert('Faltan datos', 'Cliente y Total son obligatorios (total > 0).');
-      return;
-    }
+  const validate = () => {
+    let ok = true;
+    if (!customerId) { setErrCustomer('Selecciona un cliente'); ok = false; } else setErrCustomer(null);
+    const n = parseNumber(total);
+    if (n <= 0) { setErrTotal('El total debe ser mayor a 0'); ok = false; } else setErrTotal(null);
+    return ok;
+  };
 
+  const save = async () => {
+    if (!validate()) return;
     try {
       setSaving(true);
       await api.post('/receivables', {
-        customerId: cid,
+        customerId: Number(customerId),
         number: number || undefined,
         // Enviamos fecha como YYYY-MM-DD (sin hora)
         dueAt: dueAtDate ? toISODate(dueAtDate) : undefined,
-        total: tot,
+        total: parseNumber(total),
         notes: notes || undefined,
       });
       Alert.alert('Listo', 'Cuenta por cobrar creada.');
@@ -235,14 +305,28 @@ export default function ReceivableCreate({ navigation }: any) {
     }
   };
 
+  // Helpers UX: chips de vencimiento y atajos de montos
+  const setDaysFromToday = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    setDueAtDate(d);
+  };
+  const bump = (amt: number) => {
+    const n = Math.max(0, parseNumber(total) + amt);
+    setTotal(String(n.toFixed(2)));
+  };
+
+  // Estado deshabilitar guardar
+  const disableSave = saving || !customerId || parseNumber(total) <= 0;
+
   return (
     <View style={{ flex: 1, backgroundColor: BRAND.surfaceTint }}>
       {/* Header con acciones */}
       <View style={styles.topBar}>
         <Text style={styles.title}>Nueva cuenta por cobrar</Text>
         <View style={styles.topActions}>
-          <ActionBtn title="Cancelar" kind="secondary" onPress={() => navigation.goBack()} disabled={saving} />
-          <ActionBtn title={saving ? 'Guardando...' : 'Guardar'} onPress={save} disabled={saving} />
+          <SmallBtn title="Cancelar" variant="outline" onPress={() => navigation.goBack()} disabled={saving} />
+          <SmallBtn title={saving ? 'Guardando…' : 'Guardar'} variant="primary" onPress={save} disabled={disableSave} loading={saving} />
         </View>
       </View>
 
@@ -254,8 +338,9 @@ export default function ReceivableCreate({ navigation }: any) {
             <CustomerPicker
               value={customerId ?? undefined}
               displayName={customerName}
-              onChange={(c) => { setCustomerId(c.id); setCustomerName(c.name); }}
+              onChange={(c) => { setCustomerId(c.id); setCustomerName(c.name); setErrCustomer(null); }}
             />
+            {!!errCustomer && <Text style={styles.errorText}>{errCustomer}</Text>}
 
             {/* Grid 2 cols en wide */}
             <View style={[styles.row2, !isWide && { gap: 10, marginTop: 12 }]}>
@@ -270,7 +355,7 @@ export default function ReceivableCreate({ navigation }: any) {
                 />
               </View>
 
-              {/* --- Fecha con minicalendario + quitar --- */}
+              {/* --- Fecha con minicalendario + quitar + chips --- */}
               <View style={styles.flex1}>
                 <Text style={styles.label}>Vence</Text>
 
@@ -285,10 +370,15 @@ export default function ReceivableCreate({ navigation }: any) {
                       </Pressable>
 
                       {dueAtDate && (
-                        <Pressable onPress={() => setDueAtDate(null)} style={styles.clearDateBtn}>
-                          <Text style={[F, styles.clearDateText]}>Quitar</Text>
-                        </Pressable>
+                        <SmallBtn title="Quitar" variant="outline" onPress={() => setDueAtDate(null)} />
                       )}
+                    </View>
+
+                    <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                      <Chip label="Hoy" active={!dueAtDate} onPress={() => setDueAtDate(null)} />
+                      <Chip label="+7 días" onPress={() => setDaysFromToday(7)} />
+                      <Chip label="+15 días" onPress={() => setDaysFromToday(15)} />
+                      <Chip label="+30 días" onPress={() => setDaysFromToday(30)} />
                     </View>
 
                     <DateTimePickerModal
@@ -296,46 +386,57 @@ export default function ReceivableCreate({ navigation }: any) {
                       mode="date"
                       display={Platform.OS === 'android' ? 'calendar' : 'inline'}
                       date={dueAtDate || new Date()}
-                      minimumDate={new Date()}            // <- mínimo hoy (quita esta línea si permites pasado)
                       onConfirm={onConfirmDate}
                       onCancel={closePicker}
                     />
                   </>
                 ) : (
-                  // WEB: input nativo de fecha con botón Quitar
-                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                    {/* @ts-ignore: RNW permite elementos DOM en web */}
-                    <input
-                      type="date"
-                      value={dueAtDate ? toISODate(dueAtDate) : ''}
-                      min={toISODate(new Date())}          // <- mínimo hoy (quita si no lo quieres)
-                      onChange={(e: any) => {
-                        const v = e?.target?.value as string;
-                        setDueAtDate(v ? new Date(v) : null);
-                      }}
-                      style={styles.webDateInput as any}
-                    />
-                    {dueAtDate && (
-                      <Pressable onPress={() => setDueAtDate(null)} style={styles.clearDateBtn}>
-                        <Text style={[F, styles.clearDateText]}>Quitar</Text>
-                      </Pressable>
-                    )}
-                  </View>
+                  // WEB: input nativo de fecha + chips + quitar
+                  <>
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                      {/* @ts-ignore: RNW permite DOM en web */}
+                      <input
+                        type="date"
+                        value={dueAtDate ? toISODate(dueAtDate) : ''}
+                        onChange={(e: any) => {
+                          const v = e?.target?.value as string;
+                          setDueAtDate(v ? new Date(v) : null);
+                        }}
+                        style={styles.webDateInput as any}
+                      />
+                      {dueAtDate && <SmallBtn title="Quitar" variant="outline" onPress={() => setDueAtDate(null)} />}
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                      <Chip label="Hoy" active={!dueAtDate} onPress={() => setDueAtDate(null)} />
+                      <Chip label="+7 días" onPress={() => setDaysFromToday(7)} />
+                      <Chip label="+15 días" onPress={() => setDaysFromToday(15)} />
+                      <Chip label="+30 días" onPress={() => setDaysFromToday(30)} />
+                    </View>
+                  </>
                 )}
               </View>
             </View>
 
-            {/* Total destacado */}
+            {/* Total destacado con atajos */}
             <View style={styles.field}>
               <Text style={styles.label}>Total</Text>
               <TextInput
                 value={total}
-                onChangeText={setTotal}
+                onChangeText={(t) => { setTotal(t); if (parseNumber(t) > 0) setErrTotal(null); }}
                 keyboardType="decimal-pad"
                 placeholder="0.00"
                 style={[styles.input, styles.totalInput]}
                 placeholderTextColor="#9aa7c2"
               />
+              {!!errTotal && <Text style={styles.errorText}>{errTotal}</Text>}
+              <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                <SmallBtn title="+100" variant="outline" onPress={() => bump(100)} />
+                <SmallBtn title="+500" variant="outline" onPress={() => bump(500)} />
+                <SmallBtn title="+1000" variant="outline" onPress={() => bump(1000)} />
+                <SmallBtn title="Redondear" variant="outline" onPress={() => setTotal(String(Math.round(parseNumber(total))))} />
+                <SmallBtn title="Limpiar" variant="outline" onPress={() => setTotal('0')} />
+              </View>
+              <Text style={styles.helper}>Puedes ingresar comas o puntos. Se normaliza automáticamente.</Text>
             </View>
 
             <View style={styles.field}>
@@ -360,16 +461,22 @@ export default function ReceivableCreate({ navigation }: any) {
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>ID Cliente</Text><Text style={styles.summaryValue}>{customerId ?? '—'}</Text></View>
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Número</Text><Text style={styles.summaryValue}>{number || '—'}</Text></View>
             <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Vence</Text><Text style={styles.summaryValue}>{toISODate(dueAtDate) || '—'}</Text></View>
-            <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Total</Text><Text style={[styles.summaryValue, styles.summaryStrong]}>{total || '0.00'}</Text></View>
+            <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Total</Text>
+              <Text style={[styles.summaryValue, styles.summaryStrong]}>{moneyNI(parseNumber(total))}</Text>
+            </View>
             <View style={[styles.divider, { marginTop: 8 }]} />
             <Text style={styles.helper}>Verifica los datos antes de guardar. Podrás editarlos luego.</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+              <SmallBtn title="Cancelar" variant="outline" onPress={() => navigation.goBack()} />
+              <SmallBtn title={saving ? 'Guardando…' : 'Guardar'} variant="primary" onPress={save} disabled={disableSave} loading={saving} />
+            </View>
           </View>
 
           <View style={[styles.card, { gap: 6 }]}>
             <Text style={styles.sectionTitle}>Tips</Text>
-            <Text style={styles.tip}>• Busca por nombre o email.</Text>
-            <Text style={styles.tip}>• Define fecha de vencimiento para alertas.</Text>
-            <Text style={styles.tip}>• Escribe notas claras para el cobro.</Text>
+            <Text style={styles.tip}>• Usa el selector para elegir rápido al cliente correcto.</Text>
+            <Text style={styles.tip}>• Define fecha de vencimiento para activar recordatorios.</Text>
+            <Text style={styles.tip}>• Escribe notas claras para el cobro (referencias, condiciones).</Text>
           </View>
         </View>
       </ScrollView>
@@ -395,24 +502,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10
+    gap: 10,
   },
   title: { ...F, fontSize: 18, color: BRAND.hanBlue },
-  topActions: { flexDirection: 'row', gap: 8 },
+  topActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
 
-  // Card
+  // Card estilo Home (sombra azul suave)
   card: {
-    backgroundColor: BRAND.surfacePanel,
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 14,
-    borderWidth: 1,
-    borderColor: BRAND.borderSoft,
-    borderTopWidth: 3,
-    borderTopColor: BRAND.hanBlue,
-    shadowColor: BRAND.hanBlue,
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
+    borderWidth: 0,
+    shadowColor: BRAND.cardShadow,
+    shadowOpacity: 1,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
     elevation: Platform.select({ android: 3, default: 0 }),
   },
 
@@ -434,15 +538,15 @@ const styles = StyleSheet.create({
   selectText: { ...F, fontSize: 16, color: '#0f172a' },
   selectBadge: {
     paddingHorizontal: 10, paddingVertical: 6,
-    backgroundColor: '#E9EDFF', borderRadius: 999, borderWidth: 1, borderColor: BRAND.borderSoft
+    backgroundColor: '#E9EDFF', borderRadius: 999, borderWidth: 1, borderColor: BRAND.borderSoft,
   },
   selectBadgeText: { ...F, color: BRAND.hanBlue, fontSize: 12 },
 
   // Form
-  field: { marginBottom: 12 },
+  field: { marginTop: 12 },
   label: { ...F, color: '#0f172a', marginBottom: 6 },
   row2: { flexDirection: 'row', gap: 12 },
-  flex1: { flex: 1 },
+  flex1: { flex: 1, minWidth: 0 },
 
   input: {
     ...F,
@@ -452,7 +556,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     minHeight: 42,
     backgroundColor: BRAND.surfacePanel,
-    fontSize: 16
+    fontSize: 16,
   },
   totalInput: {
     fontSize: 20,
@@ -469,23 +573,15 @@ const styles = StyleSheet.create({
   dateInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
   },
   calendarGlyph: { fontSize: 16, color: '#0f172a' },
-
-  // Botón quitar fecha
-  clearDateBtn: {
-    paddingHorizontal: 12, paddingVertical: 10,
-    borderRadius: 10, borderWidth: 1, borderColor: BRAND.borderSoft,
-    backgroundColor: BRAND.surfacePanel
-  },
-  clearDateText: { color: '#111827' },
 
   // Web: input nativo
   webDateInput: {
     height: 42, paddingHorizontal: 12, borderRadius: 10,
     borderWidth: 1, borderColor: BRAND.borderSoft, backgroundColor: BRAND.surfacePanel,
-    fontFamily: (F as any)?.fontFamily || 'sans-serif', fontSize: 16, color: '#0f172a'
+    fontFamily: (F as any)?.fontFamily || 'sans-serif', fontSize: 16, color: '#0f172a',
   },
 
   // Resumen
@@ -493,34 +589,44 @@ const styles = StyleSheet.create({
   summaryLabel: { ...F, color: '#6B7280' },
   summaryValue: { ...F, color: '#0f172a' },
   summaryStrong: { fontWeight: Platform.OS === 'ios' ? '600' : 'bold', color: BRAND.hanBlue },
-  helper: { ...F, marginTop: 8, color: '#6B7280', fontSize: 12 },
+  helper: { ...F, marginTop: 6, color: '#6B7280', fontSize: 12 },
   divider: { height: 1, backgroundColor: BRAND.borderSofter },
 
-  // Botones
-  btn: {
-    minWidth: 96,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: BRAND.hanBlue,
-    borderWidth: 1,
-    borderColor: BRAND.hanBlue
+  // Errores
+  errorText: { ...F, color: '#B91C1C', fontSize: 12, marginTop: 6 },
+
+  // Chips
+  chip: {
+    borderWidth: 1, borderColor: BRAND.borderSoft, paddingHorizontal: 10, paddingVertical: 7,
+    borderRadius: 999, backgroundColor: BRAND.surfacePanel,
   },
-  btnSecondary: {
+  chipActive: { backgroundColor: '#E9EDFF', borderColor: BRAND.hanBlue },
+  chipText: { ...F, color: '#374151' },
+  chipTextActive: { ...F, color: BRAND.hanBlue },
+
+  // Botón pequeño + variantes
+  smallBtn: {
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 12,
     backgroundColor: BRAND.surfacePanel,
-    borderWidth: 1,
-    borderColor: BRAND.borderSoft
+    shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 }, elevation: 1,
+    alignSelf: 'flex-start',
   },
-  btnText: { ...F, color: '#FFFFFF' },
-  btnTextSecondary: { ...F, color: '#111827' },
+  btnBlue: { backgroundColor: BRAND.primary600, shadowColor: 'rgba(37,99,235,0.25)', elevation: 2 },
+  btnPurple: { backgroundColor: BRAND.purple600, shadowColor: 'rgba(109,40,217,0.25)', elevation: 2 },
+  btnGray: { backgroundColor: '#1E293B', shadowColor: 'rgba(30,41,59,0.25)', elevation: 2 },
+  btnDanger: { backgroundColor: '#DC2626', shadowColor: 'rgba(220,38,38,0.25)', elevation: 2 },
+  btnSuccess: { backgroundColor: BRAND.green, shadowColor: 'rgba(16,185,129,0.25)', elevation: 2 },
+  btnOutline: { backgroundColor: BRAND.surfacePanel, borderWidth: 1, borderColor: BRAND.borderSoft },
+  smallBtnText: { ...F, color: BRAND.hanBlue },
+  smallBtnTextAlt: { ...F, color: '#FFFFFF' },
 
   // Modal (selector clientes)
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.25)',
-    justifyContent: 'flex-end'
+    justifyContent: 'flex-end',
   },
   modalCard: {
     maxHeight: '80%',
@@ -544,7 +650,7 @@ const styles = StyleSheet.create({
   modalClose: {
     width: 32, height: 32, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: BRAND.surfaceSubtle, borderWidth: 1, borderColor: BRAND.borderSoft
+    backgroundColor: BRAND.surfaceSubtle, borderWidth: 1, borderColor: BRAND.borderSoft,
   },
   modalCloseText: { ...F, fontSize: 18, lineHeight: 18, color: '#111827' },
 
@@ -553,18 +659,18 @@ const styles = StyleSheet.create({
   searchInput: {
     ...F,
     borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10, paddingHorizontal: 12, height: 42,
-    backgroundColor: BRAND.surfacePanel, fontSize: 16
+    backgroundColor: BRAND.surfacePanel, fontSize: 16,
   },
   clearBtn: {
     position: 'absolute', right: 8, top: 6, width: 30, height: 30,
-    alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: '#E9EDFF', borderWidth: 1, borderColor: BRAND.borderSoft
+    alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: '#E9EDFF', borderWidth: 1, borderColor: BRAND.borderSoft,
   },
   clearText: { ...F, fontSize: 18, lineHeight: 18, color: '#374151' },
 
   rowItem: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 10, paddingHorizontal: 12,
-    borderBottomColor: BRAND.borderSofter, borderBottomWidth: 1, gap: 10
+    borderBottomColor: BRAND.borderSofter, borderBottomWidth: 1, gap: 10,
   },
   rowTitle: { ...F, fontSize: 16, color: '#111827' },
   rowSub: { ...F, color: '#6B7280', fontSize: 12 },
@@ -572,10 +678,10 @@ const styles = StyleSheet.create({
   avatar: {
     width: 36, height: 36, borderRadius: 999,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#E9EDFF', borderWidth: 1, borderColor: BRAND.borderSoft
+    borderWidth: 1, borderColor: BRAND.borderSoft,
   },
-  avatarText: { ...F, color: BRAND.hanBlue, fontSize: 12 },
+  avatarText: { ...F, color: '#0f172a', fontSize: 12 },
 
-  pickPill: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: BRAND.hanBlue, borderRadius: 999 },
+  pickPill: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: BRAND.primary600, borderRadius: 999 },
   pickPillText: { ...F, color: '#fff', fontSize: 12 },
 });

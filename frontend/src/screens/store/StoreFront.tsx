@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator,
-  FlatList, RefreshControl, useWindowDimensions, Image, Platform, ScrollView,
+  FlatList, RefreshControl, useWindowDimensions, Image, Platform
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { api } from '../../api';
@@ -100,6 +100,7 @@ export default function StoreFront() {
   const layout = useMemo(() => {
     const sidebarW = isWide ? 300 : 0;
     const padding = 16;  // padding horizontal del contenedor
+    theGutter: 0; // no usar; sólo para no romper nada
     const gutter = 12;   // separación entre columnas
     const available = width - sidebarW - padding * 2;
     const cardWidth = Math.max(0, (available - gutter * (cols - 1)) / cols);
@@ -380,23 +381,25 @@ export default function StoreFront() {
   );
 
   // Skeleton fila
-  const SkeletonRow = () => (
-    <View style={styles.skeletonRow}>
-      {Array.from({ length: cols }).map((_, i) => (
-        <View
-          key={`sk-${i}`}
-          style={[
-            styles.card,
-            { width: layout.cardWidth, marginRight: i < cols - 1 ? layout.gutter : 0 }
-          ]}
-        >
-          <View style={[styles.thumb, { backgroundColor: '#eef2f7' }]} />
-          <View style={{ height: 14, backgroundColor: '#eef2f7', borderRadius: 6, marginTop: 8 }} />
-          <View style={{ height: 12, width: '40%', backgroundColor: '#eef2f7', borderRadius: 6, marginTop: 6 }} />
-        </View>
-      ))}
-    </View>
-  );
+  const SkeletonRow = () => {
+    return (
+      <View style={styles.skeletonRow}>
+        {Array.from({ length: cols }).map((_, i) => (
+          <View
+            key={`sk-${i}`}
+            style={[
+              styles.card,
+              { width: layout.cardWidth, marginRight: i < cols - 1 ? layout.gutter : 0 }
+            ]}
+          >
+            <View style={[styles.thumb, { backgroundColor: '#eef2f7' }]} />
+            <View style={{ height: 14, backgroundColor: '#eef2f7', borderRadius: 6, marginTop: 8 }} />
+            <View style={{ height: 12, width: '40%', backgroundColor: '#eef2f7', borderRadius: 6, marginTop: 6 }} />
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   // ===== Sidebar (solo wide) =====
   const Sidebar = () => (
@@ -476,8 +479,9 @@ export default function StoreFront() {
 
           <View style={{ position: 'relative' }}>
             <Pressable onPress={() => setSortOpen(s => !s)} style={styles.sortBtn}>
+              {/* ===== FIX: sin operador coma, sin variable suelta ===== */}
               <Text style={styles.sortText}>
-                {({ label } = sortOptions.find(o => o.key === sort) || { label: 'Ordenar' }), label}
+                {sortOptions.find(o => o.key === sort)?.label ?? 'Ordenar'}
               </Text>
             </Pressable>
             {sortOpen && <SortMenu />}

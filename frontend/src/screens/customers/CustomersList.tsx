@@ -1,7 +1,19 @@
+// src/screens/customers/CustomersList.tsx
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TextInput, FlatList, Alert, StyleSheet, RefreshControl,
-  ActivityIndicator, Pressable, useWindowDimensions, Platform
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  Alert,
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+  Pressable,
+  useWindowDimensions,
+  Platform,
+  type ViewStyle,
+  type StyleProp,
 } from 'react-native';
 import { useFonts } from 'expo-font';
 import { api } from '../../api';
@@ -48,51 +60,72 @@ const F = Platform.select({
   default: { fontFamily: 'Apoka' },
 });
 
-// ===== Paleta de marca (igual a Home) =====
+// ===== Paleta (alineada con Home) =====
 const BRAND = {
-  hanBlue: '#4458C7',        // primario
-  iris: '#5A44C7',
-  cyanBlueAzure: '#4481C7',
-  maximumBlue: '#44AAC7',
-  darkPastelBlue: '#8690C7',
-  verdigris: '#43BFB7',
+  primary600: '#2563EB',
+  purple600: '#6D28D9',
+  green: '#10B981',
 
-  surfaceTint:  '#F3F6FF',
-  surfaceSubtle:'#F8FAFF',
-  surfacePanel: '#FCFDFF',
-  borderSoft:   '#E2E7FF',
-  borderSofter: '#E9EEFF',
-  trackSoft:    '#DEE6FB',
+  hanBlue: '#4458C7',
+  slate700: '#334155',
+
+  surfaceTint: '#EEF2FF',
+  surfaceSubtle: '#F7F9FF',
+  surfacePanel: '#FFFFFF',
+
+  borderSoft: '#E6EBFF',
+  borderSofter: '#EDF1FF',
+
+  cardShadow: 'rgba(37, 99, 235, 0.16)',
 } as const;
 
-const Chip = ({ label, active, onPress }: { label: string; active?: boolean; onPress?: () => void }) => (
-  <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
-    <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-  </Pressable>
-);
-
-const ActionBtn = ({ title, onPress, kind = 'primary', disabled }: {
-  title: string; onPress?: () => void; kind?: 'primary' | 'secondary' | 'danger'; disabled?: boolean;
-}) => (
-  <Pressable
-    onPress={onPress}
-    disabled={disabled}
-    style={[
-      styles.btn,
-      kind === 'secondary' && styles.btnSecondary,
-      kind === 'danger' && styles.btnDanger,
-      disabled && styles.btnDisabled
-    ]}
-  >
-    <Text
+/** Botón pequeño reutilizable (igual patrón que en Home/CustomerForm) */
+const SmallBtn: React.FC<{
+  title: string;
+  onPress?: () => void;
+  variant?: 'primary' | 'purple' | 'gray' | 'danger' | 'outline';
+  disabled?: boolean;
+  loading?: boolean;
+  style?: StyleProp<ViewStyle>;
+}> = ({ title, onPress, variant = 'gray', disabled, loading, style }) => {
+  const isFilled = variant === 'primary' || variant === 'purple' || variant === 'gray' || variant === 'danger';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      disabled={disabled || loading}
+      android_ripple={{ color: '#e5e7eb' }}
       style={[
-        styles.btnText,
-        kind === 'secondary' && styles.btnTextSecondary,
-        (kind === 'primary' || kind === 'danger') && styles.btnTextPrimary
+        styles.smallBtn,
+        variant === 'primary' && styles.btnBlue,
+        variant === 'purple' && styles.btnPurple,
+        variant === 'gray' && styles.btnGray,
+        variant === 'danger' && styles.btnDanger,
+        variant === 'outline' && styles.btnOutline,
+        (disabled || loading) && ({ opacity: 0.7 } as ViewStyle),
+        style,
       ]}
     >
-      {title}
-    </Text>
+      {loading ? (
+        <ActivityIndicator />
+      ) : (
+        <Text style={isFilled ? styles.smallBtnTextAlt : styles.smallBtnText}>{title}</Text>
+      )}
+    </Pressable>
+  );
+};
+
+const Chip = ({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active?: boolean;
+  onPress?: () => void;
+}) => (
+  <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]}>
+    <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
   </Pressable>
 );
 
@@ -123,40 +156,50 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
 
   const debounceRef = useRef<any>(null);
 
-  const serverParams = useMemo(() => ({
-    q: q || undefined,
-    filter,
-    sort: sortKey,
-    dir: sortAsc ? 'asc' : 'desc'
-  }), [q, filter, sortKey, sortAsc]);
+  const serverParams = useMemo(
+    () => ({
+      q: q || undefined,
+      filter,
+      sort: sortKey,
+      dir: sortAsc ? 'asc' : 'desc',
+    }),
+    [q, filter, sortKey, sortAsc]
+  );
 
-  const load = useCallback(async (reset: boolean) => {
-    if (loading) return;
-    try {
-      setLoading(true);
-      const nextPage = reset ? 1 : page + 1;
-      const res = await api.get<CustomersResponse>('/customers', {
-        params: { page: nextPage, pageSize: PAGE_SIZE, ...serverParams }
-      });
-      setTotal(res.data.total || 0);
-      setPage(nextPage);
-      setItems(reset ? res.data.items : [...items, ...res.data.items]);
-    } catch (e: any) {
-      if (e?.response?.status === 401) logout();
-      const msg = e?.response?.data || e?.message || 'Error cargando clientes';
-      Alert.alert('Error', String(msg));
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, page, items, logout, serverParams]);
+  const load = useCallback(
+    async (reset: boolean) => {
+      if (loading) return;
+      try {
+        setLoading(true);
+        const nextPage = reset ? 1 : page + 1;
+        const res = await api.get<CustomersResponse>('/customers', {
+          params: { page: nextPage, pageSize: PAGE_SIZE, ...serverParams },
+        });
+        setTotal(res.data.total || 0);
+        setPage(nextPage);
+        setItems(reset ? res.data.items : [...items, ...res.data.items]);
+      } catch (e: any) {
+        if (e?.response?.status === 401) logout();
+        const msg = e?.response?.data || e?.message || 'Error cargando clientes';
+        Alert.alert('Error', String(msg));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loading, page, items, logout, serverParams]
+  );
 
-  useEffect(() => { load(true); }, []); // primera carga
+  useEffect(() => {
+    load(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // primera carga
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => load(true), 350);
     return () => clearTimeout(debounceRef.current);
-  }, [q, filter, sortKey, sortAsc]); // eslint-disable-line
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, filter, sortKey, sortAsc]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -206,10 +249,18 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
             <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
               <Text style={styles.avatarText}>{inits}</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemTitle} numberOfLines={1}>{item.name}</Text>
-              <Text style={styles.itemSub} numberOfLines={1}>{item.email || 'sin email'}</Text>
-              {!!phoneNice && <Text style={styles.itemSub} numberOfLines={1}>{phoneNice}</Text>}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.itemTitle} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text style={styles.itemSub} numberOfLines={1}>
+                {item.email || 'sin email'}
+              </Text>
+              {!!phoneNice && (
+                <Text style={styles.itemSub} numberOfLines={1}>
+                  {phoneNice}
+                </Text>
+              )}
             </View>
           </View>
 
@@ -217,33 +268,64 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-              {!!item.documentId && <View style={[styles.badge, styles.badgeNeutral]}><Text style={styles.badgeText}>Doc.</Text></View>}
-              {!!item.address && <View style={[styles.badge, styles.badgeInfo]}><Text style={styles.badgeText}>Dirección</Text></View>}
+              {!!item.documentId && (
+                <View style={[styles.badge, styles.badgeNeutral]}>
+                  <Text style={styles.badgeText}>Doc.</Text>
+                </View>
+              )}
+              {!!item.address && (
+                <View style={[styles.badge, styles.badgeInfo]}>
+                  <Text style={styles.badgeText}>Dirección</Text>
+                </View>
+              )}
             </View>
             <View style={{ flexDirection: 'row', gap: 6 }}>
-              <ActionBtn title="Editar" kind="secondary" onPress={() => navigation.navigate('CustomerForm', { id: item.id })} />
-              <ActionBtn title={isDeleting ? 'Eliminando…' : 'Eliminar'} kind="danger" onPress={() => confirmRemove(item.id)} disabled={isDeleting} />
+              <SmallBtn title="Editar" variant="outline" onPress={() => navigation.navigate('CustomerForm', { id: item.id })} />
+              <SmallBtn
+                title={isDeleting ? 'Eliminando…' : 'Eliminar'}
+                variant="danger"
+                onPress={() => confirmRemove(item.id)}
+                disabled={isDeleting}
+              />
             </View>
           </View>
         </Card>
       );
     }
 
-    // Fila lista
+    // Fila lista (1 columna)
     return (
       <View style={styles.rowItem}>
         <View style={[styles.avatar, { backgroundColor: avatarBg, marginRight: 10 }]}>
           <Text style={styles.avatarText}>{inits}</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.rowTitle} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.rowSub} numberOfLines={1}>{item.email || 'sin email'}{phoneNice ? ` · ${phoneNice}` : ''}</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.rowTitle} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.rowSub} numberOfLines={1}>
+            {item.email || 'sin email'}
+            {phoneNice ? ` · ${phoneNice}` : ''}
+          </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-          {!!item.documentId && <View style={[styles.badge, styles.badgeNeutral]}><Text style={styles.badgeText}>Doc.</Text></View>}
-          {!!item.address && <View style={[styles.badge, styles.badgeInfo]}><Text style={styles.badgeText}>Dir.</Text></View>}
-          <ActionBtn title="Editar" kind="secondary" onPress={() => navigation.navigate('CustomerForm', { id: item.id })} />
-          <ActionBtn title={isDeleting ? 'Eliminando…' : 'Eliminar'} kind="danger" onPress={() => confirmRemove(item.id)} disabled={isDeleting} />
+        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+          {!!item.documentId && (
+            <View style={[styles.badge, styles.badgeNeutral]}>
+              <Text style={styles.badgeText}>Doc.</Text>
+            </View>
+          )}
+          {!!item.address && (
+            <View style={[styles.badge, styles.badgeInfo]}>
+              <Text style={styles.badgeText}>Dir.</Text>
+            </View>
+          )}
+          <SmallBtn title="Editar" variant="outline" onPress={() => navigation.navigate('CustomerForm', { id: item.id })} />
+          <SmallBtn
+            title={isDeleting ? 'Eliminando…' : 'Eliminar'}
+            variant="danger"
+            onPress={() => confirmRemove(item.id)}
+            disabled={isDeleting}
+          />
         </View>
       </View>
     );
@@ -263,12 +345,12 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
             placeholderTextColor="#9aa7c2"
           />
           {!!q && (
-            <Pressable onPress={() => setQ('')} style={styles.clearBtn}>
+            <Pressable onPress={() => setQ('')} style={styles.clearBtn} accessibilityLabel="Limpiar búsqueda">
               <Text style={styles.clearText}>×</Text>
             </Pressable>
           )}
         </View>
-        <ActionBtn title="Nuevo" onPress={() => navigation.navigate('CustomerForm')} />
+        <SmallBtn title="Nuevo" variant="primary" onPress={() => navigation.navigate('CustomerForm')} />
       </View>
 
       {/* Fila 2: Filtros & Orden */}
@@ -281,17 +363,25 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
         <Chip
           label={`Nombre ${sortKey === 'name' ? (sortAsc ? '↑' : '↓') : ''}`}
           active={sortKey === 'name'}
-          onPress={() => { setSortKey('name'); setSortAsc(k => sortKey === 'name' ? !k : true); }}
+          onPress={() => {
+            setSortKey('name');
+            setSortAsc(k => (sortKey === 'name' ? !k : true));
+          }}
         />
         <Chip
           label={`Recientes ${sortKey === 'recent' ? (sortAsc ? '↑' : '↓') : ''}`}
           active={sortKey === 'recent'}
-          onPress={() => { setSortKey('recent'); setSortAsc(k => sortKey === 'recent' ? !k : false); }}
+          onPress={() => {
+            setSortKey('recent');
+            setSortAsc(k => (sortKey === 'recent' ? !k : false));
+          }}
         />
       </View>
 
       <View style={styles.metaRow}>
-        <Text style={styles.metaText}>{items.length} de {total} clientes</Text>
+        <Text style={styles.metaText}>
+          {items.length} de {total} clientes
+        </Text>
       </View>
     </View>
   );
@@ -300,7 +390,7 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
     <View style={styles.screen}>
       <FlatList
         data={items}
-        keyExtractor={(c) => String(c.id)}
+        keyExtractor={c => String(c.id)}
         numColumns={columns}
         key={columns}
         columnWrapperStyle={isGrid ? { paddingHorizontal: 8 } : undefined}
@@ -311,7 +401,11 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
         onEndReached={onEndReached}
         ListFooterComponent={
           <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-            {loading ? <ActivityIndicator /> : (items.length < total ? <ActionBtn title="Cargar más" kind="secondary" onPress={() => load(false)} /> : null)}
+            {loading ? (
+              <ActivityIndicator />
+            ) : items.length < total ? (
+              <SmallBtn title="Cargar más" variant="outline" onPress={() => load(false)} />
+            ) : null}
           </View>
         }
         ListEmptyComponent={
@@ -321,7 +415,7 @@ const CustomersList: React.FC<any> = ({ navigation }) => {
               <Text style={styles.emptyTitle}>No hay clientes</Text>
               <Text style={styles.emptyText}>Empieza creando tu primer cliente para facturar más rápido.</Text>
               <View style={{ height: 8 }} />
-              <ActionBtn title="Crear cliente" onPress={() => navigation.navigate('CustomerForm')} />
+              <SmallBtn title="Crear cliente" variant="primary" onPress={() => navigation.navigate('CustomerForm')} />
             </View>
           ) : null
         }
@@ -338,81 +432,140 @@ const styles = StyleSheet.create({
 
   // Header/toolbar
   toolbarContainer: {
-    paddingHorizontal: 12, paddingTop: 12, paddingBottom: 4, gap: 10,
-    backgroundColor: BRAND.surfaceSubtle,
-    borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 6,
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND.borderSoft,
+    // @ts-ignore (solo efectos visuales en web/iOS)
+    backdropFilter: 'saturate(140%) blur(6px)',
   },
   toolbarRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   toolbarLabel: { ...F, color: '#6B7280' },
 
-  searchBox: { position: 'relative', flex: 1 },
+  searchBox: { position: 'relative', flex: 1, minWidth: 220 },
   searchInput: {
     ...F,
-    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10, paddingHorizontal: 12, height: 42,
-    backgroundColor: BRAND.surfacePanel, fontSize: 16
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 42,
+    backgroundColor: BRAND.surfacePanel,
+    fontSize: 16,
   },
   clearBtn: {
-    position: 'absolute', right: 8, top: 6, width: 30, height: 30,
-    alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: BRAND.borderSofter
+    position: 'absolute',
+    right: 8,
+    top: 6,
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 15,
+    backgroundColor: BRAND.borderSofter,
   },
   clearText: { ...F, fontSize: 18, lineHeight: 18, color: '#374151' },
 
   chip: {
-    borderWidth: 1, borderColor: BRAND.borderSoft, paddingHorizontal: 10, paddingVertical: 7,
-    borderRadius: 999, backgroundColor: BRAND.surfacePanel
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: BRAND.surfacePanel,
   },
   chipActive: { backgroundColor: '#E9EDFF', borderColor: BRAND.hanBlue },
   chipText: { ...F, color: '#374151' },
   chipTextActive: { ...F, color: BRAND.hanBlue },
 
-  // Botones
-  btn: {
-    minWidth: 96, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10,
-    backgroundColor: BRAND.hanBlue, borderWidth: 1, borderColor: BRAND.hanBlue
+  // Botón pequeño (chips) + variantes (como en Home)
+  smallBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: BRAND.surfacePanel,
+    shadowColor: BRAND.cardShadow,
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
+    alignSelf: 'flex-start',
   },
-  btnSecondary: { backgroundColor: BRAND.surfacePanel, borderWidth: 1, borderColor: BRAND.borderSoft },
-  btnDanger: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { ...F },
-  btnTextPrimary: { ...F, color: '#FFFFFF' },
-  btnTextSecondary: { ...F, color: '#111827' },
+  btnBlue: {
+    backgroundColor: BRAND.primary600,
+    shadowColor: 'rgba(37,99,235,0.25)',
+    elevation: 2,
+  },
+  btnPurple: {
+    backgroundColor: BRAND.purple600,
+    shadowColor: 'rgba(109,40,217,0.25)',
+    elevation: 2,
+  },
+  btnGray: {
+    backgroundColor: '#1E293B',
+    shadowColor: 'rgba(30,41,59,0.25)',
+    elevation: 2,
+  },
+  btnDanger: {
+    backgroundColor: '#DC2626',
+    shadowColor: 'rgba(220,38,38,0.25)',
+    elevation: 2,
+  },
+  btnOutline: {
+    backgroundColor: BRAND.surfacePanel,
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+  },
+  smallBtnText: { ...F, color: BRAND.hanBlue },
+  smallBtnTextAlt: { ...F, color: '#FFFFFF' },
 
-  // Grid card
+  // Grid card (estética Home)
   card: {
     flex: 1,
-    backgroundColor: BRAND.surfacePanel,
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 14,
-    borderWidth: 1, borderColor: BRAND.borderSoft,
-    borderTopWidth: 3, borderTopColor: BRAND.hanBlue,   // acento
-    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+    borderWidth: 0,
+    shadowColor: BRAND.cardShadow,
+    shadowOpacity: 1,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
     elevation: Platform.select({ android: 3, default: 0 }),
   },
 
   avatar: {
-    width: 42, height: 42, borderRadius: 999,
-    alignItems: 'center', justifyContent: 'center'
+    width: 42,
+    height: 42,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarText: { ...F, color: '#111827' },
 
-  itemTitle: { ...F, fontSize: 16, color: '#111827' },
+  itemTitle: { ...F, fontSize: 16, color: '#0f172a' },
   itemSub: { ...F, color: '#6B7280', fontSize: 12 },
 
   // Badges
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   badgeText: { ...F, fontSize: 11, color: '#fff' },
   badgeInfo: { backgroundColor: BRAND.hanBlue },
-  badgeNeutral: { backgroundColor: BRAND.darkPastelBlue },
+  badgeNeutral: { backgroundColor: '#94A3B8' },
 
   // Row list
   rowItem: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12,
-    borderBottomColor: BRAND.borderSofter, borderBottomWidth: 1,
-    backgroundColor: BRAND.surfacePanel, gap: 10
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderBottomColor: BRAND.borderSofter,
+    borderBottomWidth: 1,
+    backgroundColor: BRAND.surfacePanel,
+    gap: 10,
   },
-  rowTitle: { ...F, fontSize: 16, color: '#111827' },
+  rowTitle: { ...F, fontSize: 16, color: '#0f172a' },
   rowSub: { ...F, color: '#6B7280', fontSize: 12 },
 
   // Meta/empty

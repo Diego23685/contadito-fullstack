@@ -9,7 +9,6 @@ import {
   Pressable,
   useWindowDimensions,
   Platform,
-  ScrollView,
 } from 'react-native';
 import { useCart } from '../../providers/CartContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -137,7 +136,7 @@ export default function CartScreen() {
         )}
 
         {/* Info */}
-        <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+        <View style={{ flex: 1, gap: 6, minWidth: 0 }}>
           <Text style={styles.name} numberOfLines={2}>
             {item.name}
           </Text>
@@ -215,7 +214,6 @@ export default function CartScreen() {
                 renderItem={renderItem}
                 ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
                 contentContainerStyle={{ paddingVertical: 10, paddingBottom: 24 }}
-                // En XL dejamos 1 columna, tarjetas más anchas/densas
               />
             )}
           </View>
@@ -317,23 +315,38 @@ export default function CartScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BRAND.surfaceTint, padding: 12 },
+  // Lienzo
+  root: { flex: 1, backgroundColor: BRAND.surfaceTint, padding: 16 },
 
   // Header
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { ...F, fontSize: 20, color: BRAND.hanBlue },
-  headerStats: { flexDirection: 'row', gap: 6 },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  title: { ...F, fontSize: 20, color: BRAND.hanBlue, fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  headerStats: { flexDirection: 'row', gap: 8 },
   hPill: {
     ...F,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
     backgroundColor: BRAND.surfaceSubtle, borderWidth: 1, borderColor: BRAND.borderSofter, color: '#0f172a'
   },
   hTotal: { backgroundColor: '#EEF2FF', borderColor: '#E0E7FF', color: BRAND.hanBlue },
 
   // Empty state
-  emptyWrap: { alignItems: 'center', marginTop: 40, paddingHorizontal: 16 },
+  emptyWrap: {
+    alignItems: 'center',
+    marginTop: 40,
+    paddingHorizontal: 16,
+    backgroundColor: BRAND.surfacePanel,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+    paddingVertical: 24,
+  },
   emptyEmoji: { ...F, fontSize: 50, marginBottom: 8 },
-  emptyTitle: { ...F, fontSize: 18, color: '#0f172a' },
+  emptyTitle: { ...F, fontSize: 18, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
   emptyText: { ...F, color: '#6B7280', textAlign: 'center' },
 
   // Card item
@@ -394,12 +407,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: BRAND.surfaceSubtle,
   },
-  stepBtnLeft: { borderTopRightRadius: 10, borderBottomRightRadius: 10 },
-  stepBtnRight: { borderTopLeftRadius: 10, borderBottomLeftRadius: 10 },
+  // Bordes sutiles para marcar control izquierdo/derecho
+  stepBtnLeft: { borderRightWidth: 1, borderRightColor: BRAND.borderSofter },
+  stepBtnRight: { borderLeftWidth: 1, borderLeftColor: BRAND.borderSofter },
   stepTxt: { ...F, fontSize: 18, color: BRAND.hanBlue, fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
 
   qtyBox: {
-    minWidth: 44,
+    minWidth: 48,
     height: 36,
     borderRadius: 10,
     borderWidth: 1,
@@ -407,12 +421,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: BRAND.surfacePanel,
+    paddingHorizontal: 8,
   },
   qtyTxt: { ...F, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
 
   rm: {
     marginLeft: 'auto',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     backgroundColor: '#FEE2E2',
@@ -422,15 +437,9 @@ const styles = StyleSheet.create({
   rmTxt: { ...F, color: '#991b1b', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
 
   // Layout 2-panel (XL)
-  twoPane: { flex: 1, flexDirection: 'row', gap: 12, marginTop: 10 },
-  leftPane: {
-    flex: 2,
-    backgroundColor: 'transparent',
-  },
-  rightPane: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
+  twoPane: { flex: 1, flexDirection: 'row', gap: 16, marginTop: 10 },
+  leftPane: { flex: 2 },
+  rightPane: { flex: 1 },
 
   // Summary card (sidebar)
   summaryCard: {
@@ -456,9 +465,9 @@ const styles = StyleSheet.create({
   // Checkout bar (solo no-XL)
   checkoutBar: {
     position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 12,
+    left: 16,
+    right: 16,
+    bottom: 16,
     backgroundColor: BRAND.surfacePanel,
     borderRadius: 14,
     borderWidth: 1,
@@ -466,7 +475,7 @@ const styles = StyleSheet.create({
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     shadowColor: BRAND.hanBlue,
     shadowOpacity: 0.08,
     shadowRadius: 10,

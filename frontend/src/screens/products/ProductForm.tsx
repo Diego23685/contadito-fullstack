@@ -23,23 +23,30 @@ type Product = {
 };
 
 const BRAND = {
-  hanBlue: '#4458C7',
-  iris: '#5A44C7',
-  cyanBlueAzure: '#4481C7',
-  maximumBlue: '#44AAC7',
-  darkPastelBlue: '#8690C7',
-  verdigris: '#43BFB7',
+  // primarios
+  primary600:    '#2563EB',
+  purple600:     '#6D28D9',
+  hanBlue:       '#4458C7',
 
-  surfaceTint:  '#F3F6FF',
-  surfaceSubtle:'#F8FAFF',
-  surfacePanel: '#FCFDFF',
-  borderSoft:   '#E2E7FF',
-  borderSofter: '#E9EEFF',
-  trackSoft:    '#DEE6FB',
+  // superficies / bordes
+  surfaceTint:   '#EEF2FF',
+  surfaceSubtle: '#F7F9FF',
+  surfacePanel:  '#FFFFFF',
+  borderSoft:    '#E6EBFF',
+  borderSofter:  '#EDF1FF',
+
+  // sombra azul suave
+  cardShadow: 'rgba(37, 99, 235, 0.16)',
 } as const;
 
-const currency = (n: number | null | undefined) =>
-  new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(Number(n || 0));
+const currency = (n: number | null | undefined) => {
+  const v = Number(n || 0);
+  try {
+    return new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', maximumFractionDigits: 2 }).format(v);
+  } catch {
+    return `C$ ${v.toFixed(2)}`;
+  }
+};
 
 const toNumber = (raw: string) => {
   const cleaned = raw.replace(/[^\d.]/g, '');
@@ -137,8 +144,11 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
 
   const numPrice = useMemo(() => toNumber(listPrice), [listPrice]);
   const numCost = useMemo(() => (stdCost === '' ? null : toNumber(stdCost)), [stdCost]);
-  const profit = useMemo(() => (numCost == null ? null : numPrice - numCost), [numPrice, numCost]);
-  const marginPct = useMemo(() => (numCost == null || numPrice === 0 ? null : ((numPrice - numCost) / numPrice) * 100), [numPrice, numCost]);
+  const profit = useMemo(() => (numCost == null ? null : numPrice - (numCost ?? 0)), [numPrice, numCost]);
+  const marginPct = useMemo(
+    () => (numCost == null || numPrice === 0 ? null : ((numPrice - (numCost ?? 0)) / numPrice) * 100),
+    [numPrice, numCost]
+  );
 
   const validate = () => {
     const next: typeof errors = {};
@@ -316,9 +326,11 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
 
   return (
     <View style={styles.screen}>
-      {/* Top bar */}
+      {/* Top bar (lechoso + sutil blur en web) */}
       <View style={styles.topBar}>
-        <Text style={styles.title}>{isEdit ? 'Editar producto' : 'Nuevo producto'}</Text>
+        <Text style={styles.title}>
+          {isEdit ? 'Editar producto' : 'Nuevo producto'}
+        </Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Pressable onPress={cancel} style={[styles.actionBtn, styles.secondaryBtn]}>
             <Text style={styles.actionTextSecondary}>Cancelar</Text>
@@ -338,6 +350,15 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
         <View style={[styles.col, isWide && styles.colLeft]}>
           <Card>
             <SectionTitle>Ficha de producto</SectionTitle>
+
+            {/* Badges de estado visual (producto/servicio) */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              <Text style={[styles.badge, isService ? styles.badgePurple : styles.badgeBlue]}>
+                {isService ? 'Servicio' : 'Producto'}
+              </Text>
+              {!!name && <Text style={[styles.badge, styles.badgeOutline]}>{name.length} caracteres</Text>}
+            </View>
+
             <View style={styles.field}>
               <Text style={styles.label}>SKU {isEdit ? '(no editable)' : ''}</Text>
               <TextInput
@@ -417,7 +438,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
               <View style={[styles.field, styles.flex1]}>
                 <Text style={styles.label}>Precio de venta (C$)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, styles.priceInput]}
                   keyboardType="decimal-pad"
                   value={listPrice}
                   onChangeText={setListPrice}
@@ -670,7 +691,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
         </View>
       </ScrollView>
 
-      {/* Footer */}
+      {/* Footer (lechoso + blur en web) */}
       <View style={styles.footer}>
         <View style={styles.footerInner}>
           <Text style={styles.footerText}>{isEdit ? `Editando: ${name || '(sin nombre)'}` : 'Creando nuevo producto'}</Text>
@@ -704,9 +725,12 @@ const styles = StyleSheet.create({
 
   topBar: {
     paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: BRAND.surfacePanel,
+    backgroundColor: 'rgba(255,255,255,0.8)',
     borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+    // @ts-ignore (web): frosted effect
+    backdropFilter: 'saturate(140%) blur(6px)',
   },
   title: { ...F, fontSize: 20, color: BRAND.hanBlue },
 
@@ -718,11 +742,15 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: BRAND.surfacePanel,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    borderWidth: 1, borderColor: BRAND.borderSoft,
     borderTopWidth: 3, borderTopColor: BRAND.hanBlue,
-    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+    // sombra azul suave
+    borderWidth: 0,
+    shadowColor: BRAND.cardShadow,
+    shadowOpacity: 1,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
     elevation: Platform.select({ android: 3, default: 0 }),
   },
 
@@ -730,11 +758,22 @@ const styles = StyleSheet.create({
   field: { marginBottom: 12 },
   label: { ...F, marginBottom: 6, color: '#0f172a' },
 
+  // Badges
+  badge: { ...F, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#E9EDFF', color: BRAND.hanBlue },
+  badgeBlue: { backgroundColor: '#E0EAFF', color: BRAND.hanBlue },
+  badgePurple: { backgroundColor: '#EDE9FE', color: BRAND.purple600 },
+  badgeOutline: { backgroundColor: BRAND.surfacePanel, borderWidth: 1, borderColor: BRAND.borderSoft, color: '#374151' },
+
   input: {
     ...F,
     borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10,
     paddingHorizontal: 12, minHeight: 42, height: 42,
     backgroundColor: BRAND.surfacePanel, fontSize: 16
+  },
+  priceInput: {
+    borderColor: '#93C5FD',
+    shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    elevation: Platform.select({ android: 2, default: 0 }),
   },
   disabled: { backgroundColor: BRAND.surfaceSubtle },
 
@@ -764,10 +803,12 @@ const styles = StyleSheet.create({
 
   footer: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: BRAND.surfacePanel,
+    backgroundColor: 'rgba(255,255,255,0.85)',
     borderTopWidth: 1, borderTopColor: BRAND.borderSoft,
-    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06, shadowOffset: { width: 0, height: -2 }, shadowRadius: 8,
+    shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowRadius: 10, shadowOffset: { width: 0, height: -4 },
     elevation: 6,
+    // @ts-ignore (web)
+    backdropFilter: 'saturate(140%) blur(6px)',
   },
   footerInner: {
     maxWidth: 1200, alignSelf: 'center', width: '100%',

@@ -18,24 +18,38 @@ import { useFonts } from 'expo-font';
 type Customer = { id: number; name: string };
 type Product = { id: number; name: string; sku: string; listPrice?: number };
 
-// ===== Paleta de marca (misma del app) =====
+// ===== Paleta de marca unificada (azules bonitos) =====
 const BRAND = {
-  hanBlue: '#4458C7',
-  iris: '#5A44C7',
-  cyanBlueAzure: '#4481C7',
-  maximumBlue: '#44AAC7',
-  darkPastelBlue: '#8690C7',
-  verdigris: '#43BFB7',
+  primary:       '#2563EB',
+  primary500:    '#3B82F6',
+  primary600:    '#2563EB',
+  primary700:    '#1D4ED8',
+  purple:        '#7C3AED',
+  purple600:     '#6D28D9',
+  teal:          '#14B8A6',
+  green:         '#10B981',
+  slate900:      '#0F172A',
+  slate700:      '#334155',
+  slate500:      '#64748B',
 
-  surfaceTint:  '#F3F6FF',
-  surfaceSubtle:'#F8FAFF',
-  surfacePanel: '#FCFDFF',
-  borderSoft:   '#E2E7FF',
-  borderSofter: '#E9EEFF',
-  trackSoft:    '#DEE6FB',
-} as const;
+  bg:            '#EEF2FF',
+  surface:       '#FFFFFF',
+  surfaceSubtle: '#F7F9FF',
+  surfacePanel:  '#FFFFFF',
 
-// Tipografía Apoka (peso uniforme para Android)
+  cardShadow: 'rgba(37, 99, 235, 0.16)',
+  cardShadowLg: 'rgba(37, 99, 235, 0.22)',
+
+  border:        '#E6EBFF',
+  borderSoft:    '#E6EBFF',
+  borderSofter:  '#EDF1FF',
+  trackSoft:     '#ECF2FF',
+
+  // compat
+  surfaceTint:   '#EEF2FF',
+  accent:        '#3B82F6',
+};
+
 const F = Platform.select({
   ios: { fontFamily: 'Apoka', fontWeight: 'normal' as const },
   default: { fontFamily: 'Apoka' },
@@ -73,15 +87,14 @@ const AButton = ({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      style={[styles.btnBase, vStyle, disabled && { opacity: 0.6 }, style]}
+      style={[styles.btnBase, vStyle, disabled && styles.btnDisabled, style]}
     >
-      <Text style={[tStyle, { fontWeight: Platform.OS === 'ios' ? '800' : 'bold' }, F]}>{title}</Text>
+      <Text style={[tStyle, styles.btnTextWeight, F]}>{title}</Text>
     </TouchableOpacity>
   );
 };
 
 export default function SaleCreate({ navigation }: any) {
-  // Cargar fuente Apoka sin bloquear render
   useFonts({ Apoka: require('../../../assets/fonts/apokaregular.ttf') });
 
   const { width } = useWindowDimensions();
@@ -251,9 +264,9 @@ export default function SaleCreate({ navigation }: any) {
       <View style={{ marginBottom: 8 }}>
         <Text style={styles.sub}>Cliente</Text>
         {!selectedCustomer ? (
-          <Text style={{ color: '#6B7280', ...F }}>Ninguno seleccionado.</Text>
+          <Text style={{ color: BRAND.slate500, ...F }}>Ninguno seleccionado.</Text>
         ) : (
-          <Text style={{ fontWeight: Platform.OS === 'ios' ? '700' : 'bold', color: '#0f172a', ...F }}>
+          <Text style={{ fontWeight: Platform.OS === 'ios' ? '700' : 'bold', color: BRAND.slate900, ...F }}>
             {selectedCustomer.name}
           </Text>
         )}
@@ -261,11 +274,11 @@ export default function SaleCreate({ navigation }: any) {
 
       <View style={{ borderTopWidth: 1, borderTopColor: BRAND.borderSoft, paddingTop: 8, gap: 8 }}>
         {cartItems.length === 0 ? (
-          <Text style={{ color: '#6B7280', ...F }}>No hay productos en el carrito.</Text>
+          <Text style={{ color: BRAND.slate500, ...F }}>No hay productos en el carrito.</Text>
         ) : cartItems.map(it => (
           <View key={it.id} style={styles.cartRow}>
             <View style={{ flex: 1, paddingRight: 8 }}>
-              <Text numberOfLines={1} style={{ fontWeight: Platform.OS === 'ios' ? '600' : 'bold', color: '#0f172a', ...F }}>{it.name}</Text>
+              <Text numberOfLines={1} style={{ fontWeight: Platform.OS === 'ios' ? '600' : 'bold', color: BRAND.slate900, ...F }}>{it.name}</Text>
               <Text style={styles.prodSub}>{it.sku}</Text>
               <Text style={styles.linePrice}>{money(it.price)} · {money(it.line)}</Text>
             </View>
@@ -319,11 +332,11 @@ export default function SaleCreate({ navigation }: any) {
                 style={[styles.chip, active && styles.chipSelected]}
                 onPress={() => setSelectedCustomer(item)}
               >
-                <Text style={{ ...F, color: active ? '#fff' : '#0f172a' }}>{item.name}</Text>
+                <Text style={{ ...F, color: active ? '#fff' : BRAND.slate900 }}>{item.name}</Text>
               </TouchableOpacity>
             );
           }}
-          ListEmptyComponent={<Text style={{ color: '#6B7280', ...F }}>Sin clientes.</Text>}
+          ListEmptyComponent={<Text style={{ color: BRAND.slate500, ...F }}>Sin clientes.</Text>}
         />
       </View>
 
@@ -354,7 +367,7 @@ export default function SaleCreate({ navigation }: any) {
             contentContainerStyle={{ paddingVertical: 8, gap: 12 }}
             refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
             ListEmptyComponent={
-              <Text style={{ color: '#6B7280', padding: 12, ...F }}>
+              <Text style={{ color: BRAND.slate500, padding: 12, ...F }}>
                 {q ? 'No hay resultados para tu búsqueda.' : 'No hay productos.'}
               </Text>
             }
@@ -373,8 +386,15 @@ export default function SaleCreate({ navigation }: any) {
 
 const styles = StyleSheet.create({
   // Layout
-  container: { flex: 1, backgroundColor: BRAND.surfaceTint },
-  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  container: { flex: 1, backgroundColor: BRAND.bg },
+  header: {
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft,
+    shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowRadius: 12, shadowOffset: { width: 0, height: 6 },
+    // @ts-ignore RNW
+    backdropFilter: 'saturate(140%) blur(6px)',
+  },
   main: { flex: 1, paddingHorizontal: 16, paddingBottom: 16 },
   mainWide: { flexDirection: 'row', gap: 16 },
   leftCol: { flex: 1 },
@@ -383,8 +403,8 @@ const styles = StyleSheet.create({
   rightColWide: { flex: 5, marginTop: 0 },
 
   // Textos
-  title: { ...F, fontSize: 20, color: BRAND.hanBlue, marginBottom: 8 },
-  sub: { ...F, color: '#374151', marginTop: 8, marginBottom: 4 },
+  title: { ...F, fontSize: 20, color: BRAND.primary600, marginBottom: 8, fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
+  sub: { ...F, color: BRAND.slate700, marginTop: 8, marginBottom: 4 },
 
   // Chips cliente
   chip: {
@@ -393,7 +413,7 @@ const styles = StyleSheet.create({
     borderRadius: 999, marginRight: 8,
     backgroundColor: BRAND.surfacePanel,
   },
-  chipSelected: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
+  chipSelected: { backgroundColor: BRAND.primary600, borderColor: BRAND.primary600 },
 
   // Búsqueda
   searchRow: { flexDirection: 'row', alignItems: 'center' },
@@ -402,25 +422,25 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10,
     paddingHorizontal: 12, minHeight: 42,
-    color: '#0f172a', backgroundColor: BRAND.surfacePanel,
+    color: BRAND.slate900, backgroundColor: BRAND.surfacePanel,
   },
 
   // Cards
   card: {
     backgroundColor: BRAND.surfacePanel,
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     borderWidth: 1, borderColor: BRAND.borderSoft,
-    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    borderTopWidth: 3, borderTopColor: BRAND.primary600,
+    shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowRadius: 12, shadowOffset: { width: 0, height: 6 },
     elevation: Platform.select({ android: 3, default: 0 }),
   },
 
   // Producto
   productCard: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  prodTitle: { ...F, fontSize: 16, color: '#0f172a' },
-  prodSub: { ...F, fontSize: 12, color: '#6B7280' },
-  prodPrice: { ...F, marginTop: 6, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  prodTitle: { ...F, fontSize: 16, color: BRAND.slate900, fontWeight: Platform.OS === 'ios' ? '600' : 'bold' },
+  prodSub: { ...F, fontSize: 12, color: BRAND.slate500 },
+  prodPrice: { ...F, marginTop: 6, color: BRAND.slate900, fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
 
   // Stepper grande
   stepper: {
@@ -432,13 +452,13 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 8, borderWidth: 1, borderColor: BRAND.borderSofter,
     alignItems: 'center', justifyContent: 'center', backgroundColor: BRAND.surfacePanel,
   },
-  stepTxt: { ...F, fontSize: 18, color: BRAND.hanBlue, fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
-  qtyTxt: { ...F, minWidth: 28, textAlign: 'center', color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
+  stepTxt: { ...F, fontSize: 18, color: BRAND.primary600, fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  qtyTxt: { ...F, minWidth: 28, textAlign: 'center', color: BRAND.slate900, fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
 
   // Carrito (sidebar)
   cartPanel: { gap: 10 },
   cartHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cartTitle: { ...F, fontSize: 16, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  cartTitle: { ...F, fontSize: 16, color: BRAND.slate900, fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
   clearLink: { ...F, color: '#991b1b', fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
 
   cartRow: {
@@ -446,7 +466,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: BRAND.borderSoft, backgroundColor: BRAND.surfacePanel,
     borderRadius: 10, padding: 8, gap: 8,
   },
-  linePrice: { ...F, marginTop: 2, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '600' : 'bold' },
+  linePrice: { ...F, marginTop: 2, color: BRAND.slate900, fontWeight: Platform.OS === 'ios' ? '600' : 'bold' },
 
   // Stepper chico para carrito
   stepperSm: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -464,18 +484,20 @@ const styles = StyleSheet.create({
   // Totales
   totals: { marginTop: 8, marginBottom: 8, gap: 6 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  mutedTxt: { ...F, color: '#6B7280' },
-  totalNum: { ...F, fontSize: 16, color: '#0f172a', fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
+  mutedTxt: { ...F, color: BRAND.slate500 },
+  totalNum: { ...F, fontSize: 16, color: BRAND.slate900, fontWeight: Platform.OS === 'ios' ? '800' : 'bold' },
 
   // Botones
   btnBase: {
     minWidth: 110, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1,
   },
-  btnPrimary: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
+  btnPrimary: { backgroundColor: BRAND.primary600, borderColor: BRAND.primary600 },
   btnSecondary: { backgroundColor: BRAND.surfacePanel, borderColor: BRAND.borderSoft },
   btnGhost: { backgroundColor: 'transparent', borderColor: 'transparent' },
   btnDanger: { backgroundColor: '#DC2626', borderColor: '#DC2626' },
   btnTextLight: { ...F, color: '#FFFFFF' },
-  btnTextDark: { ...F, color: '#0f172a' },
+  btnTextDark: { ...F, color: BRAND.slate900 },
+  btnTextWeight: { fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
+  btnDisabled: { opacity: 0.5 },
 });

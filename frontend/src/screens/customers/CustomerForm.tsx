@@ -1,7 +1,19 @@
+// src/screens/customers/CustomerForm.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, TextInput, Alert, StyleSheet, ScrollView,
-  Pressable, ActivityIndicator, useWindowDimensions, Platform
+  View,
+  Text,
+  TextInput,
+  Alert,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  useWindowDimensions,
+  Platform,
+  KeyboardAvoidingView,
+  type ViewStyle,
+  type StyleProp,
 } from 'react-native';
 import { useFonts } from 'expo-font';
 import { api } from '../../api';
@@ -25,21 +37,24 @@ const F = Platform.select({
   default: { fontFamily: 'Apoka' },
 });
 
-// ===== Paleta de marca (igual a Home) =====
+// ===== Paleta de marca (alineada con Home) =====
 const BRAND = {
-  hanBlue: '#4458C7',        // Han Blue
-  iris: '#5A44C7',           // Iris
-  cyanBlueAzure: '#4481C7',  // Cyan-Blue Azure
-  maximumBlue: '#44AAC7',    // Maximum Blue
-  darkPastelBlue: '#8690C7', // Dark Pastel Blue
-  verdigris: '#43BFB7',      // Verdigris
+  primary: '#2563EB',
+  primary600: '#2563EB',
+  primary700: '#1D4ED8',
+  purple600: '#6D28D9',
+  green: '#10B981',
 
-  surfaceTint:  '#F3F6FF',
-  surfaceSubtle:'#F8FAFF',
-  surfacePanel: '#FCFDFF',
-  borderSoft:   '#E2E7FF',
-  borderSofter: '#E9EEFF',
-  trackSoft:    '#DEE6FB',
+  hanBlue: '#4458C7',
+  verdigris: '#43BFB7',
+
+  surfaceTint: '#EEF2FF',
+  surfaceSubtle: '#F7F9FF',
+  surfacePanel: '#FFFFFF',
+
+  borderSoft: '#E6EBFF',
+  borderSofter: '#EDF1FF',
+  cardShadow: 'rgba(37, 99, 235, 0.16)',
 } as const;
 
 const Helper = ({ children }: { children: React.ReactNode }) => (
@@ -55,6 +70,41 @@ const Card: React.FC<{ style?: any; children: React.ReactNode }> = ({ style, chi
 );
 
 const Divider = () => <View style={styles.divider} />;
+
+/** Botón pequeño reutilizable (mismo patrón que en Home) */
+const SmallBtn: React.FC<{
+  title: string;
+  onPress?: () => void;
+  variant?: 'primary' | 'purple' | 'gray' | 'danger';
+  disabled?: boolean;
+  loading?: boolean;
+  style?: StyleProp<ViewStyle>;
+}> = ({ title, onPress, variant = 'gray', disabled, loading, style }) => {
+  const isColor = variant === 'primary' || variant === 'purple' || variant === 'gray';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      disabled={disabled || loading}
+      android_ripple={{ color: '#e5e7eb' }}
+      style={[
+        styles.smallBtn,
+        variant === 'primary' && styles.btnBlue,
+        variant === 'purple' && styles.btnPurple,
+        variant === 'gray' && styles.btnGray,
+        variant === 'danger' && styles.smallBtnDanger,
+        (disabled || loading) && ({ opacity: 0.7 } as ViewStyle),
+        style,
+      ]}
+    >
+      {loading ? (
+        <ActivityIndicator />
+      ) : (
+        <Text style={isColor ? styles.smallBtnTextAlt : styles.smallBtnText}>{title}</Text>
+      )}
+    </Pressable>
+  );
+};
 
 const CustomerForm: React.FC<any> = ({ route, navigation }) => {
   const id: number | undefined = route?.params?.id;
@@ -111,7 +161,7 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
         email: email.trim() || null,
         phone: phone.trim() || null,
         documentId: documentId.trim() || null,
-        address: address.trim() || null
+        address: address.trim() || null,
       };
       if (isEdit) await api.put(`/customers/${id}`, payload);
       else await api.post('/customers', payload);
@@ -139,163 +189,153 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
       <View style={styles.topBar}>
         <Text style={styles.title}>{isEdit ? 'Editar cliente' : 'Nuevo cliente'}</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable onPress={cancel} style={[styles.actionBtn, styles.secondaryBtn]}>
-            <Text style={styles.actionTextSecondary}>Cancelar</Text>
-          </Pressable>
-          <Pressable
+          <SmallBtn title="Cancelar" onPress={cancel} variant="gray" />
+          <SmallBtn
+            title="Guardar"
             onPress={save}
+            variant="primary"
             disabled={loading || !name.trim()}
-            style={[
-              styles.actionBtn,
-              (!loading && name.trim() ? styles.primaryBtn : styles.disabledBtn)
-            ]}
-          >
-            {loading ? <ActivityIndicator /> : <Text style={styles.actionTextPrimary}>Guardar</Text>}
-          </Pressable>
+            loading={loading}
+          />
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
-        {/* Col izquierda */}
-        <View style={[styles.col, isWide && styles.colLeft]}>
-          <Card>
-            <SectionTitle>Datos del cliente</SectionTitle>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
+          {/* Col izquierda */}
+          <View style={[styles.col, isWide && styles.colLeft]}>
+            <Card>
+              <SectionTitle>Datos del cliente</SectionTitle>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Nombre</Text>
+              <View style={styles.field}>
+                <Text style={styles.label}>Nombre</Text>
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Ej. María Pérez"
+                  placeholderTextColor="#9aa7c2"
+                />
+                {!!errors.name && <Text style={styles.error}>{errors.name}</Text>}
+              </View>
+
+              <View style={styles.row2}>
+                <View style={[styles.field, styles.flex1]}>
+                  <Text style={styles.label}>Email</Text>
+                  <TextInput
+                    style={styles.input}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="persona@correo.com"
+                    placeholderTextColor="#9aa7c2"
+                  />
+                  {!!errors.email && <Text style={styles.error}>{errors.email}</Text>}
+                  <Helper>Usa un correo válido para enviar facturas o recibos.</Helper>
+                </View>
+                <View style={[styles.field, styles.flex1]}>
+                  <Text style={styles.label}>Teléfono</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                    placeholder="+505 8888 8888"
+                    placeholderTextColor="#9aa7c2"
+                  />
+                  {!!errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
+                  <Helper>Formato recomendado: +código país + número.</Helper>
+                </View>
+              </View>
+
+              <View style={styles.row2}>
+                <View style={[styles.field, styles.flex1]}>
+                  <Text style={styles.label}>Documento</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={documentId}
+                    onChangeText={setDocumentId}
+                    placeholder="Cédula / RUC / NIT"
+                    placeholderTextColor="#9aa7c2"
+                  />
+                  <Helper>Identificación fiscal o personal.</Helper>
+                </View>
+                <View style={[styles.field, styles.flex1]}>
+                  <Text style={styles.label}>Dirección</Text>
+                  <TextInput
+                    style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
+                    multiline
+                    value={address}
+                    onChangeText={setAddress}
+                    placeholder="Barrio, calle, referencia"
+                    placeholderTextColor="#9aa7c2"
+                  />
+                </View>
+              </View>
+            </Card>
+
+            <Card>
+              <SectionTitle>Notas y preferencias</SectionTitle>
+              <Helper>Agrega información útil para el servicio: horarios, condiciones de crédito, etc.</Helper>
               <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Ej. María Pérez"
+                style={[styles.input, { height: 100, textAlignVertical: 'top', marginTop: 8 }]}
+                multiline
+                placeholder="Opcional"
                 placeholderTextColor="#9aa7c2"
+                onChangeText={() => {}}
+                editable
               />
-              {!!errors.name && <Text style={styles.error}>{errors.name}</Text>}
-            </View>
+            </Card>
+          </View>
 
-            <View style={styles.row2}>
-              <View style={[styles.field, styles.flex1]}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="persona@correo.com"
-                  placeholderTextColor="#9aa7c2"
-                />
-                {!!errors.email && <Text style={styles.error}>{errors.email}</Text>}
-                <Helper>Usa un correo válido para enviar facturas o recibos.</Helper>
+          {/* Col derecha */}
+          <View style={[styles.col, isWide && styles.colRight]}>
+            <Card>
+              <SectionTitle>Resumen</SectionTitle>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Nombre</Text>
+                <Text style={styles.summaryValue}>{name || '—'}</Text>
               </View>
-              <View style={[styles.field, styles.flex1]}>
-                <Text style={styles.label}>Teléfono</Text>
-                <TextInput
-                  style={styles.input}
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  placeholder="+505 8888 8888"
-                  placeholderTextColor="#9aa7c2"
-                />
-                {!!errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
-                <Helper>Formato recomendado: +código país + número.</Helper>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Email</Text>
+                <Text style={styles.summaryValue}>{email || '—'}</Text>
               </View>
-            </View>
-
-            <View style={styles.row2}>
-              <View style={[styles.field, styles.flex1]}>
-                <Text style={styles.label}>Documento</Text>
-                <TextInput
-                  style={styles.input}
-                  value={documentId}
-                  onChangeText={setDocumentId}
-                  placeholder="Cédula / RUC / NIT"
-                  placeholderTextColor="#9aa7c2"
-                />
-                <Helper>Identificación fiscal o personal.</Helper>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Teléfono</Text>
+                <Text style={styles.summaryValue}>{prettyPhone || phone || '—'}</Text>
               </View>
-              <View style={[styles.field, styles.flex1]}>
-                <Text style={styles.label}>Dirección</Text>
-                <TextInput
-                  style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
-                  multiline
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder="Barrio, calle, referencia"
-                  placeholderTextColor="#9aa7c2"
-                />
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Documento</Text>
+                <Text style={styles.summaryValue}>{documentId || '—'}</Text>
               </View>
-            </View>
-          </Card>
+              <Divider />
+              <Helper>Revisa que los datos estén correctos antes de guardar. Puedes editar luego.</Helper>
+            </Card>
 
-          <Card>
-            <SectionTitle>Notas y preferencias</SectionTitle>
-            <Helper>Agrega información útil para el servicio: horarios, condiciones de crédito, etc.</Helper>
-            <TextInput
-              style={[styles.input, { height: 100, textAlignVertical: 'top', marginTop: 8 }]}
-              multiline
-              placeholder="Opcional"
-              placeholderTextColor="#9aa7c2"
-              onChangeText={() => {}}
-              editable
-            />
-          </Card>
-        </View>
-
-        {/* Col derecha */}
-        <View style={[styles.col, isWide && styles.colRight]}>
-          <Card>
-            <SectionTitle>Resumen</SectionTitle>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Nombre</Text>
-              <Text style={styles.summaryValue}>{name || '—'}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Email</Text>
-              <Text style={styles.summaryValue}>{email || '—'}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Teléfono</Text>
-              <Text style={styles.summaryValue}>{prettyPhone || phone || '—'}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Documento</Text>
-              <Text style={styles.summaryValue}>{documentId || '—'}</Text>
-            </View>
-            <Divider />
-            <Helper>
-              Revisa que los datos estén correctos antes de guardar. Puedes editar luego.
-            </Helper>
-          </Card>
-
-          <Card>
-            <SectionTitle>Buenas prácticas</SectionTitle>
-            <Text style={styles.tip}>• Usa emails reales para envío de comprobantes.</Text>
-            <Text style={styles.tip}>• Estandariza el formato del teléfono (+505 #### ####).</Text>
-            <Text style={styles.tip}>• Guarda el documento fiscal para facturación.</Text>
-          </Card>
-        </View>
-      </ScrollView>
+            <Card>
+              <SectionTitle>Buenas prácticas</SectionTitle>
+              <Text style={styles.tip}>• Usa emails reales para envío de comprobantes.</Text>
+              <Text style={styles.tip}>• Estandariza el formato del teléfono (+505 #### ####).</Text>
+              <Text style={styles.tip}>• Guarda el documento fiscal para facturación.</Text>
+            </Card>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Footer fijo */}
       <View style={styles.footer}>
         <View style={styles.footerInner}>
           <Text style={styles.footerText}>{isEdit ? 'Editando cliente' : 'Creando nuevo cliente'}</Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Pressable onPress={cancel} style={[styles.actionBtn, styles.secondaryBtn]}>
-              <Text style={styles.actionTextSecondary}>Cancelar</Text>
-            </Pressable>
-            <Pressable
+            <SmallBtn title="Cancelar" onPress={cancel} variant="gray" />
+            <SmallBtn
+              title="Guardar"
               onPress={save}
+              variant="primary"
               disabled={loading || !name.trim()}
-              style={[
-                styles.actionBtn,
-                (!loading && name.trim() ? styles.primaryBtn : styles.disabledBtn)
-              ]}
-            >
-              {loading ? <ActivityIndicator /> : <Text style={styles.actionTextPrimary}>Guardar</Text>}
-            </Pressable>
+              loading={loading}
+            />
           </View>
         </View>
       </View>
@@ -305,15 +345,19 @@ const CustomerForm: React.FC<any> = ({ route, navigation }) => {
 
 export default CustomerForm;
 
-// ===== Estilos con la paleta de marca =====
+// ===== Estilos =====
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: BRAND.surfaceTint },
 
   topBar: {
-    paddingHorizontal: 16, paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: BRAND.surfacePanel,
-    borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND.borderSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   title: { ...F, fontSize: 20, color: BRAND.hanBlue },
 
@@ -323,32 +367,37 @@ const styles = StyleSheet.create({
   colLeft: { flex: 2 },
   colRight: { flex: 1, minWidth: 320 },
 
+  // Tarjeta con estética Home
   card: {
-    backgroundColor: BRAND.surfacePanel,
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 16,
-    borderWidth: 1, borderColor: BRAND.borderSoft,
-    // ribete/acento superior
-    borderTopWidth: 3, borderTopColor: BRAND.hanBlue,
-    // sombra azulada sutil
-    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 4 }, shadowRadius: 10,
+    borderWidth: 0,
+    shadowColor: BRAND.cardShadow,
+    shadowOpacity: 1,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
     elevation: 3,
   },
 
-  sectionTitle: { ...F, fontSize: 16, marginBottom: 8, color: BRAND.darkPastelBlue },
+  sectionTitle: { ...F, fontSize: 16, marginBottom: 8, color: '#334155' },
 
   field: { marginBottom: 12 },
   label: { ...F, marginBottom: 6, color: '#111827' },
 
   input: {
     ...F,
-    borderWidth: 1, borderColor: BRAND.borderSoft, borderRadius: 10, paddingHorizontal: 12, minHeight: 42,
-    backgroundColor: BRAND.surfaceSubtle, fontSize: 16,
+    borderWidth: 1,
+    borderColor: BRAND.borderSoft,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    minHeight: 42,
+    backgroundColor: BRAND.surfaceSubtle,
+    fontSize: 16,
   },
 
-  row2: { flexDirection: 'row', gap: 12 },
-  flex1: { flex: 1 },
+  row2: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  flex1: { flex: 1, minWidth: 160 },
 
   helper: { ...F, marginTop: 6, color: '#6b7280', fontSize: 12 },
   error: { ...F, marginTop: 6, color: '#B91C1C', fontSize: 12 },
@@ -362,27 +411,61 @@ const styles = StyleSheet.create({
   tip: { ...F, color: '#374151', marginBottom: 6 },
 
   footer: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: BRAND.surfacePanel,
-    borderTopWidth: 1, borderTopColor: BRAND.borderSoft,
-    shadowColor: BRAND.hanBlue, shadowOpacity: 0.06, shadowOffset: { width: 0, height: -2 }, shadowRadius: 8,
+    borderTopWidth: 1,
+    borderTopColor: BRAND.borderSoft,
+    shadowColor: BRAND.hanBlue,
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: -2 },
+    shadowRadius: 8,
     elevation: 6,
   },
   footerInner: {
-    maxWidth: 1200, alignSelf: 'center', width: '100%',
-    paddingHorizontal: 16, paddingVertical: 10,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   footerText: { ...F, color: '#6B7280' },
 
-  actionBtn: {
-    minWidth: 110, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: 10, borderWidth: 1
+  // Botón pequeño (chips) + variantes (como en Home)
+  smallBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: BRAND.surfacePanel,
+    shadowColor: BRAND.cardShadow,
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
+    alignSelf: 'flex-start',
   },
-  primaryBtn: { backgroundColor: BRAND.hanBlue, borderColor: BRAND.hanBlue },
-  secondaryBtn: { backgroundColor: BRAND.surfacePanel, borderColor: BRAND.borderSoft },
-  disabledBtn: { backgroundColor: BRAND.darkPastelBlue, borderColor: BRAND.darkPastelBlue },
-  actionTextPrimary: { ...F, color: '#FFFFFF' },
-  actionTextSecondary: { ...F, color: '#111827' },
+  btnBlue: {
+    backgroundColor: BRAND.primary600,
+    shadowColor: 'rgba(37,99,235,0.25)',
+    elevation: 2,
+  },
+  btnPurple: {
+    backgroundColor: BRAND.purple600,
+    shadowColor: 'rgba(109,40,217,0.25)',
+    elevation: 2,
+  },
+  btnGray: {
+    backgroundColor: '#1E293B',
+    shadowColor: 'rgba(30,41,59,0.25)',
+    elevation: 2,
+  },
+  smallBtnDanger: { backgroundColor: '#fff1f2', borderColor: '#fecdd3', borderWidth: 1 },
+
+  smallBtnText: { ...F, color: BRAND.hanBlue },
+  smallBtnTextAlt: { ...F, color: '#FFFFFF' },
 });
