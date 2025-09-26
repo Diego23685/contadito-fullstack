@@ -23,6 +23,11 @@ import { AuthContext } from '../providers/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 
+import { importExcelProducts } from '../features/import/ExcelImport';
+import * as DocumentPicker from 'expo-document-picker'; // (necesario si usas el importador interno de RN Web)
+import * as FileSystem from 'expo-file-system';
+import * as XLSX from 'xlsx';
+
 // Tutorial anclado
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TutorialOverlay, { TutorialStep, TargetRect } from './TutorialOverlay';
@@ -274,7 +279,9 @@ const SidePanel: React.FC<{
   open: boolean; onClose: () => void; pinned: boolean; width?: number;
   dashboard?: Dashboard | null; navigation: any; userEmail?: string | null;
   onTogglePolling: () => void; polling: boolean;
-}> = ({ open, onClose, pinned, width = 320, dashboard, navigation, userEmail, onTogglePolling, polling }) => {
+  onImportExcel?: () => void;   // <-- añadir
+  importing?: boolean;          // <-- añadir
+}> = ({ open, onClose, pinned, width = 320, dashboard, navigation, userEmail, onTogglePolling, polling, onImportExcel, importing }) => {
   const slide = useRef(new Animated.Value(pinned ? 0 : -width)).current;
   useEffect(() => {
     if (pinned) { slide.setValue(0); return; }
@@ -295,6 +302,12 @@ const SidePanel: React.FC<{
         <Pressable onPress={() => navigation.navigate('UserScreen')} style={styles.linkChip} accessibilityRole="button">
           <Text style={styles.linkChipText}>Usuario</Text>
         </Pressable>
+        <SmallBtn
+          title={importing ? "Importando…" : "Importar Excel"}
+          onPress={onImportExcel}
+        />
+
+
       </View>
 
       {/* Card plan */}
@@ -527,6 +540,35 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }, []);
 
+  const [importing, setImporting] = useState(false);
+
+// arriba: importa Alert si no está ya
+// import { Alert } from 'react-native';
+
+const handleImportExcel = useCallback(async () => {
+  try {
+    setImporting(true);
+    const res = await importExcelProducts({
+      api,
+      fetchDashboard,
+      OLLAMA_BASE,
+      OLLAMA_MODEL,
+      onBusy: setImporting,
+    });
+    // Mensaje de éxito (usa lo que devuelva tu importador)
+    const resumen = res
+      ? `Creados: ${res.created ?? 0}\nActualizados: ${res.updated ?? 0}\nSaltados: ${res.skipped ?? 0}`
+      : 'El archivo se procesó correctamente.';
+    Alert.alert('Importación completada', resumen);
+  } catch (e: any) {
+    Alert.alert('Error al importar', String(e?.message || e));
+  } finally {
+    setImporting(false);
+  }
+}, [api, fetchDashboard]);
+
+
+
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
   useEffect(() => {
     const unsub = navigation.addListener?.('focus', fetchDashboard);
@@ -723,6 +765,8 @@ Estado: ${context}`;
         userEmail={currentUserEmail}
         polling={polling}
         onTogglePolling={() => setPolling(p => !p)}
+        onImportExcel={handleImportExcel}
+        importing={importing}
       />
 
       <ScrollView
@@ -927,7 +971,8 @@ Estado: ${context}`;
                       yAxisTextStyle={{ ...F, color: '#6b7280' } as any}
                       xAxisLabelTextStyle={{ ...F, color: '#6b7280' } as any}
                       showValuesAsTopLabel
-                      valueTextStyle={{ ...F, color: '#0f172a' } as any}
+                      //valueTextStyle={{ ...F, color: '#0f172a' } as any}
+                      //barTopLabelTextStyle={{ ...F, color: '#0f172a' } as any}  // <-- aquí
                       renderTooltip={(item: any) => (
                         <View style={{ backgroundColor: '#fff', borderColor: BRAND.borderSoft, borderWidth: 1, padding: 6, borderRadius: 8 }}>
                           <Text style={[F, { color: '#0f172a' }]}>{item.label}</Text>
@@ -1202,6 +1247,39 @@ Estado: ${context}`;
         requestScroll={requestScroll}
         onStepChange={() => setTimeout(measureAll, 200)}
       />
+      {importing && (
+        <View
+          pointerEvents="auto"
+          style={{
+            position: 'absolute',
+            left: 0, right: 0, top: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.35)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+          }}
+        >
+          <View style={{
+            width: 260,
+            padding: 16,
+            borderRadius: 16,
+            backgroundColor: '#fff',
+            alignItems: 'center',
+            shadowColor: 'rgba(0,0,0,0.2)',
+            shadowOpacity: 1, shadowRadius: 18, shadowOffset: { width: 0, height: 10 },
+            elevation: 6,
+          }}>
+            <ActivityIndicator size="large" />
+            <Text style={[F, { marginTop: 12, color: '#0f172a', fontSize: 16 }]}>
+              Importando Excel…
+            </Text>
+            <Text style={[F, { marginTop: 6, color: '#6b7280', fontSize: 12, textAlign: 'center' }]}>
+              Esto puede tardar unos segundos. No cierres esta pantalla.
+            </Text>
+          </View>
+        </View>
+      )}
+
     </View>
   );
 }
