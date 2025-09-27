@@ -29,11 +29,18 @@ import ReceivableCreate from '../screens/finance/ReceivableCreate';
 import TenantSwitch from '../screens/tenants/TenantSwitch';
 import UserScreen from '../screens/user/UserScreen';
 
+import UnitCostScreen from '../screens/unitcost/UnitCostScreen';
+
 // Store (público)
 import StoreFront from '../screens/store/StoreFront';
 import ProductDetail from '../screens/store/ProductDetail';
 import CartScreen from '../screens/store/CartScreen';
 import CheckoutScreen from '../screens/store/CheckoutScreen';
+
+//Importaciones
+import ImportSummaryScreen from '../imports/ImportSummaryScreen';
+
+import SalesForecastScreen from '../screens/simulation/SalesForecastScreen';
 
 // Cart provider
 import { CartProvider } from '../providers/CartContext';
@@ -91,6 +98,18 @@ export default function RootNavigator() {
             <Stack.Screen name="PurchaseCreate" component={PurchaseCreate} options={{ title: 'Nueva compra' }} />
             <Stack.Screen name="ReceivablesList" component={ReceivablesList} options={{ title: 'Cuentas por cobrar' }} />
             <Stack.Screen name="ReceivableCreate" component={ReceivableCreate} options={{ title: 'Nueva CxC' }} />
+           
+            <Stack.Screen
+              name="SalesForecast"
+              component={SalesForecastScreen}
+              options={{ title: 'Pronóstico (IA)' }}
+            />
+            <Stack.Screen
+              name="UnitCost"
+              component={UnitCostScreen}
+              options={{ title: 'Costo unitario' }}
+            />
+            <Stack.Screen name="ImportSummary" component={ImportSummaryScreen} options={{ title: 'Importar . Resumen' }} />
             <Stack.Screen name="TenantSwitch" component={TenantSwitch} options={{ title: 'Cambiar empresa' }} />
           </>
         )}

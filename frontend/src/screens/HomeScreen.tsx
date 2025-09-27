@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart, LineChart, PieChart } from 'react-native-gifted-charts';
 
 import { importExcelProducts } from '../features/import/ExcelImport';
-import * as DocumentPicker from 'expo-document-picker'; // (necesario si usas el importador interno de RN Web)
+import * as DocumentPicker from 'expo-document-picker'; 
 import * as FileSystem from 'expo-file-system';
 import * as XLSX from 'xlsx';
 
@@ -348,6 +348,9 @@ const SidePanel: React.FC<{
           <Pressable onPress={() => navigation.navigate('ProductsList')}   style={styles.navItem}>
             <Text style={styles.navItemText}>Catálogo de productos</Text>
           </Pressable>
+          <Pressable onPress={() => navigation.navigate('SalesForecast')} style={styles.navItem}>
+            <Text style={styles.navItemText}>Simulación y pronóstico</Text>
+          </Pressable>
           <Pressable onPress={() => navigation.navigate('CustomersList')}  style={styles.navItem}>
             <Text style={styles.navItemText}>Clientes</Text>
           </Pressable>
@@ -356,6 +359,9 @@ const SidePanel: React.FC<{
           </Pressable>
           <Pressable onPress={() => navigation.navigate('WarehousesList')} style={styles.navItem}>
             <Text style={styles.navItemText}>Almacenes</Text>
+          </Pressable>
+          <Pressable onPress={() => navigation.navigate('UnitCost')} style={styles.navItem}>
+            <Text style={styles.navItemText}>Costo unitario</Text>
           </Pressable>
         </View>
       </View>
@@ -554,18 +560,23 @@ const handleImportExcel = useCallback(async () => {
       OLLAMA_BASE,
       OLLAMA_MODEL,
       onBusy: setImporting,
+      // opcional: onProgress: (m)=>setAlgúnEstadoDeProgreso(m),
     });
-    // Mensaje de éxito (usa lo que devuelva tu importador)
-    const resumen = res
-      ? `Creados: ${res.created ?? 0}\nActualizados: ${res.updated ?? 0}\nSaltados: ${res.skipped ?? 0}`
-      : 'El archivo se procesó correctamente.';
-    Alert.alert('Importación completada', resumen);
+
+    // ✅ Ir al resumen con los datos que devuelve el importador
+    navigation.navigate('ImportSummary', { summary: res });
+
+    // (si aún quieres mostrar un Alert también, puedes dejar esto)
+    // const resumen = `Creados: ${res.created ?? 0}\nActualizados: ${res.updated ?? 0}\nSaltados: ${res.skipped ?? 0}`;
+    // Alert.alert('Importación completada', resumen);
+
   } catch (e: any) {
     Alert.alert('Error al importar', String(e?.message || e));
   } finally {
     setImporting(false);
   }
-}, [api, fetchDashboard]);
+}, [api, fetchDashboard, navigation]);
+
 
 
 
@@ -800,6 +811,20 @@ Estado: ${context}`;
                 <SmallBtn title="Usuario" onPress={() => navigation.navigate('UserScreen')} />
                 <SmallBtn title="Chat IA" onPress={() => navigation.navigate('OllamaChat')} />
                 <SmallBtn title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
+                <SmallBtn
+                  title="Simulación y pronóstico"
+                  onPress={() =>
+                    navigation.navigate('SalesForecast', {
+                      snapshot: dashboard,                  // <-- pasa los datos que ya recibes en Home
+                      ollamaBase: OLLAMA_BASE,              // <-- tu config local
+                      ollamaModel: OLLAMA_MODEL,
+                    })
+                  }
+                />
+                <SmallBtn
+                  title="Costo unitario"
+                  onPress={() => navigation.navigate('UnitCost')}
+                />
                 <SmallBtn title="Tutorial" onPress={() => { setShowTutorial(true); setTimeout(measureAll, 200); }} />
                 <SmallBtn title="Cerrar sesión" onPress={logout} danger />
               </View>
