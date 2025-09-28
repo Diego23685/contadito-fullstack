@@ -11,3 +11,6 @@ node_modules/
 
 # Debug symbols (opcional)
 *.pdb
+
+./package-lock.json
+./package.json
