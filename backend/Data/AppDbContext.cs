@@ -22,6 +22,9 @@ namespace Contadito.Api.Data
         public DbSet<StockView> Stocks => Set<StockView>();
         public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
 
+        public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
+
+
         // Compras
         public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
         public DbSet<PurchaseItem> PurchaseItems => Set<PurchaseItem>();
@@ -118,6 +121,21 @@ namespace Contadito.Api.Data
             mb.Entity<PurchaseItem>().Property(i => i.TaxRate).HasColumnType("decimal(5,2)");
             mb.Entity<PurchaseItem>().Property(i => i.DiscountRate).HasColumnType("decimal(5,2)");
             mb.Entity<PurchaseItem>().Property(i => i.Total).HasColumnType("decimal(18,2)");
+
+            mb.Entity<ReportDefinition>(e =>
+            {
+                e.ToTable("report_definitions");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.TenantId).HasColumnName("tenant_id");
+                e.Property(x => x.Name).HasColumnName("name").HasMaxLength(160);
+                e.Property(x => x.Source).HasColumnName("source").HasMaxLength(32);
+                e.Property(x => x.DefinitionJson).HasColumnName("definition_json");
+                e.Property(x => x.CreatedAt).HasColumnName("created_at");
+                e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+                e.Property(x => x.DeletedAt).HasColumnName("deleted_at");
+                e.HasIndex(x => new { x.TenantId, x.Name }).HasDatabaseName("idx_report_tenant_name");
+            });
+
 
             // InventoryMovement
             mb.Entity<InventoryMovement>(e =>

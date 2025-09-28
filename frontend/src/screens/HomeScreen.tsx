@@ -360,6 +360,7 @@ const SidePanel: React.FC<{
           <Pressable onPress={() => navigation.navigate('WarehousesList')} style={styles.navItem}>
             <Text style={styles.navItemText}>Almacenes</Text>
           </Pressable>
+
           <Pressable onPress={() => navigation.navigate('UnitCost')} style={styles.navItem}>
             <Text style={styles.navItemText}>Costo unitario</Text>
           </Pressable>
@@ -821,6 +822,8 @@ Estado: ${context}`;
                     })
                   }
                 />
+                <SmallBtn title="Reportes" onPress={() => navigation.navigate('Reports')} />
+
                 <SmallBtn
                   title="Costo unitario"
                   onPress={() => navigation.navigate('UnitCost')}

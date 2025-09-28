@@ -42,6 +42,9 @@ import ImportSummaryScreen from '../imports/ImportSummaryScreen';
 
 import SalesForecastScreen from '../screens/simulation/SalesForecastScreen';
 
+// 👇 NUEVO: Reportes
+import ReportsScreen from '../screens/ReportsScreen'; // <- ajusta la ruta si lo creaste en otra carpeta
+
 // Cart provider
 import { CartProvider } from '../providers/CartContext';
 
@@ -109,6 +112,14 @@ export default function RootNavigator() {
               component={UnitCostScreen}
               options={{ title: 'Costo unitario' }}
             />
+
+            {/* 👇 NUEVO: pantalla de Reportes */}
+            <Stack.Screen
+              name="Reports"
+              component={ReportsScreen}
+              options={{ title: 'Reportes' }}
+            />
+
             <Stack.Screen name="ImportSummary" component={ImportSummaryScreen} options={{ title: 'Importar . Resumen' }} />
             <Stack.Screen name="TenantSwitch" component={TenantSwitch} options={{ title: 'Cambiar empresa' }} />
           </>
