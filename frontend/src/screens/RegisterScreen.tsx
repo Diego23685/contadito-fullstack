@@ -32,7 +32,8 @@ import { AuthContext } from '../providers/AuthContext';
 // ---------------- Config ----------------
 const ANDROID_LOCALHOST = 'http://10.0.2.2:5000';
 const LOOPBACK = 'http://127.0.0.1:5000';
-const DEFAULT_BASE = Platform.OS === 'android' ? ANDROID_LOCALHOST : LOOPBACK;
+// Por solicitud: dejar 127.0.0.1 por defecto (sin UI para editar)
+const DEFAULT_BASE = LOOPBACK;
 setBaseUrl(DEFAULT_BASE);
 
 const P = {
@@ -57,12 +58,6 @@ const WELCOMES: Array<[string, string]> = [
   ['Decide con confianza', 'Alertas inteligentes y métricas claras.'],
 ];
 
-const SmallBtn: React.FC<{ title: string; onPress: () => void }> = ({ title, onPress }) => (
-  <Pressable onPress={onPress} style={styles.smallBtn}>
-    <Text style={styles.smallBtnText}>{title}</Text>
-  </Pressable>
-);
-
 export default function RegisterScreen() {
   const navigation = useNavigation<any>();
   const { login } = useContext(AuthContext);
@@ -72,25 +67,29 @@ export default function RegisterScreen() {
   // Fuente Apoka
   useFonts({ Apoka: require('../../assets/fonts/apokaregular.ttf') });
 
-  // Form state
+  // Form state (valores demo para probar)
   const [tenantName, setTenantName] = useState('DemoPyme');
-  const [ownerName, setOwnerName] = useState('Owner');
+  const [ownerName, setOwnerName] = useState('Owner Demo');
   const [ownerEmail, setOwnerEmail] = useState('owner@demo.com');
-  const [password, setPassword] = useState('pass123');
-  const [confirm, setConfirm] = useState('pass123');
+  const [password, setPassword] = useState('Passw0rd!');
+  const [confirm, setConfirm] = useState('Passw0rd!');
 
-  const [base, setBase] = useState(DEFAULT_BASE);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // Touched flags para mostrar errores cuando el usuario interactúa
+  const [tenantTouched, setTenantTouched] = useState(false);
+  const [ownerTouched, setOwnerTouched] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passTouched, setPassTouched] = useState(false);
+  const [confirmTouched, setConfirmTouched] = useState(false);
+
   // Animaciones (rotación mensajes + flotación)
   const [welcomeIdx, setWelcomeIdx] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
   const float = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => { setBaseUrl(base); }, [base]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -112,29 +111,98 @@ export default function RegisterScreen() {
     ).start();
   }, [float]);
 
-  // Validaciones
-  const emailOk = useMemo(() => /.+@.+\..+/.test(ownerEmail.trim()), [ownerEmail]);
-  const passOk = useMemo(() => password.trim().length >= 3, [password]);
-  const confirmOk = useMemo(() => confirm === password, [confirm, password]);
-  const formValid = Boolean(tenantName.trim() && ownerName.trim() && emailOk && passOk && confirmOk);
+  // --------- Validaciones ----------
+  const emailError = useMemo(() => {
+    const v = ownerEmail.trim();
+    if (!v) return 'Ingresa tu correo.';
+    // Regex simple y robusto para email
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!re.test(v)) return 'Ingresa un correo válido.';
+    return null;
+  }, [ownerEmail]);
 
+  const passwordError = useMemo(() => {
+    const v = password;
+    if (!v.trim()) return 'Ingresa una contraseña.';
+    if (v.length < 8) return 'Debe tener al menos 8 caracteres.';
+    if (!/[A-Za-z]/.test(v)) return 'Debe incluir al menos una letra.';
+    if (!/[0-9]/.test(v)) return 'Debe incluir al menos un número.';
+    // opcional: exigir caracter especial
+    // if (!/[^\w\s]/.test(v)) return 'Debe incluir al menos un símbolo.';
+    return null;
+  }, [password]);
+
+  const confirmError = useMemo(() => {
+    if (!confirm.trim()) return 'Confirma tu contraseña.';
+    if (confirm !== password) return 'Las contraseñas no coinciden.';
+    return null;
+  }, [confirm, password]);
+
+  const tenantError = useMemo(() => {
+    const v = tenantName.trim();
+    if (!v) return 'Ingresa el nombre del negocio.';
+    if (v.length < 3) return 'Debe tener al menos 3 caracteres.';
+    return null;
+  }, [tenantName]);
+
+  const ownerError = useMemo(() => {
+    const v = ownerName.trim();
+    if (!v) return 'Ingresa tu nombre.';
+    if (v.length < 3) return 'Debe tener al menos 3 caracteres.';
+    return null;
+  }, [ownerName]);
+
+  const formValid = !tenantError && !ownerError && !emailError && !passwordError && !confirmError;
+
+  // --------- Registro ----------
   const handleRegister = async () => {
-    if (!formValid) { setError('Revisa los campos resaltados'); return; }
+    // marca todos como tocados para mostrar errores si los hay
+    setTenantTouched(true);
+    setOwnerTouched(true);
+    setEmailTouched(true);
+    setPassTouched(true);
+    setConfirmTouched(true);
+
+    if (!formValid) { setError('Revisa los campos resaltados.'); return; }
+
     try {
       setLoading(true); setError(null); Keyboard.dismiss();
-      const payload = { tenantName, ownerName, ownerEmail, password };
+      const payload = {
+        tenantName: tenantName.trim(),
+        ownerName: ownerName.trim(),
+        ownerEmail: ownerEmail.trim(),
+        password,
+      };
       const res = await api.post('/auth/register-tenant', payload);
       const token = res.data?.token as string | undefined;
-      if (!token) { Alert.alert('Registro', 'Se registró, pero no se recibió token. Inicia sesión manualmente.'); return; }
+      if (!token) {
+        Alert.alert('Registro', 'Se registró, pero no se recibió token. Inicia sesión manualmente.');
+        return;
+      }
       await login(token);
     } catch (e: any) {
-      const msg = e?.response?.data || e?.message || 'No se pudo registrar';
-      setError(String(msg)); Alert.alert('Error', String(msg));
-    } finally { setLoading(false); }
+      const status = e?.response?.status;
+      const raw = e?.response?.data || e?.message || 'No se pudo registrar';
+      if (status === 409) {
+        setError('Ese correo ya está registrado.');
+        Alert.alert('Registro', 'Ese correo ya está registrado.');
+      } else if (status === 400) {
+        setError('Datos inválidos. Verifica la información ingresada.');
+        Alert.alert('Registro', 'Datos inválidos. Verifica la información ingresada.');
+      } else {
+        const msg = String(raw);
+        if (msg.toLowerCase().includes('email') && msg.toLowerCase().includes('exists')) {
+          setError('Ese correo ya está registrado.');
+          Alert.alert('Registro', 'Ese correo ya está registrado.');
+        } else {
+          setError('No se pudo registrar. Intenta de nuevo.');
+          Alert.alert('Error', msg);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const useAndroidLocalhost = () => setBase(ANDROID_LOCALHOST);
-  const useLoopback = () => setBase(LOOPBACK);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -202,41 +270,56 @@ export default function RegisterScreen() {
                 <View style={styles.inputBox}>
                   <Text style={styles.inputLabel}>Nombre del negocio (Tenant)</Text>
                   <TextInput
-                    style={[styles.inputField, !tenantName.trim() && styles.inputErr]}
+                    style={[
+                      styles.inputField,
+                      tenantTouched && tenantError ? styles.inputErr : null,
+                    ]}
                     value={tenantName}
                     onChangeText={setTenantName}
+                    onBlur={() => setTenantTouched(true)}
                     placeholder="Mi Empresa S.A."
                     returnKeyType="next"
                     placeholderTextColor="#9aa7c2"
                   />
+                  {tenantTouched && !!tenantError && <Text style={styles.fieldError}>{tenantError}</Text>}
                 </View>
 
                 {/* Owner name */}
                 <View style={styles.inputBox}>
                   <Text style={styles.inputLabel}>Tu nombre</Text>
                   <TextInput
-                    style={[styles.inputField, !ownerName.trim() && styles.inputErr]}
+                    style={[
+                      styles.inputField,
+                      ownerTouched && ownerError ? styles.inputErr : null,
+                    ]}
                     value={ownerName}
                     onChangeText={setOwnerName}
+                    onBlur={() => setOwnerTouched(true)}
                     placeholder="Juan Pérez"
                     returnKeyType="next"
                     placeholderTextColor="#9aa7c2"
                   />
+                  {ownerTouched && !!ownerError && <Text style={styles.fieldError}>{ownerError}</Text>}
                 </View>
 
                 {/* Email */}
                 <View style={styles.inputBox}>
                   <Text style={styles.inputLabel}>Correo</Text>
                   <TextInput
-                    style={[styles.inputField, !emailOk && styles.inputErr]}
+                    style={[
+                      styles.inputField,
+                      emailTouched && emailError ? styles.inputErr : null,
+                    ]}
                     value={ownerEmail}
                     onChangeText={setOwnerEmail}
+                    onBlur={() => setEmailTouched(true)}
                     autoCapitalize="none"
                     keyboardType="email-address"
                     placeholder="tucorreo@dominio.com"
                     returnKeyType="next"
                     placeholderTextColor="#9aa7c2"
                   />
+                  {emailTouched && !!emailError && <Text style={styles.fieldError}>{emailError}</Text>}
                 </View>
 
                 {/* Password */}
@@ -244,16 +327,23 @@ export default function RegisterScreen() {
                   <Text style={styles.inputLabel}>Contraseña</Text>
                   <View style={{ position: 'relative' }}>
                     <TextInput
-                      style={[styles.inputField, !passOk && styles.inputErr]}
+                      style={[
+                        styles.inputField,
+                        passTouched && passwordError ? styles.inputErr : null,
+                      ]}
                       value={password}
                       onChangeText={setPassword}
+                      onBlur={() => setPassTouched(true)}
                       secureTextEntry={!showPass}
                       placeholder="••••••••"
                       returnKeyType="next"
                       placeholderTextColor="#9aa7c2"
                     />
-                    <Pressable onPress={() => setShowPass(s => !s)} style={styles.eyeBtn}><Text style={styles.eyeEmoji}>{showPass ? '🙈' : '👁️'}</Text></Pressable>
+                    <Pressable onPress={() => setShowPass(s => !s)} style={styles.eyeBtn}>
+                      <Text style={styles.eyeEmoji}>{showPass ? '🙈' : '👁️'}</Text>
+                    </Pressable>
                   </View>
+                  {passTouched && !!passwordError && <Text style={styles.fieldError}>{passwordError}</Text>}
                 </View>
 
                 {/* Confirm */}
@@ -261,17 +351,24 @@ export default function RegisterScreen() {
                   <Text style={styles.inputLabel}>Confirmar contraseña</Text>
                   <View style={{ position: 'relative' }}>
                     <TextInput
-                      style={[styles.inputField, !confirmOk && styles.inputErr]}
+                      style={[
+                        styles.inputField,
+                        confirmTouched && confirmError ? styles.inputErr : null,
+                      ]}
                       value={confirm}
                       onChangeText={setConfirm}
+                      onBlur={() => setConfirmTouched(true)}
                       secureTextEntry={!showConfirm}
                       placeholder="••••••••"
                       returnKeyType="go"
                       onSubmitEditing={handleRegister}
                       placeholderTextColor="#9aa7c2"
                     />
-                    <Pressable onPress={() => setShowConfirm(s => !s)} style={styles.eyeBtn}><Text style={styles.eyeEmoji}>{showConfirm ? '🙈' : '👁️'}</Text></Pressable>
+                    <Pressable onPress={() => setShowConfirm(s => !s)} style={styles.eyeBtn}>
+                      <Text style={styles.eyeEmoji}>{showConfirm ? '🙈' : '👁️'}</Text>
+                    </Pressable>
                   </View>
+                  {confirmTouched && !!confirmError && <Text style={styles.fieldError}>{confirmError}</Text>}
                 </View>
 
                 {!!error && <Text style={styles.error}>{error}</Text>}
@@ -301,24 +398,6 @@ export default function RegisterScreen() {
                     ¿Ya tienes una cuenta?{' '}
                     <Text style={styles.signupLink} onPress={() => navigation.navigate('Login')}>Inicia sesión</Text>
                   </Text>
-                </View>
-
-                {/* API controls */}
-                <View style={styles.apiBox}>
-                  <Text style={styles.apiTitle}>API URL</Text>
-                  <TextInput
-                    style={styles.apiInput}
-                    value={base}
-                    onChangeText={setBase}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    placeholder="http://host:puerto"
-                    placeholderTextColor="#94A3B8"
-                  />
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                    <SmallBtn title="10.0.2.2" onPress={useAndroidLocalhost} />
-                    <SmallBtn title="127.0.0.1" onPress={useLoopback} />
-                  </View>
                 </View>
               </View>
             </ScrollView>
@@ -398,7 +477,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#0f172a',
   },
-  inputErr: { backgroundColor: '#FEF2F2' },
+  inputErr: {
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FEF2F2',
+  },
+  fieldError: { ...F, color: P.danger, marginTop: 6, fontSize: 12 },
 
   // Botón primario
   primaryBtn: {
@@ -426,15 +509,6 @@ const styles = StyleSheet.create({
 
   // Errores
   error: { ...F, color: P.danger, marginTop: 10 },
-
-  // API box (se conserva)
-  apiBox: { marginTop: 18, borderTopWidth: 1, borderTopColor: P.border, paddingTop: 12 },
-  apiTitle: { ...F, color: P.text },
-  apiInput: { ...F, borderWidth: 1, borderColor: P.border, borderRadius: 12, padding: 10, marginTop: 6, color: P.text },
-
-  // Small buttons
-  smallBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: P.border, backgroundColor: '#fff' },
-  smallBtnText: { ...F, color: P.text },
 
   // Sign up / links
   signupText: { ...F, color: '#475569' },

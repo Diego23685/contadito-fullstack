@@ -822,6 +822,9 @@ Estado: ${context}`;
                     })
                   }
                 />
+                <SmallBtn title="Rentabilidad & competitividad"
+                  onPress={() => navigation.navigate('ProfitCompetitiveness')}
+                />
                 <SmallBtn title="Reportes" onPress={() => navigation.navigate('Reports')} />
 
                 <SmallBtn

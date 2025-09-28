@@ -23,21 +23,30 @@ type Product = {
 };
 
 const BRAND = {
-  // primarios
   primary600:    '#2563EB',
   purple600:     '#6D28D9',
   hanBlue:       '#4458C7',
 
-  // superficies / bordes
   surfaceTint:   '#EEF2FF',
   surfaceSubtle: '#F7F9FF',
   surfacePanel:  '#FFFFFF',
   borderSoft:    '#E6EBFF',
   borderSofter:  '#EDF1FF',
 
-  // sombra azul suave
   cardShadow: 'rgba(37, 99, 235, 0.16)',
 } as const;
+
+/** ===== Helpers de formato/validación numérica ===== */
+const sanitizeDecimalInput = (raw: string) => {
+  // Acepta solo dígitos y un punto decimal. Convierte coma a punto.
+  let s = raw.replace(',', '.').replace(/[^0-9.]/g, '');
+  const firstDot = s.indexOf('.');
+  if (firstDot !== -1) {
+    s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, '');
+  }
+  return s;
+};
+const sanitizeIntegerInput = (raw: string) => raw.replace(/\D/g, '');
 
 const currency = (n: number | null | undefined) => {
   const v = Number(n || 0);
@@ -105,6 +114,13 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
   const [initQty, setInitQty] = useState<string>('');               // cantidad inicial
   const [initCost, setInitCost] = useState<string>('');             // costo unitario opcional
   const [initWarehouseId, setInitWarehouseId] = useState<string>(''); // almacén opcional
+
+  // ===== Avisos "solo números" =====
+  const [numHints, setNumHints] = useState<{ [k: string]: boolean }>({});
+  const flashNumHint = (key: string) => {
+    setNumHints(h => ({ ...h, [key]: true }));
+    setTimeout(() => setNumHints(h => ({ ...h, [key]: false })), 1400);
+  };
 
   const fetchStock = async () => {
     if (!isEdit) return;
@@ -439,12 +455,19 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                 <Text style={styles.label}>Precio de venta (C$)</Text>
                 <TextInput
                   style={[styles.input, styles.priceInput]}
-                  keyboardType="decimal-pad"
+                  // @ts-ignore
+                  inputMode="decimal"
+                  keyboardType={Platform.select({ ios: 'decimal-pad', android: 'decimal-pad', default: 'numeric' })}
                   value={listPrice}
-                  onChangeText={setListPrice}
+                  onChangeText={(t) => {
+                    const s = sanitizeDecimalInput(t);
+                    if (t !== s) flashNumHint('listPrice');
+                    setListPrice(s);
+                  }}
                   placeholder="0.00"
                   placeholderTextColor="#9aa7c2"
                 />
+                {numHints.listPrice && <Text style={styles.numHint}>Solo números y un punto decimal.</Text>}
                 {!!errors.listPrice && <Text style={styles.error}>{errors.listPrice}</Text>}
                 <HelperText>Precio público sugerido.</HelperText>
               </View>
@@ -452,12 +475,19 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                 <Text style={styles.label}>Costo estándar (C$)</Text>
                 <TextInput
                   style={styles.input}
-                  keyboardType="decimal-pad"
+                  // @ts-ignore
+                  inputMode="decimal"
+                  keyboardType={Platform.select({ ios: 'decimal-pad', android: 'decimal-pad', default: 'numeric' })}
                   placeholder="Opcional"
                   value={stdCost}
-                  onChangeText={setStdCost}
+                  onChangeText={(t) => {
+                    const s = sanitizeDecimalInput(t);
+                    if (t !== s) flashNumHint('stdCost');
+                    setStdCost(s);
+                  }}
                   placeholderTextColor="#9aa7c2"
                 />
+                {numHints.stdCost && <Text style={styles.numHint}>Solo números y un punto decimal.</Text>}
                 {!!errors.stdCost && <Text style={styles.error}>{errors.stdCost}</Text>}
                 <HelperText>Úsalo para estimar margen. Déjalo vacío si no aplica.</HelperText>
               </View>
@@ -471,7 +501,7 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
           <Card>
             <SectionTitle>Imágenes</SectionTitle>
 
-            {/* Controles: permiten wrap sin desbordar */}
+            {/* Controles */}
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <Pressable
                 onPress={pickAndUpload}
@@ -554,9 +584,16 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                 placeholder="ID de almacén (numérico) o vacío"
                 placeholderTextColor="#9aa7c2"
                 value={initWarehouseId}
-                onChangeText={setInitWarehouseId}
+                onChangeText={(t) => {
+                  const s = sanitizeIntegerInput(t);
+                  if (t !== s) flashNumHint('initWarehouseId');
+                  setInitWarehouseId(s);
+                }}
                 keyboardType="number-pad"
+                // @ts-ignore
+                inputMode="numeric"
               />
+              {numHints.initWarehouseId && <Text style={styles.numHint}>Solo dígitos (número entero).</Text>}
 
               <View style={styles.row2}>
                 <View style={[styles.field, styles.flex1]}>
@@ -566,9 +603,16 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                     placeholder="Ej. 10"
                     placeholderTextColor="#9aa7c2"
                     value={initQty}
-                    onChangeText={setInitQty}
+                    onChangeText={(t) => {
+                      const s = sanitizeDecimalInput(t);
+                      if (t !== s) flashNumHint('initQty');
+                      setInitQty(s);
+                    }}
                     keyboardType="decimal-pad"
+                    // @ts-ignore
+                    inputMode="decimal"
                   />
+                  {numHints.initQty && <Text style={styles.numHint}>Solo números y un punto decimal.</Text>}
                   {!!errors.initQty && <Text style={styles.error}>{errors.initQty}</Text>}
                 </View>
                 <View style={[styles.field, styles.flex1]}>
@@ -578,9 +622,16 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                     placeholder="Ej. 120.50"
                     placeholderTextColor="#9aa7c2"
                     value={initCost}
-                    onChangeText={setInitCost}
+                    onChangeText={(t) => {
+                      const s = sanitizeDecimalInput(t);
+                      if (t !== s) flashNumHint('initCost');
+                      setInitCost(s);
+                    }}
                     keyboardType="decimal-pad"
+                    // @ts-ignore
+                    inputMode="decimal"
                   />
+                  {numHints.initCost && <Text style={styles.numHint}>Solo números y un punto decimal.</Text>}
                   {!!errors.initCost && <Text style={styles.error}>{errors.initCost}</Text>}
                 </View>
               </View>
@@ -609,9 +660,16 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                 placeholder="ID de almacén (numérico) o vacío"
                 placeholderTextColor="#9aa7c2"
                 value={warehouseId}
-                onChangeText={setWarehouseId}
+                onChangeText={(t) => {
+                  const s = sanitizeIntegerInput(t);
+                  if (t !== s) flashNumHint('warehouseId');
+                  setWarehouseId(s);
+                }}
                 keyboardType="number-pad"
+                // @ts-ignore
+                inputMode="numeric"
               />
+              {numHints.warehouseId && <Text style={styles.numHint}>Solo dígitos (número entero).</Text>}
               <HelperText>Si lo dejas vacío, se registra sin almacén específico.</HelperText>
 
               <Text style={[styles.label, { marginTop: 12 }]}>Referencia (opcional)</Text>
@@ -643,9 +701,16 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                     placeholder="Cantidad a ingresar"
                     placeholderTextColor="#9aa7c2"
                     value={inQty}
-                    onChangeText={setInQty}
+                    onChangeText={(t) => {
+                      const s = sanitizeDecimalInput(t);
+                      if (t !== s) flashNumHint('inQty');
+                      setInQty(s);
+                    }}
                     keyboardType="decimal-pad"
+                    // @ts-ignore
+                    inputMode="decimal"
                   />
+                  {numHints.inQty && <Text style={styles.numHint}>Solo números y un punto decimal.</Text>}
                 </View>
                 <View style={[styles.field, styles.flex1]}>
                   <TextInput
@@ -653,9 +718,16 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                     placeholder="Costo unitario (opcional)"
                     placeholderTextColor="#9aa7c2"
                     value={inCost}
-                    onChangeText={setInCost}
+                    onChangeText={(t) => {
+                      const s = sanitizeDecimalInput(t);
+                      if (t !== s) flashNumHint('inCost');
+                      setInCost(s);
+                    }}
                     keyboardType="decimal-pad"
+                    // @ts-ignore
+                    inputMode="decimal"
                   />
+                  {numHints.inCost && <Text style={styles.numHint}>Solo números y un punto decimal.</Text>}
                 </View>
               </View>
               <Pressable onPress={() => postAdjust('in')} style={[styles.actionBtn, styles.primaryBtn, { marginTop: 4 }]}>
@@ -672,9 +744,16 @@ const ProductForm: React.FC<any> = ({ route, navigation }) => {
                   placeholder="Cantidad a descontar"
                   placeholderTextColor="#9aa7c2"
                   value={outQty}
-                  onChangeText={setOutQty}
+                  onChangeText={(t) => {
+                    const s = sanitizeDecimalInput(t);
+                    if (t !== s) flashNumHint('outQty');
+                    setOutQty(s);
+                  }}
                   keyboardType="decimal-pad"
+                  // @ts-ignore
+                  inputMode="decimal"
                 />
+                {numHints.outQty && <Text style={styles.numHint}>Solo números y un punto decimal.</Text>}
               </View>
               <Pressable onPress={() => postAdjust('out')} style={[styles.actionBtn, styles.secondaryBtn]}>
                 <Text style={styles.actionTextSecondary}>Descontar</Text>
@@ -729,7 +808,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: BRAND.borderSoft,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
-    // @ts-ignore (web): frosted effect
+    // @ts-ignore
     backdropFilter: 'saturate(140%) blur(6px)',
   },
   title: { ...F, fontSize: 20, color: BRAND.hanBlue },
@@ -745,7 +824,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderTopWidth: 3, borderTopColor: BRAND.hanBlue,
-    // sombra azul suave
     borderWidth: 0,
     shadowColor: BRAND.cardShadow,
     shadowOpacity: 1,
@@ -758,7 +836,6 @@ const styles = StyleSheet.create({
   field: { marginBottom: 12 },
   label: { ...F, marginBottom: 6, color: '#0f172a' },
 
-  // Badges
   badge: { ...F, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#E9EDFF', color: BRAND.hanBlue },
   badgeBlue: { backgroundColor: '#E0EAFF', color: BRAND.hanBlue },
   badgePurple: { backgroundColor: '#EDE9FE', color: BRAND.purple600 },
@@ -791,6 +868,7 @@ const styles = StyleSheet.create({
 
   helper: { ...F, marginTop: 6, color: '#6B7280', fontSize: 12 },
   error: { ...F, marginTop: 6, color: '#B91C1C', fontSize: 12 },
+  numHint: { ...F, color: '#B45309', fontSize: 12, marginTop: 6 }, // ámbar
 
   divider: { height: 1, backgroundColor: BRAND.borderSofter, marginVertical: 12 },
 
@@ -807,7 +885,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: BRAND.borderSoft,
     shadowColor: BRAND.cardShadow, shadowOpacity: 1, shadowRadius: 10, shadowOffset: { width: 0, height: -4 },
     elevation: 6,
-    // @ts-ignore (web)
+    // @ts-ignore
     backdropFilter: 'saturate(140%) blur(6px)',
   },
   footerInner: {
@@ -817,7 +895,6 @@ const styles = StyleSheet.create({
   },
   footerText: { ...F, color: '#6B7280' },
 
-  // Botones (misma altura que inputs)
   actionBtn: {
     minWidth: 96,
     alignItems: 'center', justifyContent: 'center',
@@ -831,7 +908,6 @@ const styles = StyleSheet.create({
   actionTextPrimary: { ...F, color: '#FFFFFF' },
   actionTextSecondary: { ...F, color: '#111827' },
 
-  // ===== Imágenes (fix overflow) =====
   urlRow: {
     flexDirection: 'row',
     alignItems: 'center',

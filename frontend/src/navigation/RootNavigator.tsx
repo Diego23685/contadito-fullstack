@@ -7,6 +7,8 @@ import OllamaChat from '../screens/OllamaChat';
 // Splash
 import SplashScreen from '../screens/SplashScreen';
 
+import ProfitCompetitivenessScreen from '../screens/competitive/ProfitCompetitivenessScreen';
+
 // Auth
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -119,7 +121,7 @@ export default function RootNavigator() {
               component={ReportsScreen}
               options={{ title: 'Reportes' }}
             />
-
+            <Stack.Screen name="ProfitCompetitiveness" component={ProfitCompetitivenessScreen} options={{ title: 'Rentabilidad & Competitividad' }} />
             <Stack.Screen name="ImportSummary" component={ImportSummaryScreen} options={{ title: 'Importar . Resumen' }} />
             <Stack.Screen name="TenantSwitch" component={TenantSwitch} options={{ title: 'Cambiar empresa' }} />
           </>

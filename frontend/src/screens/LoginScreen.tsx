@@ -59,6 +59,7 @@ const WELCOMES: Array<[string, string]> = [
   ['Integrado a tu día a día', 'WhatsApp Business, facturación electrónica y más.'],
 ];
 
+// (Compat mini-componente)
 const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <View style={{ marginTop: 14 }}>
     <Text style={styles.label}>{label}</Text>
@@ -81,6 +82,10 @@ export default function LoginScreen() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Validación: toques de campos
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passTouched, setPassTouched] = useState(false);
 
   // Rotación de mensajes del panel izquierdo
   const [welcomeIdx, setWelcomeIdx] = useState(0);
@@ -118,22 +123,76 @@ export default function LoginScreen() {
     ).start();
   }, [float]);
 
-  const validEmail = useMemo(() => /.+@.+\..+/.test(email.trim()), [email]);
-  const validPassword = useMemo(() => password.trim().length >= 3, [password]);
-  const formValid = validEmail && validPassword;
+  // ---- Validaciones ----
+  const emailErrorMsg = useMemo(() => {
+    const v = email.trim();
+    if (!v) return 'Ingresa tu correo.';
+    if (!/.+@.+\..+/.test(v)) return 'Formato de correo inválido.';
+    return null;
+  }, [email]);
 
+  const passErrorMsg = useMemo(() => {
+    const v = password.trim();
+    if (!v) return 'Ingresa tu contraseña.';
+    if (v.length < 3) return 'La contraseña debe tener al menos 3 caracteres.';
+    return null;
+  }, [password]);
+
+  const formValid = !emailErrorMsg && !passErrorMsg;
+
+  // ---- Login ----
   const handleLogin = async () => {
-    if (!formValid) { setError('Revisa tu correo o contraseña'); return; }
+    // marca campos como tocados antes de validar
+    setEmailTouched(true);
+    setPassTouched(true);
+
+    if (!formValid) {
+      setError('Revisa los campos resaltados.');
+      return;
+    }
+
     try {
-      setError(null); setLoading(true); Keyboard.dismiss();
+      setError(null);
+      setLoading(true);
+      Keyboard.dismiss();
+
       const res = await api.post('/auth/login', { email: email.trim(), password });
       const token = res.data?.token as string | undefined;
       if (!token) throw new Error('Respuesta sin token');
       await login(token);
+      // (opcional) persistir "remember" en almacenamiento seguro
     } catch (e: any) {
-      const msg = e?.response?.data || e?.message || 'No se pudo iniciar sesión';
-      setError(String(msg)); Alert.alert('Error', String(msg));
-    } finally { setLoading(false); }
+      const rawMsg = e?.response?.data || e?.message || '';
+      const status = e?.response?.status;
+
+      if (status === 401) {
+        setError('El correo o la contraseña es incorrecta.');
+        Alert.alert('No autorizado', 'El correo o la contraseña es incorrecta.');
+      } else if (status === 404) {
+        setError('No encontramos una cuenta con ese correo.');
+        Alert.alert('Cuenta no encontrada', 'No encontramos una cuenta con ese correo.');
+      } else if (status === 400) {
+        setError('Solicitud inválida. Verifica los datos ingresados.');
+        Alert.alert('Datos inválidos', 'Verifica los datos ingresados.');
+      } else {
+        const normalized = String(rawMsg).toLowerCase();
+        if (
+          normalized.includes('invalid credentials') ||
+          normalized.includes('credenciales inválidas') ||
+          normalized.includes('incorrect password') ||
+          normalized.includes('usuario o contraseña') ||
+          normalized.includes('correo o contraseña')
+        ) {
+          setError('El correo o la contraseña es incorrecta.');
+          Alert.alert('Inicio de sesión', 'El correo o la contraseña es incorrecta.');
+        } else {
+          setError('No se pudo iniciar sesión. Intenta de nuevo.');
+          Alert.alert('Error', String(rawMsg || 'No se pudo iniciar sesión. Intenta de nuevo.'));
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -210,15 +269,20 @@ export default function LoginScreen() {
                 <View style={styles.inputBox}>
                   <Text style={styles.inputLabel}>Email</Text>
                   <TextInput
-                    style={styles.inputField}
+                    style={[
+                      styles.inputField,
+                      emailTouched && emailErrorMsg ? { borderColor: P.danger, backgroundColor: '#FEF2F2' } : null,
+                    ]}
                     value={email}
                     onChangeText={setEmail}
+                    onBlur={() => setEmailTouched(true)}
                     autoCapitalize="none"
                     keyboardType="email-address"
                     placeholder="you@email.com"
                     returnKeyType="next"
                     placeholderTextColor="#9aa7c2"
                   />
+                  {emailTouched && !!emailErrorMsg && <Text style={styles.fieldError}>{emailErrorMsg}</Text>}
                 </View>
 
                 {/* Password */}
@@ -226,25 +290,36 @@ export default function LoginScreen() {
                   <Text style={styles.inputLabel}>Password</Text>
                   <View style={{ position: 'relative' }}>
                     <TextInput
-                      style={styles.inputField}
+                      style={[
+                        styles.inputField,
+                        passTouched && passErrorMsg ? { borderColor: P.danger, backgroundColor: '#FEF2F2' } : null,
+                      ]}
                       value={password}
                       onChangeText={setPassword}
+                      onBlur={() => setPassTouched(true)}
                       secureTextEntry={!showPass}
                       placeholder="••••••••"
                       returnKeyType="go"
                       onSubmitEditing={handleLogin}
                       placeholderTextColor="#9aa7c2"
                     />
-                    <Pressable onPress={() => setShowPass(s => !s)} style={styles.eyeBtn} accessibilityLabel={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                    <Pressable
+                      onPress={() => setShowPass(s => !s)}
+                      style={styles.eyeBtn}
+                      accessibilityLabel={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    >
                       <Text style={styles.eyeEmoji}>{showPass ? '🙈' : '👁️'}</Text>
                     </Pressable>
                   </View>
+                  {passTouched && !!passErrorMsg && <Text style={styles.fieldError}>{passErrorMsg}</Text>}
                 </View>
 
                 {/* Remember + Forgot */}
                 <View style={styles.rowBetween}>
                   <Pressable onPress={() => setRemember(r => !r)} style={styles.rememberRow}>
-                    <View style={[styles.checkbox, remember && styles.checkboxOn]}>{remember && <Text style={styles.tick}>✓</Text>}</View>
+                    <View style={[styles.checkbox, remember && styles.checkboxOn]}>
+                      {remember && <Text style={styles.tick}>✓</Text>}
+                    </View>
                     <Text style={styles.rememberText}>Remember me</Text>
                   </Pressable>
                   <Pressable onPress={() => Alert.alert('Forgot password', 'Implementa navegación a ForgotPassword')}>
@@ -255,7 +330,11 @@ export default function LoginScreen() {
                 {!!error && <Text style={styles.error}>{error}</Text>}
 
                 {/* Botón principal */}
-                <Pressable onPress={handleLogin} disabled={loading || !formValid} style={[styles.primaryBtn, (loading || !formValid) && { opacity: 0.6 }]}>
+                <Pressable
+                  onPress={handleLogin}
+                  disabled={loading || !formValid}
+                  style={[styles.primaryBtn, (loading || !formValid) && { opacity: 0.6 }]}
+                >
                   {loading ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <ActivityIndicator color={P.white} />
@@ -282,7 +361,9 @@ export default function LoginScreen() {
                 <View style={{ marginTop: 14, alignItems: 'center' }}>
                   <Text style={styles.signupText}>
                     Don’t have an account?{' '}
-                    <Text style={styles.signupLink} onPress={() => navigation.navigate('Register')}>Sign up</Text>
+                    <Text style={styles.signupLink} onPress={() => navigation.navigate('Register')}>
+                      Sign up
+                    </Text>
                   </Text>
                 </View>
               </View>
@@ -368,6 +449,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#0f172a',
   },
+  fieldError: { ...F, color: '#EF4444', marginTop: 6, fontSize: 12 },
 
   // Botones
   primaryBtn: {
