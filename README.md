@@ -1,6 +1,6 @@
 # Contadito
 
-**Contadito Fullstack** es una aplicación full‑stack para gestión contable y administrativa, pensada para pymes y emprendimientos. Digitaliza y simplifica tareas clave: productos, ventas, compras, almacenes, cuentas por cobrar, reportes y más. Además integra **IA local (Ollama)** para insights y automatizaciones.
+**Contadito** es una aplicación full‑stack para gestión contable y administrativa, pensada para pymes y emprendimientos. Digitaliza y simplifica tareas clave: productos, ventas, compras, almacenes, cuentas por cobrar, reportes y más. Además integra **IA local (Ollama)** para insights y automatizaciones.
 
 ---
 
