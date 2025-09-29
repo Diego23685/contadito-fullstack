@@ -4,7 +4,7 @@
 
 ---
 
-## Novedades (septiembre 2025)
+## Novedades
 
 * **HomeScreen renovado**: panel lateral anclable (dock/flotante), KPIs de hoy/mes, comparativas con **GiftedCharts**, tablero visual, actividad reciente y estado del sistema.
 * **Asesor IA** (Ollama + `qwen2.5:3b-instruct`): analiza KPIs/alertas y sugiere acciones priorizadas.
@@ -242,11 +242,6 @@ contadito-fullstack/
 * **CORS/HTTPS**: en desarrollo, configurar orígenes permitidos en backend si accedes desde web.
 * **Conflictos Git**: evita versionar `bin/` y `obj/`. Añade reglas en `.gitignore`.
 
----
-
-## Contribución
-
-Pull Requests y issues son bienvenidos. Alinea cambios con la guía de diseño (Neuro/Canva) y la paleta BRAND.
 
 ---
 
