@@ -1,110 +1,128 @@
 # Contadito
 
-Contadito Fullstack es una aplicación fullstack diseñada para brindar soluciones de gestión contable y administrativa de manera sencilla, intuitiva y eficiente. El objetivo del proyecto es digitalizar y facilitar tareas contables, administrativas y de gestión para pequeñas y medianas empresas o emprendimientos.
-
-## Descripción del Proyecto
-
-Este repositorio contiene tanto el frontend como el backend del proyecto **Contadito**. El sistema está desarrollado para ser escalable y adaptable, integrando tecnologías modernas de desarrollo web y móvil para ofrecer una experiencia de usuario óptima y una arquitectura robusta.
+**Contadito Fullstack** es una aplicación full‑stack para gestión contable y administrativa, pensada para pymes y emprendimientos. Digitaliza y simplifica tareas clave: productos, ventas, compras, almacenes, cuentas por cobrar, reportes y más. Además integra **IA local (Ollama)** para insights y automatizaciones.
 
 ---
 
-## Características Principales
+## Novedades (septiembre 2025)
 
-- Gestión de cuentas, usuarios y permisos.
-- Registro y seguimiento de movimientos contables.
-- Panel de administración para visualizar reportes y estadísticas.
-- Interfaz amigable y responsiva.
-- API RESTful para integración con otros sistemas.
-- Integración de IA (mediante Ollama local) para funcionalidades avanzadas.
-- Base de datos relacional MySQL, con soporte para base de datos en memoria para pruebas rápidas.
+* **HomeScreen renovado**: panel lateral anclable (dock/flotante), KPIs de hoy/mes, comparativas con **GiftedCharts**, tablero visual, actividad reciente y estado del sistema.
+* **Asesor IA** (Ollama + `qwen2.5:3b-instruct`): analiza KPIs/alertas y sugiere acciones priorizadas.
+* **TutorialOverlay** con pasos **anclados** a controles reales (coach marks). Persistencia con `ctd_tutorial_v1_done`.
+* **Importación de Excel** desde el panel lateral ("Importar Excel") con navegación a `ImportSummary`.
+* **Pantallas nuevas**:
 
----
+  * `SalesForecastScreen` (simulación/pronóstico; recibe `snapshot` desde Home y usa Ollama)
+  * `UnitCostScreen` (cálculo de **costo unitario** en memoria, sin BD)
+  * `ReportsScreen` (atajos a reportes clave)
+  * `CartScreen` y `CheckoutScreen`
+  * `ReceivableCreate` (alta rápida de CxC)
+  * `WarehousesForm` (CRUD almacenes)
+  * Mejoras en `GlobalSearch`, `ProductDetail`, `StoreFront`.
+* **Diseño**: línea **Neuro/Canva** con paleta BRAND unificada, sombras suaves y chips/botones consistentes.
 
-## Funcionalidades de la Aplicación
-
-### Frontend (App móvil - Expo React Native)
-
-- **SplashScreen**: Pantalla de carga inicial que verifica el estado de autenticación y redirige al usuario.
-- **LoginScreen**: Inicio de sesión seguro para usuarios registrados.
-- **RegisterScreen**: Registro de nuevos usuarios con validaciones.
-- **HomeScreen**: Panel principal con resumen de actividad, accesos a módulos contables y tutoriales interactivos.
-- **OllamaChat**: Chat conversacional con IA local (Ollama) para asistencia y automatización.
-- **GlobalSearch**: Búsqueda global de productos, clientes y entidades clave.
-- **TutorialOverlay**: Tutoriales visuales que guían al usuario en el uso de la app.
-- **UserScreen**: Gestión y edición del perfil de usuario.
-- **StoreFront**: Visualización de catálogo de productos y acceso a detalles.
-- **ProductDetail**: Consulta y gestión de detalles de productos.
-- **CheckoutScreen**: Proceso de compra y confirmación de pedidos.
-- **ProductsList/ProductForm**: Gestión integral de productos (alta, edición, búsqueda).
-- **ReceivablesList**: Consultar y gestionar cuentas por cobrar.
-- **SaleCreate**: Registrar nuevas ventas.
-- **PurchaseCreate**: Registrar nuevas compras.
-- **WarehousesList**: Consulta de almacenes e inventarios.
-- **TenantSwitch**: Cambio rápido entre empresas o unidades de negocio.
-- **Otros módulos**: Integración de clientes, reportes, almacenes, tutoriales, etc.
+> *Ver lista completa de pantallas en* **[Módulos y pantallas](#módulos-y-pantallas)**.
 
 ---
 
-## Requerimientos Técnicos
+## Descripción general
+
+Este repositorio contiene **frontend (Expo React Native)** y **backend (.NET)**. El sistema es escalable y modular, con API RESTful, MySQL (o modo en memoria para pruebas) e integración de IA local.
+
+---
+
+## Requerimientos
 
 ### Frontend
 
-- [Node.js](https://nodejs.org/) >= 20.x
-- [npm](https://www.npmjs.com/) >= 9.x
-- [Expo CLI](https://docs.expo.dev/get-started/installation/) (para React Native)
-- Emulador Android/iOS o dispositivo físico
+* Node.js ≥ 20.x
+* npm ≥ 9.x
+* Expo CLI
+* Emulador Android/iOS o dispositivo físico
 
 ### Backend
 
-- [.NET 9.0 o superior](https://dotnet.microsoft.com/en-us/download)
-- Base de datos: MySQL (o modo in-memory para pruebas rápidas)
-- Variables de entorno para configuración de la base de datos, llaves secretas y parámetros de IA (Ollama)
-- Ollama local instalado y corriendo (para integración de IA)
+* .NET 9.0 o superior
+* MySQL (o modo **in‑memory** para pruebas rápidas)
+* Variables de entorno para cadena de conexión, secretos y configuración de IA (Ollama)
+* **Ollama** instalado y corriendo localmente
 
 ---
 
 ## Instalación
 
-### 1. Clonar el repositorio
+### 1) Clonar
 
 ```bash
 git clone https://github.com/Diego23685/contadito-fullstack.git
 cd contadito-fullstack
 ```
 
-### 2. Instalación de dependencias
+### 2) Dependencias
 
-### Instalacion de la base de datos
+**Backend**
 
-- Ejecucion del script de base de datos .sql en el workbench de mysql o en el cli de mysql server.
-
-#### Backend (.NET)
 ```bash
 cd backend
 dotnet restore
 ```
 
-#### Frontend (React Native Expo)
+**Frontend**
+
 ```bash
 cd ../frontend
 npm install
 ```
 
-### 3. Configuración de variables de entorno
+### 3) Base de datos
 
-- Para el **backend**, crea un archivo `appsettings.Development.json` o utiliza variables de entorno según la documentación de .NET, agregando la cadena de conexión a MySQL y otros datos sensibles requeridos (como configuración de Ollama).
-- Para el **frontend**, crea un archivo `.env` siguiendo el ejemplo provisto (por ejemplo: `.env.example`).
+* Ejecuta el script `.sql` en MySQL Workbench o CLI para crear esquema/tablas iniciales.
 
-### 4. Ejecución del proyecto
+### 4) Variables de entorno
 
-#### Backend (.NET)
-```bash
-cd backend
-dotnet run
+**Backend** (`appsettings.Development.json` o variables de entorno)
+
+```json
+{
+  "ConnectionStrings": {
+    "Default": "Server=localhost;Database=contadito;User Id=tu_usuario;Password=tu_password;"
+  },
+  "Jwt": {
+    "Key": "<clave-secreta>",
+    "Issuer": "Contadito",
+    "Audience": "ContaditoUsers"
+  },
+  "Ollama": {
+    "BaseUrl": "http://localhost:11434",
+    "Model": "qwen2.5:3b-instruct"
+  }
+}
 ```
 
-#### Frontend (React Native Expo)
-En otra terminal:
+**Frontend** (`.env`)
+
+```
+EXPO_PUBLIC_API_BASE=http://10.0.2.2:5000   # Android emu
+# EXPO_PUBLIC_API_BASE=http://localhost:5000 # iOS/web
+EXPO_PUBLIC_OLLAMA_BASE=http://10.0.2.2:11434
+EXPO_PUBLIC_OLLAMA_MODEL=qwen2.5:3b-instruct
+```
+
+> En código móvil, se usa `Platform` para elegir `http://10.0.2.2` (Android emu) vs `http://localhost` (iOS/web).
+
+### 5) Ejecutar
+
+**Backend**
+
+```bash
+cd backend
+set ASPNETCORE_ENVIRONMENT=Development  # Windows (opcional)
+# export ASPNETCORE_ENVIRONMENT=Development # macOS/Linux
+ dotnet run
+```
+
+**Frontend** (en otra terminal)
+
 ```bash
 cd frontend
 npx expo start
@@ -112,33 +130,123 @@ npx expo start
 
 ---
 
-## Manual de Uso
+## Módulos y pantallas
 
-1. **Inicio y autenticación**
-   - Al abrir la app, verás la pantalla de carga (Splash).
-   - Si tienes cuenta, ingresa tus credenciales en la pantalla de Login.
-   - Si no tienes cuenta, regístrate en la pantalla de Registro.
+* **SplashScreen**: verificación inicial y routing por autenticación.
+* **LoginScreen** / **RegisterScreen**: auth segura con validaciones.
+* **HomeScreen**: panel principal con KPIs, comparativas, alertas, tablero visual, actividad, estado y **panel lateral** con accesos rápidos e **importación de Excel**.
+* **GlobalSearch**: búsqueda global de productos/clientes/SKU.
+* **OllamaChat**: chat con IA local para asistencia/automatización.
+* **ReportsScreen**: entrada a reportes y estadísticas.
+* **TutorialOverlay**: tutorial interactivo con *targets* anclados.
+* **ProfitCompetitivenessScreen**: rentabilidad y competitividad.
+* **SalesForecastScreen**: simulación y pronóstico (usa snapshot desde Home + Ollama).
+* **UnitCostScreen**: cálculo de **costo unitario** de producción **en memoria** (sin BD).
+* **CustomersList** / **CustomerForm**
+* **ReceivablesList** / **ReceivableCreate**
+* **ProductsList** / **ProductForm** / **ProductDetail**
+* **StoreFront** (catálogo) / **CartScreen** / **CheckoutScreen**
+* **SaleCreate** / **PurchaseCreate**
+* **WarehousesList** / **WarehousesForm**
+* **UserScreen**
 
-2. **Navegación principal**
-   - Accede al panel principal (Home) donde verás el resumen de actividad, accesos rápidos y notificaciones importantes.
-   - Utiliza la barra de navegación y el menú para moverte entre módulos: productos, ventas, compras, almacenes, cuentas por cobrar, clientes, etc.
+> Nombres exactos provistos: `GlobalSearch`, `HomeScreen`, `LoginScreen`, `OllamaChat`, `RegisterScreen`, `ReportsScreen`, `SplashScreen`, `TutorialOverlay`, `ProfitCompetitivenessScreen`, `CustomerForm`, `CustomersList`, `ReceivableCreate`, `ReceivablesList`, `ProductForm`, `ProductList`, `PurchaseCreate`, `SaleCreate`, `SalesForecastScreen`, `CartScreen`, `CheckoutScreen`, `ProductDetail`, `StoreFront`, `UnitCostScreen`, `UserScreen`, `WarehousesForm`, `WarehousesList`.
 
-3. **Funcionalidad de chat con IA**
-   - En el módulo de OllamaChat puedes consultar dudas, pedir asistencia o automatizar tareas usando el chat con IA local.
+---
 
-4. **Gestión de productos y ventas**
-   - Desde StoreFront consulta el catálogo, agrega productos, edita información o visualiza detalles en ProductDetail.
-   - Registra ventas (SaleCreate) y compras (PurchaseCreate) fácilmente con formularios guiados.
+## Flujo de trabajo clave
 
-5. **Gestión administrativa**
-   - Consulta cuentas por cobrar (ReceivablesList) y almacenes (WarehousesList).
-   - Cambia de empresa o unidad con TenantSwitch si tu perfil lo permite.
+### 1) Importación de Excel de productos
 
-6. **Aprendizaje y tutorial**
-   - Si eres nuevo, sigue los tutoriales interactivos (CoachmarkTutorial y TutorialOverlay) que te guían paso a paso por las funciones principales.
+* Desde **Home → Panel lateral → Importar Excel**.
+* Usa `importExcelProducts({ api, fetchDashboard, OLLAMA_BASE, OLLAMA_MODEL })`.
+* Al finalizar, navega a `ImportSummary` con un resumen `{ created, updated, skipped }`.
+* Recomendado: columnas mínimas `sku`, `name`, `price`, `stock` (puedes mapear otras).
 
-7. **Perfil y configuración**
-   - Accede al UserScreen para ver y editar tus datos, cambiar contraseña o cerrar sesión.
+### 2) Asesor IA (Home → Alertas)
+
+* Construye contexto JSON con KPIs, `lowStock`, `receivablesDueSoon`.
+* Envía chat a Ollama (`/api/chat`, modelo `qwen2.5:3b-instruct`, `temperature: 0.2`).
+* Devuelve JSON con `resumen`, `acciones[]`, `prioridadGeneral`.
+
+### 3) Pronóstico de ventas
+
+* Botón **“Simulación y pronóstico”** en Home.
+* Navega a `SalesForecastScreen` con props: `{ snapshot, ollamaBase, ollamaModel }`.
+
+### 4) Costo unitario de producción (en memoria)
+
+* Desde Home o menú: **UnitCost**.
+* Calcula costo unitario sin persistencia (ideal para pruebas/what‑if).
+
+### 5) Tutorial interactivo
+
+* **TutorialOverlay** con `steps` y `targets` (medidos vía `measureInWindow`).
+* Se muestra la primera vez y se guarda `ctd_tutorial_v1_done=1`.
+
+---
+
+## Diseño y paleta (Neuro/Canva)
+
+* Paleta `BRAND` unificada (primarios azules/púrpura/teal/green, `slate` para texto, superficies claras, bordes suaves).
+* Componentes reutilizables: `Card`, `GradientCard`, `SmallBtn`, `Badge`, `Section`.
+* Efectos: sombras sutiles, *glass/frosted* en sticky, *chips* de navegación.
+* **Tipografía**: `Apoka` por defecto.
+
+---
+
+## Estructura (simplificada)
+
+```
+contadito-fullstack/
+├─ backend/
+│  ├─ Controllers/
+│  ├─ Data/
+│  ├─ Domain/
+│  └─ Program.cs, appsettings.*.json
+└─ frontend/
+   ├─ src/
+   │  ├─ screens/ (todas las pantallas listadas)
+   │  ├─ features/import/ (ExcelImport)
+   │  ├─ providers/ (AuthContext)
+   │  ├─ api.ts / api/
+   │  └─ components/ (TutorialOverlay, etc.)
+   └─ assets/
+```
+
+---
+
+## Ejemplos de navegación rápida
+
+* **Productos críticos** → `ProductsList` con filtro `lowStock`.
+* **Cuentas por cobrar** → `ReceivablesList`.
+* **Crear venta/compra** → `SaleCreate` / `PurchaseCreate`.
+* **Tienda** → `StoreFront` (con `tenantId`).
+
+---
+
+## API backend (vista rápida)
+
+* `GET /dashboard` → KPIs, actividad, alertas CxC, últimos productos.
+* `GET /products?page=1&pageSize=20&q=...` → listado con búsqueda/paginación.
+* Endpoints adicionales: auth, clientes, ventas, compras, almacenes, CxC.
+
+> Usa `ASPNETCORE_ENVIRONMENT=Development` para habilitar configuración local de desarrollo.
+
+---
+
+## Troubleshooting
+
+* **Android emulador**: usa `http://10.0.2.2` para apuntar al host.
+* **Ollama**: verifica que el modelo esté descargado y el servidor corra en `11434`.
+* **CORS/HTTPS**: en desarrollo, configurar orígenes permitidos en backend si accedes desde web.
+* **Conflictos Git**: evita versionar `bin/` y `obj/`. Añade reglas en `.gitignore`.
+
+---
+
+## Contribución
+
+Pull Requests y issues son bienvenidos. Alinea cambios con la guía de diseño (Neuro/Canva) y la paleta BRAND.
 
 ---
 
