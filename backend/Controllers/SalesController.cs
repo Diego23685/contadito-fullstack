@@ -1,3 +1,4 @@
+// Controllers/SalesController.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,14 +33,14 @@ namespace Contadito.Api.Controllers
 
             await using var tx = await _db.Database.BeginTransactionAsync();
 
-            // Cargar productos (incluye TrackStock para saber si descuenta inventario)
+            // Cargar productos (incluye TrackStock, ListPrice y StdCost para costo base de margen)
             var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
             var products = await _db.Products
                 .Where(p => p.TenantId == TenantId && productIds.Contains(p.Id) && p.DeletedAt == null)
-                .Select(p => new { p.Id, p.Name, p.ListPrice, p.TrackStock })
+                .Select(p => new { p.Id, p.Name, p.ListPrice, p.StdCost, p.TrackStock })
                 .ToDictionaryAsync(p => p.Id, p => p);
 
-            // Cálculo
+            // Cálculo factura
             decimal subtotal = 0m;
             decimal taxTotal = 0m;
             decimal discountTotal = 0m;
@@ -56,15 +57,25 @@ namespace Contadito.Api.Controllers
                 var itemTaxRate = (it.TaxRate ?? dto.TaxRate ?? 0m) / 100m;
                 var itemDiscRate = (it.DiscountRate ?? dto.DiscountRate ?? 0m) / 100m;
 
-                var lineBase = unitPrice * qty;
+                var lineBase = unitPrice * qty; // ingreso antes de descuento/impuestos
                 var lineDisc = Math.Round(lineBase * itemDiscRate, 2, MidpointRounding.AwayFromZero);
-                var lineAfterDisc = lineBase - lineDisc;
+                var lineAfterDisc = lineBase - lineDisc; // ingreso neto sin impuestos
                 var lineTax = Math.Round(lineAfterDisc * itemTaxRate, 2, MidpointRounding.AwayFromZero);
                 var lineTotal = Math.Round(lineAfterDisc + lineTax, 2, MidpointRounding.AwayFromZero);
 
-                subtotal += lineBase;
+                subtotal      += lineBase;
                 discountTotal += lineDisc;
-                taxTotal += lineTax;
+                taxTotal      += lineTax;
+
+                // Costo congelado desde StdCost del producto (si no hay, 0)
+                var unitCostBasis = prod.StdCost ?? 0m;
+                var costTotal = Math.Round(unitCostBasis * qty, 2, MidpointRounding.AwayFromZero);
+
+                // Margen por renglón (SIN impuestos)
+                var lineMargin = Math.Round(lineAfterDisc - costTotal, 2, MidpointRounding.AwayFromZero);
+                var lineMarginPct = lineAfterDisc > 0
+                    ? Math.Round((lineMargin / lineAfterDisc) * 100m, 2, MidpointRounding.AwayFromZero)
+                    : (decimal?)null;
 
                 itemsToInsert.Add(new SalesItem
                 {
@@ -73,6 +84,11 @@ namespace Contadito.Api.Controllers
                     Description = it.Description ?? prod.Name,
                     Quantity = qty,
                     UnitPrice = unitPrice,
+
+                    UnitCostBasis = unitCostBasis,
+                    LineMargin = lineMargin,
+                    LineMarginPct = lineMarginPct,
+
                     TaxRate = (it.TaxRate ?? dto.TaxRate ?? 0m),
                     DiscountRate = (it.DiscountRate ?? dto.DiscountRate ?? 0m),
                     Total = lineTotal,
@@ -126,7 +142,7 @@ namespace Contadito.Api.Controllers
                         WarehouseId = dto.WarehouseId, // si no manejas warehouse aquí, déjalo en null
                         MovementType = "out",
                         Quantity = it.Quantity,
-                        UnitCost = null, // para out no es requerido aquí; costo puede resolverse por tu política
+                        UnitCost = null, // costo de salida podría resolverse por política aparte
                         Reference = inv.Number,
                         Reason = "Venta",
                         MovedAt = DateTime.UtcNow,
@@ -143,20 +159,44 @@ namespace Contadito.Api.Controllers
 
             await tx.CommitAsync();
 
+            // Respuesta (incluye los márgenes persistidos)
+            var itemsResponse = itemsToInsert.Select(i =>
+            {
+                // ingreso neto sin impuestos
+                var gross = i.UnitPrice * i.Quantity;
+                var disc = Math.Round(gross * ((i.DiscountRate ?? 0m) / 100m), 2, MidpointRounding.AwayFromZero);
+                var afterDisc = gross - disc;
+                var tax = Math.Round(afterDisc * ((i.TaxRate ?? 0m) / 100m), 2, MidpointRounding.AwayFromZero);
+                var revenue = afterDisc + tax;
+
+                var cogs = (i.UnitCostBasis ?? 0m) * i.Quantity;
+                var margin = i.LineMargin ?? (afterDisc - cogs);
+
+                return new
+                {
+                    i.ProductId,
+                    i.Description,
+                    i.Quantity,
+                    i.UnitPrice,
+                    i.UnitCostBasis,
+                    i.LineMargin,
+                    i.LineMarginPct,
+                    i.TaxRate,
+                    i.DiscountRate,
+                    i.Total,
+                    Cogs = cogs,
+                    Revenue = revenue,
+                    Margin = margin
+                };
+            }).ToList();
+
             return Ok(new
             {
                 inv.Id,
                 inv.Number,
                 inv.Total,
                 inv.Status,
-                Items = itemsToInsert.Select(i => new
-                {
-                    i.ProductId,
-                    i.Description,
-                    i.Quantity,
-                    i.UnitPrice,
-                    i.Total
-                }).ToList()
+                Items = itemsResponse
             });
         }
 
@@ -182,6 +222,9 @@ namespace Contadito.Api.Controllers
                     i.Description,
                     i.Quantity,
                     i.UnitPrice,
+                    i.UnitCostBasis,   // costo congelado
+                    i.LineMargin,      // margen guardado (sin impuestos)
+                    i.LineMarginPct,   // % margen guardado
                     i.TaxRate,
                     i.DiscountRate,
                     i.Total

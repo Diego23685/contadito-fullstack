@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Contadito.Api.Domain.Entities
 {
+    // Contadito.Api.Domain.Entities/SalesItem.cs
     [Table("sales_items")]
     public class SalesItem
     {
@@ -14,9 +15,18 @@ namespace Contadito.Api.Domain.Entities
         [Column("description")] public string? Description { get; set; }
         [Column("quantity")] public decimal Quantity { get; set; }
         [Column("unit_price")] public decimal UnitPrice { get; set; }
+
+        // Costo unitario “congelado”
+        [Column("unit_cost_basis")] public decimal? UnitCostBasis { get; set; }
+
+        // 👇 NUEVO: margen guardado (sin impuestos)
+        [Column("line_margin")] public decimal? LineMargin { get; set; }
+        [Column("line_margin_pct")] public decimal? LineMarginPct { get; set; }
+
         [Column("tax_rate")] public decimal? TaxRate { get; set; }
         [Column("discount_rate")] public decimal? DiscountRate { get; set; }
         [Column("total")] public decimal Total { get; set; }
         [Column("created_at")] public DateTime CreatedAt { get; set; }
     }
+
 }
