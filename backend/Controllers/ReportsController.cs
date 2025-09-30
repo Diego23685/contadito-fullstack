@@ -14,28 +14,28 @@ namespace Contadito.Api.Controllers
         private readonly AppDbContext _db;
         public ReportsController(AppDbContext db) => _db = db;
 
-        // 👇 Clase (no record) para evitar el InvalidOperationException de data annotations en records
+        // Clase (no record) para evitar issues con data annotations en records
         public class RunReportDto
         {
             // Modo legado
             public string? Name { get; set; }
 
             // Nueva API
-            public string? Source { get; set; }                // "sales" | "purchases" | "inventory" | "products"
+            public string? Source { get; set; }                // "sales" | "purchases" | "inventory_movements" | "products"
             public string? From { get; set; }                  // "YYYY-MM-DD"
             public string? To { get; set; }                    // "YYYY-MM-DD"
 
-            // Soporte a payload del front (dateFrom/dateTo + filters)
+            // Compat con payload del front
             public string? DateFrom { get; set; }
             public string? DateTo { get; set; }
             public Dictionary<string, object?>? Filters { get; set; }
 
-            // Filtros planos (también soportados)
+            // Filtros planos
             public string? Status { get; set; }                // "issued,paid" o "issued/paid"
             public string? Currency { get; set; }              // "NIO,USD" o "NIO/USD"
 
             // Dimensiones y métricas
-            public string[]? GroupBy { get; set; }             // ["date:day","status","currency","invoice","customer","product"]
+            public string[]? GroupBy { get; set; }             // ["date:day","status","currency","invoice","customer","product","movementType"]
             public string[]? Metrics { get; set; }             // ["count","sum_total","sum_qty","sum_subtotal","sum_discount","sum_tax"]
 
             // Extras
@@ -69,7 +69,7 @@ namespace Contadito.Api.Controllers
             // ----- NUEVO MODO: fuente + filtros + groupby + métricas
             var source = (dto.Source ?? "").Trim().ToLowerInvariant();
             if (string.IsNullOrEmpty(source))
-                return BadRequest("Source is required. Try: sales | purchases.");
+                return BadRequest("Source is required. Try: sales | purchases | inventory_movements.");
 
             // Fechas (acepta from/to y dateFrom/dateTo)
             var fromStr = string.IsNullOrWhiteSpace(dto.From) ? dto.DateFrom : dto.From;
@@ -92,14 +92,14 @@ namespace Contadito.Api.Controllers
 
             // GroupBy y métricas
             var gb = (dto.GroupBy ?? Array.Empty<string>()).Select(s => s.ToLowerInvariant()).ToArray();
-            bool byDay = gb.Contains("date:day");
+            bool byDay = gb.Contains("date:day") || gb.Contains("date");
             bool byMonth = gb.Contains("date:month");
-            if (byDay && byMonth) byMonth = false; // preferimos day si viene ambos
+            if (byDay && byMonth) byMonth = false; // preferimos day si vienen ambos
 
             bool byStatus   = gb.Contains("status");
             bool byCurrency = gb.Contains("currency");
 
-            // NUEVO: dimensiones “de dónde viene”
+            // Dimensiones extra
             bool byInvoice  = gb.Contains("invoice")  || gb.Contains("invoice_id");
             bool byCustomer = gb.Contains("customer") || gb.Contains("customer_id");
             bool byProduct  = gb.Contains("product")  || gb.Contains("product_id");
@@ -111,14 +111,12 @@ namespace Contadito.Api.Controllers
             switch (source)
             {
                 case "sales":
-                    // Si piden ver factura/cliente/producto ⇒ vamos a nivel de ítems
                     if (byInvoice || byCustomer || byProduct)
                     {
                         return await AggregateSalesItems(
                             tenantId, fromUtc, toUtc, statuses, currencies,
                             byDay, byMonth, byStatus, byCurrency, byInvoice, byCustomer, byProduct, metrics);
                     }
-                    // Caso contrario, agregación a nivel factura (original)
                     return await AggregateSales(
                         tenantId, fromUtc, toUtc, statuses, currencies,
                         byDay, byMonth, byStatus, byCurrency, byInvoice, byCustomer, byProduct, metrics);
@@ -128,14 +126,19 @@ namespace Contadito.Api.Controllers
                         tenantId, fromUtc, toUtc, statuses, currencies,
                         byDay, byMonth, byStatus, byCurrency, metrics);
 
+                case "inventory_movements":
+                    return await AggregateInventoryMovements(
+                        tenantId, fromUtc, toUtc,
+                        gb, metrics);
+
                 case "inventory":
-                    return BadRequest("Aggregation for 'inventory' is not implemented yet.");
+                    return BadRequest("Aggregation for 'inventory' is not implemented. Use 'inventory_movements'.");
 
                 case "products":
                     return BadRequest("Aggregation for 'products' is not implemented yet.");
 
                 default:
-                    return NotFound(new { error = $"Unknown source '{source}'. Try: sales | purchases." });
+                    return NotFound(new { error = $"Unknown source '{source}'. Try: sales | purchases | inventory_movements." });
             }
         }
 
@@ -216,15 +219,18 @@ namespace Contadito.Api.Controllers
             var q = _db.SalesInvoices.AsNoTracking()
                 .Where(s => s.TenantId == tenantId);
 
-            if (fromUtc.HasValue) q = q.Where(s => (s.IssuedAt ?? s.CreatedAt) >= fromUtc.Value);
-            if (toUtc.HasValue)   q = q.Where(s => (s.IssuedAt ?? s.CreatedAt) <  toUtc.Value);
+            // Fecha base: COALESCE(IssuedAt, CreatedAt, UtcNow)
+            if (fromUtc.HasValue) q = q.Where(s =>
+                (((DateTime?)s.IssuedAt) ?? ((DateTime?)s.CreatedAt) ?? DateTime.UtcNow) >= fromUtc.Value);
+            if (toUtc.HasValue)   q = q.Where(s =>
+                (((DateTime?)s.IssuedAt) ?? ((DateTime?)s.CreatedAt) ?? DateTime.UtcNow) <  toUtc.Value);
 
             if (statuses.Count > 0)   q = q.Where(s => statuses.Contains(s.Status.ToLower()));
             if (currencies.Count > 0) q = q.Where(s => currencies.Contains((s.Currency ?? "").ToUpper()));
 
             var tmp = q.Select(s => new
             {
-                Date = (s.IssuedAt ?? s.CreatedAt),
+                Date = (((DateTime?)s.IssuedAt) ?? ((DateTime?)s.CreatedAt) ?? DateTime.UtcNow),
                 Status = s.Status,
                 Currency = s.Currency ?? "NIO",
                 s.Subtotal,
@@ -285,15 +291,17 @@ namespace Contadito.Api.Controllers
                 where i.TenantId == tenantId && s.TenantId == tenantId && p.TenantId == tenantId
                 select new { i, s, p, c };
 
-            if (fromUtc.HasValue) q = q.Where(x => (x.s.IssuedAt ?? x.s.CreatedAt) >= fromUtc.Value);
-            if (toUtc.HasValue)   q = q.Where(x => (x.s.IssuedAt ?? x.s.CreatedAt) <  toUtc.Value);
+            if (fromUtc.HasValue) q = q.Where(x =>
+                (((DateTime?)x.s.IssuedAt) ?? ((DateTime?)x.s.CreatedAt) ?? DateTime.UtcNow) >= fromUtc.Value);
+            if (toUtc.HasValue)   q = q.Where(x =>
+                (((DateTime?)x.s.IssuedAt) ?? ((DateTime?)x.s.CreatedAt) ?? DateTime.UtcNow) <  toUtc.Value);
 
             if (statuses.Count > 0)   q = q.Where(x => statuses.Contains(x.s.Status.ToLower()));
             if (currencies.Count > 0) q = q.Where(x => currencies.Contains((x.s.Currency ?? "").ToUpper()));
 
             var tmp = q.Select(x => new
             {
-                Date     = (x.s.IssuedAt ?? x.s.CreatedAt),
+                Date     = (((DateTime?)x.s.IssuedAt) ?? ((DateTime?)x.s.CreatedAt) ?? DateTime.UtcNow),
                 Status   = x.s.Status,
                 Currency = x.s.Currency ?? "NIO",
                 Invoice  = x.s.Number,
@@ -345,6 +353,82 @@ namespace Contadito.Api.Controllers
         }
 
         // =======================================
+        // Agregación INVENTORY_MOVEMENTS (por día/tipo)
+        // =======================================
+
+        private async Task<IActionResult> AggregateInventoryMovements(
+            long tenantId,
+            DateTime? fromUtc, DateTime? toUtc,
+            string[] groupBy, string[] metrics)
+        {
+            var gb = groupBy.Select(s => s.ToLowerInvariant()).ToList();
+            var wantDateDay  = gb.Contains("date:day") || gb.Contains("date");
+            var wantMoveType = gb.Contains("movementtype") || gb.Contains("movement_type");
+
+            if (!wantDateDay || !wantMoveType)
+                return NotFound(new { error = "inventory_movements: groupBy=['date:day','movementType'] requerido." });
+
+            var ms = metrics.Select(s => s.ToLowerInvariant()).ToList();
+            var wantCount  = ms.Contains("count");
+            var wantSumQty = ms.Contains("sum_qty") || ms.Contains("qty");
+            if (!wantCount && !wantSumQty)
+                return NotFound(new { error = "inventory_movements: metrics=['sum_qty','count'] requerido." });
+
+            var q = _db.InventoryMovements.AsNoTracking()
+                .Where(m => m.TenantId == tenantId);
+
+            // Rango por moved_at (fallback a created_at)
+            if (fromUtc.HasValue) q = q.Where(m =>
+                (((DateTime?)m.MovedAt) ?? ((DateTime?)m.CreatedAt) ?? DateTime.UtcNow) >= fromUtc.Value);
+            if (toUtc.HasValue)   q = q.Where(m =>
+                (((DateTime?)m.MovedAt) ?? ((DateTime?)m.CreatedAt) ?? DateTime.UtcNow) <  toUtc.Value);
+
+            var rows = await q
+                .Select(m => new
+                {
+                    Date = (((DateTime?)m.MovedAt) ?? ((DateTime?)m.CreatedAt) ?? DateTime.UtcNow),
+                    MovementType = (m.MovementType ?? "").ToLower(), // "in" | "out" | "adjust"
+                    Qty = m.Quantity
+                })
+                .GroupBy(x => new { Day = x.Date.Date, x.MovementType })
+                .Select(g => new
+                {
+                    g.Key.Day,
+                    g.Key.MovementType,
+                    Count = g.Count(),
+                    SumQty = g.Sum(v => v.Qty)
+                })
+                .OrderBy(r => r.Day).ThenBy(r => r.MovementType)
+                .ToListAsync();
+
+            // Tabla compatible con el front
+            var columns = new List<string> { "date:day", "movementType" };
+            if (wantCount)  columns.Add("count");
+            if (wantSumQty) columns.Add("sum_qty");
+
+            var data = new List<object[]>();
+            foreach (var r in rows)
+            {
+                var line = new List<object>
+                {
+                    r.Day.ToString("yyyy-MM-dd"),
+                    r.MovementType
+                };
+                if (wantCount)  line.Add(r.Count);
+                if (wantSumQty) line.Add(r.SumQty);
+                data.Add(line.ToArray());
+            }
+
+            return Ok(new
+            {
+                title = "Movimientos de inventario",
+                source = "inventory_movements",
+                columns,
+                rows = data
+            });
+        }
+
+        // =======================================
         // Agregaciones PURCHASES (nivel factura)
         // =======================================
 
@@ -358,15 +442,17 @@ namespace Contadito.Api.Controllers
             var q = _db.PurchaseInvoices.AsNoTracking()
                 .Where(s => s.TenantId == tenantId);
 
-            if (fromUtc.HasValue) q = q.Where(s => (s.ReceivedAt ?? s.CreatedAt) >= fromUtc.Value);
-            if (toUtc.HasValue)   q = q.Where(s => (s.ReceivedAt ?? s.CreatedAt) <  toUtc.Value);
+            if (fromUtc.HasValue) q = q.Where(s =>
+                (((DateTime?)s.ReceivedAt) ?? ((DateTime?)s.CreatedAt) ?? DateTime.UtcNow) >= fromUtc.Value);
+            if (toUtc.HasValue)   q = q.Where(s =>
+                (((DateTime?)s.ReceivedAt) ?? ((DateTime?)s.CreatedAt) ?? DateTime.UtcNow) <  toUtc.Value);
 
             if (statuses.Count > 0)   q = q.Where(s => statuses.Contains(s.Status.ToLower()));
             if (currencies.Count > 0) q = q.Where(s => currencies.Contains((s.Currency ?? "").ToUpper()));
 
             var tmp = q.Select(s => new
             {
-                Date = (s.ReceivedAt ?? s.CreatedAt),
+                Date = (((DateTime?)s.ReceivedAt) ?? ((DateTime?)s.CreatedAt) ?? DateTime.UtcNow),
                 Status = s.Status,
                 Currency = s.Currency ?? "NIO",
                 s.Subtotal,
@@ -411,24 +497,34 @@ namespace Contadito.Api.Controllers
         // Helpers
         // ===========================
 
+        // Al final de ReportsController (misma clase), reemplaza el método por este:
         private static (DateTime? fromUtc, DateTime? toUtc) ParseDateRange(string? from, string? to)
         {
+            // Ajusta este offset al huso horario local del tenant (ej. Nicaragua = UTC-6)
+            TimeSpan tenantOffset = TimeSpan.FromHours(-6);
+
             DateTime? fromUtc = null, toUtc = null;
+
             if (!string.IsNullOrWhiteSpace(from) &&
                 DateTime.TryParseExact(from.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var f))
+                    DateTimeStyles.None, out var fLocal))
             {
-                fromUtc = new DateTime(f.Year, f.Month, f.Day, 0, 0, 0, DateTimeKind.Utc);
+                var fLocalMidnight = new DateTime(fLocal.Year, fLocal.Month, fLocal.Day, 0, 0, 0, DateTimeKind.Unspecified);
+                fromUtc = new DateTimeOffset(fLocalMidnight, tenantOffset).UtcDateTime;
             }
+
             if (!string.IsNullOrWhiteSpace(to) &&
                 DateTime.TryParseExact(to.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var t))
+                    DateTimeStyles.None, out var tLocal))
             {
-                // rango inclusivo: < (to + 1 día)
-                toUtc = new DateTime(t.Year, t.Month, t.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(1);
+                // Rango inclusivo en fecha local => < (medianoche del día siguiente en local)
+                var tLocalNextMidnight = new DateTime(tLocal.Year, tLocal.Month, tLocal.Day, 0, 0, 0, DateTimeKind.Unspecified).AddDays(1);
+                toUtc = new DateTimeOffset(tLocalNextMidnight, tenantOffset).UtcDateTime;
             }
+
             return (fromUtc, toUtc);
         }
+
 
         private static HashSet<string> SplitList(string? s)
         {

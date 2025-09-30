@@ -31,6 +31,18 @@ export type AiItem = {
   initWarehouseName?: string | null;
 };
 
+export type ImportOptions = {
+  api: ApiLike;
+  fetchDashboard: () => Promise<void>;
+  defaultWarehouseId?: number | null;
+  onBusy?: (v: boolean) => void;
+  onProgress?: (msg: string) => void;
+  /** Opcional: endpoint de tu Ollama local, p.ej. http://10.0.2.2:11434 */
+  ollamaBase?: string;
+  /** Opcional: modelo Ollama, p.ej. 'qwen2.5:3b-instruct' */
+  ollamaModel?: string;
+};
+
 export type ImportItemSummary = {
   sku: string;
   name: string;
@@ -193,14 +205,17 @@ function resolveWarehouseIdFromRow(
 }
 
 // ---------------- Flujo principal ----------------
-export async function importExcelProducts(opts: {
-  api: ApiLike;
-  fetchDashboard: () => Promise<void>;
-  defaultWarehouseId?: number | null;
-  onBusy?: (v: boolean) => void;
-  onProgress?: (msg: string) => void;
-}): Promise<ImportSummaryPayload> {
-  const { api, fetchDashboard, defaultWarehouseId = null, onBusy, onProgress } = opts;
+export async function importExcelProducts(opts: ImportOptions): Promise<ImportSummaryPayload> {
+  const {
+    api,
+    fetchDashboard,
+    defaultWarehouseId = null,
+    onBusy,
+    onProgress,
+    // disponibles para futura normalización con IA (aún no usados en esta versión)
+    ollamaBase,
+    ollamaModel,
+  } = opts;
 
   try {
     onBusy?.(true);

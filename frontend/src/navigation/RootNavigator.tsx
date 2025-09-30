@@ -30,6 +30,8 @@ import SalesForecastScreen from '../screens/simulation/SalesForecastScreen';
 import ImportSummaryScreen from '../imports/ImportSummaryScreen';
 import OllamaChat from '../screens/OllamaChat';
 
+import RecentActivity from '../screens/activity/RecentActivity';
+
 // Store (público)
 import StoreFront from '../screens/store/StoreFront';
 import ProductDetail from '../screens/store/ProductDetail';
@@ -250,6 +252,8 @@ export default function RootNavigator() {
               options={{ title: 'Rentabilidad & Competitividad' }}
             />
 
+            <Stack.Screen name="RecentActivity" component={RecentActivity} options={{ title: 'Actividad' }} />
+
             <Stack.Screen
               name="ImportSummary"
               component={ImportSummaryScreen}
@@ -258,6 +262,7 @@ export default function RootNavigator() {
 
             <Stack.Screen name="TenantSwitch" component={TenantSwitch} options={{ title: 'Cambiar empresa' }} />
           </>
+          
         )}
       </Stack.Navigator>
     </CartProvider>

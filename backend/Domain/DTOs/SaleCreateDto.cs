@@ -7,6 +7,9 @@ namespace Contadito.Api.Domain.DTOs
         public List<SaleItemCreateDto> Items { get; set; } = new();
         public decimal? TaxRate { get; set; } // opcional: 15 => 15%
         public decimal? DiscountRate { get; set; } // opcional: 5 => 5%
+
+        // 🔹 Nuevo: almacén desde el cual se descuentan los productos
+        public long? WarehouseId { get; set; }
     }
 
     public class SaleItemCreateDto

@@ -63,6 +63,13 @@ type AiInsights = {
   texto?: string;
 };
 
+// --- Helpers de fecha
+const ymd = (d: Date) => {
+  const z = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+};
+
+
 // ------------- Colores (Neuro/Canva) ---------------
 const BRAND = {
   primary:       '#2563EB',
@@ -256,16 +263,49 @@ function bucketReceivables(arr?: Dashboard['receivablesDueSoon']) {
     { label: '4–7d',    value: data.semana,  color: '#7C3AED' },
   ];
 }
+
 function lastNDaysLabels(n: number) {
-  const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']; const out: { key: string; label: string; date: string }[] = [];
-  for (let i = n - 1; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const label = days[d.getDay()]; const key = d.toISOString().slice(0,10); out.push({ key, label, date: key }); }
+  const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const out: { key: string; label: string; date: string }[] = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);       // evita cambios de día por DST
+    d.setDate(d.getDate() - i);
+    const key = ymd(d);            // ← local, no UTC
+    out.push({ key, label: days[d.getDay()], date: key });
+  }
   return out;
 }
+
 function activityToSeries(arr?: Dashboard['activity']) {
-  const labels = lastNDaysLabels(7); const map = new Map(labels.map(l => [l.key, 0]));
-  if (Array.isArray(arr)) arr.forEach(a => { const k = String(a.whenAt).slice(0,10); if (map.has(k)) map.set(k, (map.get(k) || 0) + 1); });
-  return { values: labels.map(l => ({ value: map.get(l.key) || 0 })), labels: labels.map(l => l.label) };
+  const labels = lastNDaysLabels(7);
+  const map = new Map<string, number>(labels.map(l => [l.key, 0]));
+
+  if (Array.isArray(arr)) {
+    arr.forEach(a => {
+      const raw = a?.whenAt ?? '';
+      const rawStr = String(raw);
+
+      // Si ya viene YYYY-MM-DD, úsalo directo; si viene ISO/fecha con hora, normaliza a local.
+      let k: string;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(rawStr)) {
+        k = rawStr;
+      } else {
+        const d = new Date(rawStr);
+        k = isNaN(d.getTime()) ? rawStr.slice(0, 10) : ymd(d);
+      }
+
+      if (map.has(k)) map.set(k, (map.get(k) || 0) + 1);
+    });
+  }
+
+  return {
+    values: labels.map(l => ({ value: map.get(l.key) || 0 })),
+    labels: labels.map(l => l.label),
+  };
 }
+
+
 
 // Panel lateral (sidebar “card” redondeada tipo Canva)
 const PanelRow: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, value }) => (
@@ -450,12 +490,70 @@ const PromoBanner: React.FC<{ onPress: () => void; hidden?: boolean }> = ({ onPr
 };
 
 
+
 // ---------------- Pantalla ----------------
 export default function HomeScreen({ navigation }: Props) {
   const { logout } = useContext(AuthContext);
   const auth = useContext(AuthContext) as any;
   const currentUserEmail: string | null = auth?.user?.email ?? auth?.email ?? null;
   useFonts({ Apoka: require('../../assets/fonts/apokaregular.ttf') });
+
+  type SalesSeries = { values: { value: number }[]; labels: string[] };
+  const [sales7, setSales7] = useState<SalesSeries>({ values: [], labels: [] });
+
+  const fetchSalesLast7Days = useCallback(async () => {
+    try {
+      const now = new Date();
+      const from = new Date(now); from.setDate(now.getDate() - 6);
+
+      // 1) Pedimos ventas agrupadas por día, sumando total
+      const body:any = {
+        source: 'sales',
+        groupBy: ['date:day'],
+        metrics: ['sum_total'],
+        from: ymd(from),
+        to: ymd(now),
+        // opcional: si querés solo facturas pagadas
+        // status: 'paid'
+        // opcional: currency: 'NIO'
+      };
+
+      const { data } = await api.post('/reports/run', body);
+      const cols: string[] = data?.columns || [];
+      const rows: any[][] = data?.rows || [];
+
+      // 2) Ubicamos columnas (flexible ante cambios de encabezado)
+      const dateIdx = Math.max(
+        cols.findIndex(c => /date(.+day)?/i.test(c)),   // "date" o "date:day" o "date_day"
+        cols.findIndex(c => /fecha/i.test(c)),
+      );
+      const totalIdx = Math.max(
+        cols.findIndex(c => /sum_total/i.test(c)),
+        cols.findIndex(c => /total/i.test(c))
+      );
+
+      // 3) Mapeamos a un diccionario por YYYY-MM-DD
+      const map = new Map<string, number>();
+      for (const r of rows) {
+        const raw = r?.[dateIdx];
+        const t = typeof raw === 'string' ? raw : String(raw ?? '');
+        // normalizamos a yyyy-mm-dd (si viene con tiempo)
+        const key = /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : ymd(new Date(t));
+        const amt = Number(r?.[totalIdx] ?? 0) || 0;
+        map.set(key, (map.get(key) || 0) + amt);
+      }
+
+      // 4) Construimos la serie de 7 días exactos (cero donde no haya ventas)
+      const labels7 = lastNDaysLabels(7); // ya existe en tu archivo
+      const values = labels7.map(d => ({ value: map.get(d.key) || 0 }));
+      const labels = labels7.map(d => d.label);
+
+      setSales7({ values, labels });
+    } catch (e:any) {
+      console.warn('fetchSalesLast7Days error', e?.message || e);
+      setSales7({ values: [], labels: [] });
+    }
+  }, []);
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -530,7 +628,6 @@ export default function HomeScreen({ navigation }: Props) {
     return () => clearTimeout(id);
   }, [measureAll, width, panelOpen]);
 
-  const { current: appState } = useRef(AppState.currentState);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchDashboard = useCallback(async () => {
@@ -558,8 +655,8 @@ const handleImportExcel = useCallback(async () => {
     const res = await importExcelProducts({
       api,
       fetchDashboard,
-      OLLAMA_BASE,
-      OLLAMA_MODEL,
+      ollamaBase: OLLAMA_BASE,
+      ollamaModel: OLLAMA_MODEL,
       onBusy: setImporting,
       // opcional: onProgress: (m)=>setAlgúnEstadoDeProgreso(m),
     });
@@ -581,27 +678,45 @@ const handleImportExcel = useCallback(async () => {
 
 
 
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
   useEffect(() => {
-    const unsub = navigation.addListener?.('focus', fetchDashboard);
+    fetchDashboard();
+    fetchSalesLast7Days();
+  }, [fetchDashboard, fetchSalesLast7Days]);
+
+  useEffect(() => {
+    const unsub = navigation.addListener?.('focus', () => {
+      fetchDashboard();
+      fetchSalesLast7Days();
+    });
     return unsub;
-  }, [navigation, fetchDashboard]);
+  }, [navigation, fetchDashboard, fetchSalesLast7Days]);
+
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', nextState => {
-      if ((appState as any).match(/inactive|background/) && nextState === 'active') {
-        setPolling(true); fetchDashboard();
-      } else if ((nextState as any).match(/inactive|background/)) {
+      if (nextState === 'active') {
+        setPolling(true);
+        fetchDashboard();
+        fetchSalesLast7Days();
+      } else if (String(nextState).match(/inactive|background/)) {
         setPolling(false);
       }
-    }); return () => sub.remove();
-  }, [fetchDashboard, appState]);
+    });
+    return () => sub.remove();
+  }, [fetchDashboard, fetchSalesLast7Days]);
+
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | null = null;
-    if (polling) interval = setInterval(fetchDashboard, 60000);
+    if (polling) {
+      interval = setInterval(() => {
+        fetchDashboard();
+        fetchSalesLast7Days();
+      }, 60000);
+    }
     return () => { if (interval) clearInterval(interval); };
-  }, [polling, fetchDashboard]);
+  }, [polling, fetchDashboard, fetchSalesLast7Days]);
+
 
   // Mostrar tutorial solo la primera vez
   useEffect(() => {
@@ -785,7 +900,13 @@ Estado: ${context}`;
         ref={scrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={[{ paddingBottom: 28 }, panelPinned ? { paddingLeft: panelWidth } : null]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { fetchDashboard(); setTimeout(measureAll, 300); }} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { 
+            fetchDashboard(); 
+            fetchSalesLast7Days(); 
+            setTimeout(measureAll, 300); 
+          }} />
+        }
         stickyHeaderIndices={sticky}
         contentInsetAdjustmentBehavior="automatic"
         onLayout={() => setTimeout(measureAll, 200)}
@@ -1019,7 +1140,7 @@ Estado: ${context}`;
             {/* Columna derecha */}
             <View style={[styles.col, isWide && styles.colRight]}>
               {/* Alertas */}
-              <Section title="Alertas" subtitle="Riesgos y pendientes" right={<View style={styles.row}><SmallBtn title="Refrescar" onPress={() => { fetchDashboard(); setTimeout(measureAll, 200); }} /></View>}>
+              <Section title="Alertas" subtitle="Riesgos y pendientes" right={<View style={styles.row}><SmallBtn title="Refrescar" onPress={() => { fetchDashboard(); fetchSalesLast7Days(); setTimeout(measureAll, 200); }} /></View>}>
 
                 {/* Asesor IA */}
                 <GradientCard style={{ marginBottom: 12 }}>
@@ -1224,7 +1345,15 @@ Estado: ${context}`;
               </Section>
 
               {/* Actividad reciente */}
-              <Section title="Actividad reciente" subtitle="Últimos movimientos en el sistema">
+              <Section
+                title="Actividad reciente"
+                subtitle="Últimos movimientos en el sistema"
+                right={
+                  <View style={styles.row}>
+                    <SmallBtn title="Ver detalle" onPress={() => navigation.navigate('RecentActivity')} />
+                  </View>
+                }
+              >
                 {loadingFirst ? (
                   <View style={{ gap: 8 }}>
                     {[...Array(isWide ? 10 : 6)].map((_, i) => (
@@ -1259,7 +1388,7 @@ Estado: ${context}`;
                     <Label muted>Último sync: {dashboard?.lastSync ? `${dashboard.lastSync} · ${timeAgo(dashboard.lastSync)}` : '—'}</Label>
                   </View>
                   <View style={{ marginTop: 8, flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                    <SmallBtn title="Refrescar tablero" onPress={() => { fetchDashboard(); setTimeout(measureAll, 200); }} />
+                    <SmallBtn title="Refrescar tablero" onPress={() => { fetchDashboard(); fetchSalesLast7Days(); setTimeout(measureAll, 200); }} />
                     <SmallBtn title={polling ? 'Pausar auto-refresco' : 'Reanudar auto-refresco'} onPress={() => setPolling(p => !p)} />
                   </View>
                 </Card>
