@@ -263,11 +263,16 @@ export default function LoginScreen() {
               </Animated.View>
 
               {/* Easter egg: 5 taps abre la screen secreta */}
-              <Pressable onPress={onSecretPress} hitSlop={10}>
+              <Pressable
+                onPress={onSecretPress}
+                hitSlop={10}
+                style={{ position: 'absolute', bottom: 18, left: 0, right: 0, alignItems: 'center' }}
+              >
                 <Text style={styles.site}>
                   PapuThink · Contadito{secretTaps > 0 ? ` · ${secretTaps}/5` : ''}
                 </Text>
               </Pressable>
+
             </LinearGradient>
           </Animated.View>
 
@@ -448,7 +453,12 @@ const styles = StyleSheet.create({
   welcomeTitle: { ...F, color: '#fff', fontSize: 26 },
   welcomeSub: { ...F, color: 'rgba(255,255,255,0.9)', marginTop: 6 },
 
-  site: { ...F, color: 'rgba(255,255,255,0.9)', position: 'absolute', bottom: 18 },
+  site: {
+    ...F,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+  },
+
 
   // Panel derecho (form)
   right: { flex: 1, backgroundColor: P.white },
