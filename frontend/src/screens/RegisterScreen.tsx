@@ -115,7 +115,6 @@ export default function RegisterScreen() {
   const emailError = useMemo(() => {
     const v = ownerEmail.trim();
     if (!v) return 'Ingresa tu correo.';
-    // Regex simple y robusto para email
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!re.test(v)) return 'Ingresa un correo válido.';
     return null;
@@ -127,8 +126,6 @@ export default function RegisterScreen() {
     if (v.length < 8) return 'Debe tener al menos 8 caracteres.';
     if (!/[A-Za-z]/.test(v)) return 'Debe incluir al menos una letra.';
     if (!/[0-9]/.test(v)) return 'Debe incluir al menos un número.';
-    // opcional: exigir caracter especial
-    // if (!/[^\w\s]/.test(v)) return 'Debe incluir al menos un símbolo.';
     return null;
   }, [password]);
 
@@ -156,7 +153,6 @@ export default function RegisterScreen() {
 
   // --------- Registro ----------
   const handleRegister = async () => {
-    // marca todos como tocados para mostrar errores si los hay
     setTenantTouched(true);
     setOwnerTouched(true);
     setEmailTouched(true);
@@ -173,31 +169,42 @@ export default function RegisterScreen() {
         ownerEmail: ownerEmail.trim(),
         password,
       };
+
       const res = await api.post('/auth/register-tenant', payload);
-      const token = res.data?.token as string | undefined;
-      if (!token) {
-        Alert.alert('Registro', 'Se registró, pero no se recibió token. Inicia sesión manualmente.');
+
+      // 💡 El backend ahora devuelve 202 Accepted y NO token aún.
+      // Si llega 202 → navegar a VerifyEmailScreen con el email.
+      if (res.status === 202) {
+        // Opcional: mostrar aviso
+        Alert.alert('Verificación', 'Te enviamos un código a tu correo. Revísalo e ingrésalo en la siguiente pantalla.');
+        navigation.navigate('VerifyEmail', { email: ownerEmail.trim() });
         return;
       }
-      await login(token);
+
+      // Si por algún motivo el backend devolviera token (flujo legacy), se mantiene:
+      const token = res.data?.token as string | undefined;
+      if (token) {
+        await login(token);
+        return;
+      }
+
+      // Si no hubo token y tampoco 202, informar:
+      Alert.alert('Registro', 'Registro realizado. Continúa con la verificación de correo.');
+      navigation.navigate('VerifyEmail', { email: ownerEmail.trim() });
+
     } catch (e: any) {
       const status = e?.response?.status;
       const raw = e?.response?.data || e?.message || 'No se pudo registrar';
       if (status === 409) {
-        setError('Ese correo ya está registrado.');
-        Alert.alert('Registro', 'Ese correo ya está registrado.');
+        setError('Ese correo o tenant ya está registrado.');
+        Alert.alert('Registro', 'Ese correo o tenant ya está registrado.');
       } else if (status === 400) {
         setError('Datos inválidos. Verifica la información ingresada.');
         Alert.alert('Registro', 'Datos inválidos. Verifica la información ingresada.');
       } else {
         const msg = String(raw);
-        if (msg.toLowerCase().includes('email') && msg.toLowerCase().includes('exists')) {
-          setError('Ese correo ya está registrado.');
-          Alert.alert('Registro', 'Ese correo ya está registrado.');
-        } else {
-          setError('No se pudo registrar. Intenta de nuevo.');
-          Alert.alert('Error', msg);
-        }
+        setError('No se pudo registrar. Intenta de nuevo.');
+        Alert.alert('Error', msg);
       }
     } finally {
       setLoading(false);

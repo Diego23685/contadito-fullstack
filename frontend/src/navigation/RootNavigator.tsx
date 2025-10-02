@@ -29,8 +29,10 @@ import ProfitCompetitivenessScreen from '../screens/competitive/ProfitCompetitiv
 import SalesForecastScreen from '../screens/simulation/SalesForecastScreen';
 import ImportSummaryScreen from '../imports/ImportSummaryScreen';
 import OllamaChat from '../screens/OllamaChat';
-
 import RecentActivity from '../screens/activity/RecentActivity';
+
+// 👇 OJO: ruta exacta a tu archivo
+import VerifyEmailScreen from '../screens/autentication/VerifyEmailScreen';
 
 // Store (público)
 import StoreFront from '../screens/store/StoreFront';
@@ -38,11 +40,12 @@ import ProductDetail from '../screens/store/ProductDetail';
 import CartScreen from '../screens/store/CartScreen';
 import CheckoutScreen from '../screens/store/CheckoutScreen';
 
+// Easter egg
+import EasterEgg from '../screens/EasterEgg';
+
 const Stack = createNativeStackNavigator();
 
-/**
- * Paleta (alineada con tus screens)
- */
+/** Paleta */
 const P = {
   blue: '#2563EB',
   hanBlue: '#4458C7',
@@ -55,72 +58,42 @@ const P = {
   pageBottom: '#101733',
 };
 
-// Sombra sutil del header (iOS) y elevation en Android
 const headerShadow = Platform.select({
-  ios: {
-    headerShadowVisible: true,
-  },
-  android: {
-    headerShadowVisible: false,
-  },
+  ios: { headerShadowVisible: true },
+  android: { headerShadowVisible: false },
   default: {},
 });
 
-/**
- * Header para la app privada (claro)
- */
+/** Header app privada */
 const appHeader = {
-  headerStyle: {
-    backgroundColor: P.white,
-  },
-  headerTintColor: P.hanBlue, // color del back / íconos
-  headerTitleStyle: {
-    color: P.text,
-    // Usa tu fuente Apoka si está cargada en la app
-    fontFamily: 'Apoka',
-    fontSize: 17,
-  },
+  headerStyle: { backgroundColor: P.white },
+  headerTintColor: P.hanBlue,
+  headerTitleStyle: { color: P.text, fontFamily: 'Apoka', fontSize: 17 },
   headerBackTitleVisible: false,
-  // Sombra/borde
   headerLargeTitleShadowVisible: false,
-  contentStyle: {
-    backgroundColor: '#EEF2FF', // surfaceTint de tus pantallas
-  },
+  contentStyle: { backgroundColor: '#EEF2FF' },
   ...headerShadow,
 } as const;
 
-/**
- * Header para la tienda pública (oscuro)
- */
+/** Header tienda pública */
 const publicHeader = {
-  headerStyle: {
-    backgroundColor: P.pageTop,
-  },
+  headerStyle: { backgroundColor: P.pageTop },
   headerTintColor: '#E5EDFF',
-  headerTitleStyle: {
-    color: '#F8FAFF',
-    fontFamily: 'Apoka',
-    fontSize: 17,
-  },
+  headerTitleStyle: { color: '#F8FAFF', fontFamily: 'Apoka', fontSize: 17 },
   headerBackTitleVisible: false,
-  contentStyle: {
-    backgroundColor: P.white,
-  },
+  contentStyle: { backgroundColor: P.white },
   ...headerShadow,
 } as const;
 
-/**
- * Opciones comunes
- */
+/** Opciones comunes */
 const commonScreenOptions = {
-  animation: 'fade',
+  animation: 'fade' as const,
   gestureEnabled: true,
   headerTitleAlign: 'center' as const,
-  // En iOS habilita títulos grandes en algunas pantallas
   headerLargeTitle: Platform.OS === 'ios',
   statusBarStyle: Platform.select<'light' | 'dark'>({
     ios: 'dark',
-    android: 'light', // Android controla por tema; lo dejamos informativo
+    android: 'light',
     default: 'dark',
   }),
 };
@@ -140,27 +113,14 @@ export default function RootNavigator() {
         {/* Splash sin header */}
         <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
 
+        {/* ======= SIEMPRE DISPONIBLE ======= */}
+        <Stack.Screen name="EasterEgg" component={EasterEgg} options={{ headerShown: false }} />
+
         {/* ======= TIENDA PÚBLICA ======= */}
-        <Stack.Screen
-          name="Store"
-          component={StoreFront}
-          options={{ title: 'Tienda', ...publicHeader }}
-        />
-        <Stack.Screen
-          name="StoreFront"
-          component={StoreFront}
-          options={{ title: 'Tienda', ...publicHeader }}
-        />
-        <Stack.Screen
-          name="ProductDetail"
-          component={ProductDetail}
-          options={{ title: 'Producto', ...publicHeader }}
-        />
-        <Stack.Screen
-          name="Cart"
-          component={CartScreen}
-          options={{ title: 'Carrito', ...publicHeader }}
-        />
+        <Stack.Screen name="Store" component={StoreFront} options={{ title: 'Tienda', ...publicHeader }} />
+        <Stack.Screen name="StoreFront" component={StoreFront} options={{ title: 'Tienda', ...publicHeader }} />
+        <Stack.Screen name="ProductDetail" component={ProductDetail} options={{ title: 'Producto', ...publicHeader }} />
+        <Stack.Screen name="Cart" component={CartScreen} options={{ title: 'Carrito', ...publicHeader }} />
         <Stack.Screen
           name="Checkout"
           component={CheckoutScreen}
@@ -172,29 +132,27 @@ export default function RootNavigator() {
         />
 
         {!token ? (
-          // ======= AUTH =======
+          /* ======= AUTH (público) ======= */
           <>
             <Stack.Screen
               name="Login"
               component={LoginScreen}
-              options={{
-                title: 'Iniciar sesión',
-                headerStyle: { backgroundColor: P.white },
-                headerTintColor: P.hanBlue,
-              }}
+              options={{ title: 'Iniciar sesión', headerStyle: { backgroundColor: P.white }, headerTintColor: P.hanBlue }}
             />
             <Stack.Screen
               name="Register"
               component={RegisterScreen}
-              options={{
-                title: 'Crear cuenta',
-                headerStyle: { backgroundColor: P.white },
-                headerTintColor: P.hanBlue,
-              }}
+              options={{ title: 'Crear cuenta', headerStyle: { backgroundColor: P.white }, headerTintColor: P.hanBlue }}
+            />
+            {/* 👇 MOVIDO AQUÍ: accesible SIN token */}
+            <Stack.Screen
+              name="VerifyEmail"
+              component={VerifyEmailScreen}
+              options={{ headerShown: true, title: 'Verifica tu correo' }}
             />
           </>
         ) : (
-          // ======= APP PRIVADA =======
+          /* ======= APP PRIVADA (requiere token) ======= */
           <>
             <Stack.Screen
               name="Home"
@@ -213,11 +171,7 @@ export default function RootNavigator() {
             <Stack.Screen
               name="ProductForm"
               component={ProductForm}
-              options={{
-                title: 'Producto',
-                // Modal sheet visual en iOS para formularios largos
-                presentation: Platform.OS === 'ios' ? 'formSheet' : 'card',
-              }}
+              options={{ title: 'Producto', presentation: Platform.OS === 'ios' ? 'formSheet' : 'card' }}
             />
             <Stack.Screen name="CustomersList" component={CustomersList} options={{ title: 'Clientes' }} />
             <Stack.Screen
@@ -245,7 +199,6 @@ export default function RootNavigator() {
 
             {/* Reportes */}
             <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Reportes' }} />
-
             <Stack.Screen
               name="ProfitCompetitiveness"
               component={ProfitCompetitivenessScreen}
@@ -262,7 +215,6 @@ export default function RootNavigator() {
 
             <Stack.Screen name="TenantSwitch" component={TenantSwitch} options={{ title: 'Cambiar empresa' }} />
           </>
-          
         )}
       </Stack.Navigator>
     </CartProvider>

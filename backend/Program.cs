@@ -5,6 +5,8 @@ using Microsoft.IdentityModel.Tokens;
 using Contadito.Api.Data;
 using Contadito.Api.Infrastructure;
 using Contadito.Api.Infrastructure.Security;
+using Contadito.Api.Infrastructure.Email; // ADD
+using MailKit; // opcional, por claridad de paquete
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,11 +36,7 @@ builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
 // Clave de 32+ bytes para HS256
 var rawKey = string.IsNullOrWhiteSpace(jwt.Key) ? "super-secret-dev-key-32bytes-minimo" : jwt.Key!;
-if (rawKey.Length < 32)
-{
-    // asegurar longitud minima en dev
-    rawKey = rawKey.PadRight(32, 'x');
-}
+if (rawKey.Length < 32) rawKey = rawKey.PadRight(32, 'x');
 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(rawKey));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -56,6 +54,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// ADD: Smtp options + EmailSender
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+
 var app = builder.Build();
 
 // (opcional, útil en dev) Asegura que exista wwwroot
@@ -63,7 +65,7 @@ var webRoot = app.Environment.WebRootPath ?? Path.Combine(app.Environment.Conten
 if (!Directory.Exists(webRoot)) Directory.CreateDirectory(webRoot);
 
 // ⚠️ Necesario para servir /uploads/... (imágenes)
-app.UseStaticFiles();  // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+app.UseStaticFiles();
 
 // Pipeline
 app.UseRouting();

@@ -4,5 +4,7 @@ namespace Contadito.Api.Domain.DTOs
     public record LoginRequest(string Email, string Password);
     public record RegisterTenantRequest(string TenantName, string OwnerName, string OwnerEmail, string Password);
     public record AuthResponse(string Token, int ExpiresInSeconds);
-    // OJO: aquí ya NO deben estar ProductCreateDto ni ProductUpdateDto
+    
+    public record RequestEmailCodeDto(string Email, string Purpose);
+    public record VerifyEmailCodeDto(string Email, string Code, string Purpose);
 }

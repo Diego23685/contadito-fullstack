@@ -24,6 +24,8 @@ namespace Contadito.Api.Data
 
         public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
 
+        public DbSet<EmailVerification> EmailVerifications => Set<EmailVerification>();
+
 
         // Compras
         public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
@@ -55,6 +57,17 @@ namespace Contadito.Api.Data
             mb.Entity<Product>().Property(p => p.StdCost).HasColumnType("decimal(18,6)");
             // Índice recomendado para tienda pública
             mb.Entity<Product>().HasIndex(p => new { p.TenantId, p.IsPublic, p.Name });
+
+            mb.Entity<EmailVerification>(e =>
+            {
+                e.ToTable("email_verifications");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Email).HasMaxLength(160);
+                e.Property(x => x.Purpose).HasMaxLength(32);
+
+                e.HasIndex(x => new { x.TenantId, x.UserId, x.Purpose, x.Email, x.ExpiresAt })
+                    .HasDatabaseName("idx_email_verif_user_purpose");
+            });
 
             // StoreOrder
             mb.Entity<StoreOrder>(e =>

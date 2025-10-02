@@ -92,6 +92,25 @@ export default function LoginScreen() {
   const fade = useRef(new Animated.Value(1)).current;
   const float = useRef(new Animated.Value(0)).current;
 
+  // === Easter egg (5 taps en "PapuThink · Contadito") ===
+  const [secretTaps, setSecretTaps] = useState(0);
+  const lastTapRef = useRef<number>(0);
+  const onSecretPress = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current > 3000) setSecretTaps(0); // resetea si tardas >3s
+    lastTapRef.current = now;
+
+    setSecretTaps((n) => {
+      const next = n + 1;
+      if (next >= 5) {
+        setTimeout(() => setSecretTaps(0), 0);
+        // 🚀 navega a la pantalla secreta (asegúrate de registrar 'EasterEgg' en tu navigator)
+        navigation.navigate('EasterEgg');
+      }
+      return next;
+    });
+  };
+
   useEffect(() => {
     // Fade out → cambia índice → fade in
     const interval = setInterval(() => {
@@ -242,7 +261,13 @@ export default function LoginScreen() {
                 <Text style={styles.welcomeTitle}>{WELCOMES[welcomeIdx][0]}</Text>
                 <Text style={styles.welcomeSub}>{WELCOMES[welcomeIdx][1]}</Text>
               </Animated.View>
-              <Text style={styles.site}>PapuThink · Contadito</Text>
+
+              {/* Easter egg: 5 taps abre la screen secreta */}
+              <Pressable onPress={onSecretPress} hitSlop={10}>
+                <Text style={styles.site}>
+                  PapuThink · Contadito{secretTaps > 0 ? ` · ${secretTaps}/5` : ''}
+                </Text>
+              </Pressable>
             </LinearGradient>
           </Animated.View>
 
@@ -422,6 +447,7 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: { ...F, color: '#fff', fontSize: 26 },
   welcomeSub: { ...F, color: 'rgba(255,255,255,0.9)', marginTop: 6 },
+
   site: { ...F, color: 'rgba(255,255,255,0.9)', position: 'absolute', bottom: 18 },
 
   // Panel derecho (form)
