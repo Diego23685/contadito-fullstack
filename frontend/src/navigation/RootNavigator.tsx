@@ -30,6 +30,7 @@ import SalesForecastScreen from '../screens/simulation/SalesForecastScreen';
 import ImportSummaryScreen from '../imports/ImportSummaryScreen';
 import OllamaChat from '../screens/OllamaChat';
 import RecentActivity from '../screens/activity/RecentActivity';
+import OnboardingScreen from '../screens/onboarding/OnboardingScreen'; // <-- importa
 
 // 👇 OJO: ruta exacta a tu archivo
 import VerifyEmailScreen from '../screens/autentication/VerifyEmailScreen';
@@ -119,7 +120,11 @@ export default function RootNavigator() {
         {/* ======= TIENDA PÚBLICA ======= */}
         <Stack.Screen name="Store" component={StoreFront} options={{ title: 'Tienda', ...publicHeader }} />
         <Stack.Screen name="StoreFront" component={StoreFront} options={{ title: 'Tienda', ...publicHeader }} />
-        <Stack.Screen name="ProductDetail" component={ProductDetail} options={{ title: 'Producto', ...publicHeader }} />
+        <Stack.Screen
+          name="ProductDetail"
+          getComponent={() => require('../screens/store/ProductDetail').default}
+          options={{ title: 'Producto', ...publicHeader }}
+        />
         <Stack.Screen name="Cart" component={CartScreen} options={{ title: 'Carrito', ...publicHeader }} />
         <Stack.Screen
           name="Checkout"
@@ -164,6 +169,13 @@ export default function RootNavigator() {
                 headerLargeTitle: Platform.OS === 'ios',
               }}
             />
+
+            <Stack.Screen
+              name="Onboarding"
+              component={OnboardingScreen}
+              options={{ title: 'Configurar negocio' }}
+            />
+
             <Stack.Screen name="UserScreen" component={UserScreen} options={{ title: 'Usuario' }} />
 
             {/* CRUDs */}

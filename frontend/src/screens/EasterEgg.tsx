@@ -269,4 +269,20 @@ const styles = StyleSheet.create({
     borderRadius: 10, alignItems: 'center'
   },
   btnPrimaryTxt: { ...F, color: '#fff' },
+
+    btnGhost: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: BRAND.border,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnGhostTxt: {
+    ...F,
+    color: BRAND.blue,
+  },
+
 });

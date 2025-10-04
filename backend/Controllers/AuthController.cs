@@ -6,10 +6,12 @@ using Contadito.Api.Domain.DTOs;
 using Contadito.Api.Domain.Entities;
 using Contadito.Api.Infrastructure.Email;
 using Contadito.Api.Infrastructure.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Google.Apis.Auth;
 
 namespace Contadito.Api.Controllers
 {
@@ -20,14 +22,164 @@ namespace Contadito.Api.Controllers
         private readonly AppDbContext _db;
         private readonly JwtOptions _jwt;
         private readonly IEmailSender _emailSender;
+        private readonly GoogleAuthOptions _google;
 
-        public AuthController(AppDbContext db, IOptions<JwtOptions> jwt, IEmailSender emailSender)
+        public AuthController(
+            AppDbContext db,
+            IOptions<JwtOptions> jwt,
+            IEmailSender emailSender,
+            IOptions<GoogleAuthOptions> google)
         {
             _db = db;
             _jwt = jwt.Value;
             _emailSender = emailSender;
+            _google = google.Value;
         }
 
+        // === Google Sign-In con auto-alta y flag de onboarding ===
+        [HttpPost("google")]
+        public async Task<ActionResult<AuthResponse>> GoogleSignIn([FromBody] GoogleSignInDto payload)
+        {
+            if (string.IsNullOrWhiteSpace(payload.Email) || string.IsNullOrWhiteSpace(payload.Subject))
+                return BadRequest("Email y Subject son obligatorios.");
+
+            var now = DateTime.UtcNow;
+
+            var user = await _db.Users
+                .FirstOrDefaultAsync(u => u.Email == payload.Email && u.DeletedAt == null);
+
+            if (user == null)
+            {
+                using var tx = await _db.Database.BeginTransactionAsync();
+
+                // 1) Tenant trial
+                var tenant = new Tenant
+                {
+                    Name = $"Negocio de {payload.Name ?? payload.Email}",
+                    Plan = "free",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                _db.Tenants.Add(tenant);
+                await _db.SaveChangesAsync();
+
+                // 2) Usuario owner verificado por Google
+                user = new User
+                {
+                    Email = payload.Email,
+                    Name = payload.Name ?? payload.Email,              // ✅ evita CS8601
+                    TenantId = tenant.Id,
+                    Role = "owner",
+                    Status = "onboarding",                             // <= 16 chars
+                    EmailVerifiedAt = now,
+                    LastLoginAt = now,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+
+                    // ✅ password_hash es [Required]: guarda un hash aleatorio
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"))
+                };
+                _db.Users.Add(user);
+                await _db.SaveChangesAsync();
+
+                // 3) Enlaza external_login google
+                _db.ExternalLogins.Add(new ExternalLogin
+                {
+                    TenantId = tenant.Id,
+                    UserId = user.Id,
+                    Provider = "google",
+                    ProviderUserId = payload.Subject,
+                    CreatedAt = now
+                });
+                await _db.SaveChangesAsync();
+
+                await tx.CommitAsync();
+
+                var token = GenerateToken(user);
+                return Ok(new AuthResponse
+                {
+                    Token = token,
+                    ExpiresInSeconds = _jwt.ExpiresMinutes * 60,
+                    OnboardingRequired = true,
+                    TenantId = tenant.Id,
+                    Name = user.Name
+                });
+            }
+
+            // Usuario existe → asegura vínculo y actualiza último login
+            var hasLogin = await _db.ExternalLogins.AnyAsync(x =>
+                x.UserId == user.Id && x.Provider == "google" && x.ProviderUserId == payload.Subject);
+
+            if (!hasLogin)
+            {
+                _db.ExternalLogins.Add(new ExternalLogin
+                {
+                    TenantId = user.TenantId,
+                    UserId = user.Id,
+                    Provider = "google",
+                    ProviderUserId = payload.Subject,
+                    CreatedAt = now
+                });
+                await _db.SaveChangesAsync();
+            }
+
+            if (user.EmailVerifiedAt == null)
+                user.EmailVerifiedAt = now;
+
+            user.LastLoginAt = now;
+            user.UpdatedAt = now;
+            await _db.SaveChangesAsync();
+
+            var tokenOk = GenerateToken(user);
+            return Ok(new AuthResponse
+            {
+                Token = tokenOk,
+                ExpiresInSeconds = _jwt.ExpiresMinutes * 60,
+                OnboardingRequired = user.Status == "onboarding",
+                TenantId = user.TenantId,
+                Name = user.Name
+            });
+        }
+
+        // === Completar onboarding (nombre del tenant, país/moneda, password opcional) ===
+        [Authorize]
+        [HttpPost("complete-onboarding")]
+        public async Task<IActionResult> CompleteOnboarding([FromBody] CompleteOnboardingDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.TenantName))
+                return BadRequest("TenantName es obligatorio.");
+
+            var uid = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                      ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(uid)) return Unauthorized();
+
+            var userId = long.Parse(uid);
+            var user = await _db.Users.FirstAsync(u => u.Id == userId && u.DeletedAt == null);
+            var tenant = await _db.Tenants.FirstAsync(t => t.Id == user.TenantId);
+
+            tenant.Name = dto.TenantName.Trim();
+
+            // Tu entidad usa 'country' => asigna desde dto.CountryCode
+            if (!string.IsNullOrWhiteSpace(dto.CountryCode)) tenant.Country = dto.CountryCode;
+
+            // Moneda (agregada en la entidad Tenant arriba)
+            if (!string.IsNullOrWhiteSpace(dto.Currency)) tenant.Currency = dto.Currency;
+
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+            {
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            }
+
+            user.Status = "active";
+            tenant.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        // === Registro tradicional (con verificación por email/OTP) ===
         [HttpPost("register-tenant")]
         public async Task<ActionResult> RegisterTenant([FromBody] RegisterTenantRequest req)
         {
@@ -37,7 +189,7 @@ namespace Contadito.Api.Controllers
             if (await _db.Users.AnyAsync(u => u.Email == req.OwnerEmail && u.DeletedAt == null))
                 return Conflict("Email already exists");
 
-            var tenant = new Tenant { Name = req.TenantName };
+            var tenant = new Tenant { Name = req.TenantName, UpdatedAt = DateTime.UtcNow };
             _db.Tenants.Add(tenant);
             await _db.SaveChangesAsync();
 
@@ -109,6 +261,8 @@ namespace Contadito.Api.Controllers
             ev.ConsumedAt = DateTime.UtcNow;
             user.EmailVerifiedAt = DateTime.UtcNow;
             user.Status = "active";
+            user.UpdatedAt = DateTime.UtcNow;
+
             await _db.SaveChangesAsync();
 
             var token = GenerateToken(user);
@@ -128,15 +282,18 @@ namespace Contadito.Api.Controllers
                 return Unauthorized("Email not verified");
 
             user.LastLoginAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
             var token = GenerateToken(user);
             return Ok(new AuthResponse(token, _jwt.ExpiresMinutes * 60));
         }
 
+        // ===== Helpers =====
+
         private async Task CreateAndSendOtpAsync(User user, string purpose)
         {
-            // Invalida códigos previos no consumidos (opcional pero recomendable)
+            // Invalida códigos previos no consumidos
             var old = _db.EmailVerifications.Where(x => x.UserId == user.Id && x.Purpose == purpose && x.ConsumedAt == null);
             _db.EmailVerifications.RemoveRange(old);
             await _db.SaveChangesAsync();

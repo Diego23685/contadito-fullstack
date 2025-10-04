@@ -24,10 +24,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Circle } from 'react-native-svg';
 import { useFonts } from 'expo-font';
-
+import GoogleButton from '../components/GoogleButton';
 import { api, setBaseUrl } from '../api';
 import { AuthContext } from '../providers/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ---------------- Config ----------------
 const ANDROID_LOCALHOST = 'http://10.0.2.2:5000';
@@ -70,7 +71,7 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, 
 export default function LoginScreen() {
   const { width } = useWindowDimensions();
   const isWide = width >= 980; // caja en dos columnas; si no, stack vertical
-  const { login } = useContext(AuthContext);
+  const { login, loginWithGoogle } = useContext(AuthContext); // ← incluye login ✅
   const navigation = useNavigation<any>();
 
   // Carga de la fuente Apoka (no bloquea el render)
@@ -83,6 +84,12 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const onGooglePress = () =>
+    loginWithGoogle({
+      onOnboarding: () => navigation.reset({ index: 0, routes: [{ name: 'Onboarding' }] }),
+      onSuccess:    () => navigation.reset({ index: 0, routes: [{ name: 'Home' }] }),
+    });
+
   // Validación: toques de campos
   const [emailTouched, setEmailTouched] = useState(false);
   const [passTouched, setPassTouched] = useState(false);
@@ -91,25 +98,6 @@ export default function LoginScreen() {
   const [welcomeIdx, setWelcomeIdx] = useState(0);
   const fade = useRef(new Animated.Value(1)).current;
   const float = useRef(new Animated.Value(0)).current;
-
-  // === Easter egg (5 taps en "PapuThink · Contadito") ===
-  const [secretTaps, setSecretTaps] = useState(0);
-  const lastTapRef = useRef<number>(0);
-  const onSecretPress = () => {
-    const now = Date.now();
-    if (now - lastTapRef.current > 3000) setSecretTaps(0); // resetea si tardas >3s
-    lastTapRef.current = now;
-
-    setSecretTaps((n) => {
-      const next = n + 1;
-      if (next >= 5) {
-        setTimeout(() => setSecretTaps(0), 0);
-        // 🚀 navega a la pantalla secreta (asegúrate de registrar 'EasterEgg' en tu navigator)
-        navigation.navigate('EasterEgg');
-      }
-      return next;
-    });
-  };
 
   useEffect(() => {
     // Fade out → cambia índice → fade in
@@ -178,7 +166,9 @@ export default function LoginScreen() {
       const res = await api.post('/auth/login', { email: email.trim(), password });
       const token = res.data?.token as string | undefined;
       if (!token) throw new Error('Respuesta sin token');
-      await login(token);
+      await login(token); // ← usa login del context ✅
+      await AsyncStorage.removeItem('needs_onboarding');
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
       // (opcional) persistir "remember" en almacenamiento seguro
     } catch (e: any) {
       const rawMsg = e?.response?.data || e?.message || '';
@@ -264,13 +254,14 @@ export default function LoginScreen() {
 
               {/* Easter egg: 5 taps abre la screen secreta */}
               <Pressable
-                onPress={onSecretPress}
+                onPress={() => {
+                  // Simple demo: navega directo; si quieres el contador de taps, añade el handler anterior
+                  navigation.navigate('EasterEgg');
+                }}
                 hitSlop={10}
                 style={{ position: 'absolute', bottom: 18, left: 0, right: 0, alignItems: 'center' }}
               >
-                <Text style={styles.site}>
-                  PapuThink · Contadito{secretTaps > 0 ? ` · ${secretTaps}/5` : ''}
-                </Text>
+                <Text style={styles.site}>PapuThink · Contadito</Text>
               </Pressable>
 
             </LinearGradient>
@@ -382,9 +373,9 @@ export default function LoginScreen() {
                   <View style={styles.divider} />
                 </View>
 
-                {/* Botón secundario */}
-                <Pressable style={styles.secondaryBtn} onPress={() => Alert.alert('Other Sign in', 'Social / SSO')}>
-                  <Text style={styles.secondaryBtnText}>Sign in with other</Text>
+                {/* Google Sign-In */}
+                <Pressable onPress={onGooglePress} style={{ marginTop: 8 }}>
+                  <GoogleButton />
                 </Pressable>
 
                 {/* Sign up */}
@@ -459,7 +450,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-
   // Panel derecho (form)
   right: { flex: 1, backgroundColor: P.white },
   formWrap: { padding: 28, alignItems: 'center', minHeight: '100%', justifyContent: 'center' },
@@ -519,7 +509,7 @@ const styles = StyleSheet.create({
   dividerText: { ...F, color: '#64748B' },
 
   // Elementos ya existentes / compat
-  label: { ...F, color: P.sub, marginBottom: 6 }, // para Field (no usado en el nuevo layout, pero lo mantenemos)
+  label: { ...F, color: P.sub, marginBottom: 6 },
   eyeBtn: { position: 'absolute', right: 4, top: 6, padding: 8, borderRadius: 10 },
   eyeEmoji: { ...F },
 

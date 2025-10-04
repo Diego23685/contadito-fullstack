@@ -26,6 +26,7 @@ namespace Contadito.Api.Data
 
         public DbSet<EmailVerification> EmailVerifications => Set<EmailVerification>();
 
+        public DbSet<ExternalLogin> ExternalLogins => Set<ExternalLogin>();
 
         // Compras
         public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
@@ -42,6 +43,23 @@ namespace Contadito.Api.Data
             mb.Entity<User>().HasKey(u => u.Id);
             mb.Entity<Product>().HasKey(p => p.Id);
             mb.Entity<Customer>().HasKey(c => c.Id);
+
+            mb.Entity<ExternalLogin>(e =>
+            {
+                e.ToTable("external_logins");
+                e.HasKey(x => x.Id);
+
+                e.Property(x => x.TenantId).HasColumnName("tenant_id");
+                e.Property(x => x.UserId).HasColumnName("user_id");
+                e.Property(x => x.Provider).HasColumnName("provider").HasMaxLength(32);
+                e.Property(x => x.ProviderUserId).HasColumnName("provider_user_id").HasMaxLength(128);
+                e.Property(x => x.CreatedAt).HasColumnName("created_at")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                e.HasIndex(x => new { x.UserId, x.Provider, x.ProviderUserId })
+                    .HasDatabaseName("idx_extlog_user_provider_sub")
+                    .IsUnique();
+            });
 
             // Warehouse
             mb.Entity<Warehouse>().HasKey(w => w.Id);

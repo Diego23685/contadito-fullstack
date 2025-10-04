@@ -1,9 +1,9 @@
-// src/screens/SplashScreen.tsx
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { AuthContext } from '../providers/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /** ====== BRAND (paleta unificada) ====== */
 const BRAND = {
@@ -19,7 +19,7 @@ const BRAND = {
 
 export default function SplashScreen() {
   const navigation = useNavigation<any>();
-  const { token } = useContext(AuthContext);
+  const { token, hydrated } = useContext(AuthContext); // ← usa hydrated
   const [fontsReady] = useFonts({ Apoka: require('../../assets/fonts/apokaregular.ttf') });
 
   // Core anims
@@ -56,7 +56,6 @@ export default function SplashScreen() {
       ])
     ).start();
 
-    // Dots
     const pulse = (v: Animated.Value, d: number) =>
       Animated.loop(
         Animated.sequence([
@@ -67,7 +66,6 @@ export default function SplashScreen() {
       ).start();
     pulse(dotA, 0); pulse(dotB, 200); pulse(dotC, 400);
 
-    // Orbs
     const swing = (v: Animated.Value, dur: number) =>
       Animated.loop(
         Animated.sequence([
@@ -77,7 +75,6 @@ export default function SplashScreen() {
       ).start();
     swing(orb1, 4400); swing(orb2, 5200); swing(orb3, 6400);
 
-    // Ring: giro + pulso
     Animated.loop(Animated.timing(ringSpin, { toValue: 1, duration: 3800, easing: Easing.linear, useNativeDriver: true })).start();
     Animated.loop(
       Animated.sequence([
@@ -86,7 +83,6 @@ export default function SplashScreen() {
       ])
     ).start();
 
-    // Sweep highlight
     Animated.loop(
       Animated.sequence([
         Animated.timing(sweep, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.cubic), useNativeDriver: true }),
@@ -95,7 +91,6 @@ export default function SplashScreen() {
       ])
     ).start();
 
-    // Stars
     Animated.loop(
       Animated.sequence([
         Animated.timing(starsT, { toValue: 1, duration: 4500, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
@@ -106,15 +101,24 @@ export default function SplashScreen() {
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
-    const go = () => {
+    const go = async () => {
+      if (!hydrated) return; // ← espera a que AuthContext rehidrate
       const wait = Math.max(0, MIN_TIME - (Date.now() - startAt));
+      const needs = await AsyncStorage.getItem('needs_onboarding');
       timer = setTimeout(() => {
-        navigation.reset({ index: 0, routes: [{ name: token ? 'Home' : 'Login' }] });
+        if (token) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: needs === '1' ? 'Onboarding' : 'Home' }],
+          });
+        } else {
+          navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+        }
       }, wait);
     };
     if (fontsReady) go();
     return () => { if (timer) clearTimeout(timer); };
-  }, [fontsReady, token, navigation, startAt]);
+  }, [fontsReady, hydrated, token, navigation, startAt]);
 
   // Interpolaciones
   const logoScale = breathe.interpolate({ inputRange: [0, 1], outputRange: [1, 1.035] });
@@ -154,7 +158,6 @@ export default function SplashScreen() {
     transform: [{ scale: logoScale as any }, { translateY: logoTY as any }],
   };
 
-  // Ring anim styles
   const ringStyle: any = {
     transform: [
       { rotate: ringSpin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) as any },
@@ -162,7 +165,6 @@ export default function SplashScreen() {
     ],
   };
 
-  // Sweep highlight: barra que cruza el logo
   const sweepStyle: any = {
     transform: [
       { translateX: sweep.interpolate({ inputRange: [0, 1], outputRange: [-120, 120] }) as any },
@@ -171,20 +173,18 @@ export default function SplashScreen() {
     opacity: sweep.interpolate({ inputRange: [0, 0.2, 0.6, 1], outputRange: [0, 0.45, 0.25, 0] }),
   };
 
-  // Starfield positions fijas (deterministas)
   const STARS = useMemo(
     () =>
       Array.from({ length: 18 }).map((_, i) => {
         const r = (n: number) => Math.abs(Math.sin((i + 1) * n));
-        const x = Math.round(10 + r(1.3) * 80);  // %
-        const y = Math.round(10 + r(2.1) * 80);  // %
+        const x = Math.round(10 + r(1.3) * 80);
+        const y = Math.round(10 + r(2.1) * 80);
         const size = 2 + Math.round(r(3.7) * 2);
         return { key: `s${i}`, left: `${x}%`, top: `${y}%`, size };
       }),
     []
   );
 
-  // Movimiento sutil de estrellas
   const starAnim = (idx: number): any => ({
     transform: [
       { translateY: starsT.interpolate({ inputRange: [0, 1], outputRange: [0, idx % 2 ? -2 : 2] }) as any },
@@ -247,18 +247,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
-
-  // Fondo compuesto
   bgBase: { ...StyleSheet.absoluteFillObject, backgroundColor: BRAND.surfaceTint },
-  vignette: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-    shadowColor: '#000',
-    shadowOpacity: 0.24,
-    shadowRadius: 40,
-  },
+  vignette: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent', shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 40 },
 
-  // Orbes
   orb: {
     position: 'absolute',
     width: 320, height: 320, borderRadius: 160,
@@ -284,27 +275,17 @@ const styles = StyleSheet.create({
   orbTeal: { backgroundColor: BRAND.verdigris, opacity: 0.18 },
   orbPurple: { backgroundColor: BRAND.iris, opacity: 0.14 },
 
-  // Estrellas
-  star: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.9)',
-  },
+  star: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.9)' },
 
-  // Logo stack
   logoStack: { alignItems: 'center', justifyContent: 'center' },
 
-  // Ring
   ring: {
     position: 'absolute',
     width: 160, height: 160, borderRadius: 80,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.18)',
-    shadowColor: '#FFFFFF',
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
+    borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)',
+    shadowColor: '#FFFFFF', shadowOpacity: 0.15, shadowRadius: 20,
   },
 
-  // Logo + claim
   logoWrap: { alignItems: 'center', justifyContent: 'center' },
   logo: {
     fontFamily: 'Apoka',
@@ -316,24 +297,10 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     letterSpacing: 0.6,
   },
-  sub: {
-    fontFamily: 'Apoka',
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 6,
-    textAlign: 'center',
-  },
+  sub: { fontFamily: 'Apoka', color: 'rgba(255,255,255,0.85)', marginTop: 6, textAlign: 'center' },
 
-  // Sweep highlight
-  sweep: {
-    position: 'absolute',
-    width: 160, height: 22,
-    backgroundColor: '#FFFFFF',
-    opacity: 0.2,
-    borderRadius: 12,
-    top: 10,
-  },
+  sweep: { position: 'absolute', width: 160, height: 22, backgroundColor: '#FFFFFF', opacity: 0.2, borderRadius: 12, top: 10 },
 
-  // Loader 3 puntos
   dotsRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
 

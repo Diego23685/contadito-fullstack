@@ -1,81 +1,118 @@
-// src/providers/AuthContext.tsx
-import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useMemo, useState, useEffect } from 'react';
+import { Platform } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { api, authApi } from '../api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setToken as setApiToken, setUnauthorizedHandler } from '../api';
 
-type AuthContextType = {
-  token: string | null;
-  loading: boolean;
+WebBrowser.maybeCompleteAuthSession();
+
+type AuthCtx = {
+  token?: string;
+  hydrated: boolean; // ← listo cuando ya rehidratamos el token
   login: (token: string) => Promise<void>;
-  logout: (silent?: boolean) => Promise<void>;
+  logout: () => Promise<void>;
+  loginWithGoogle: (opts?: { onOnboarding?: () => void; onSuccess?: () => void }) => Promise<void>;
 };
 
-export const AuthContext = createContext<AuthContextType>({
-  token: null,
-  loading: true,
+export const AuthContext = createContext<AuthCtx>({
+  token: undefined,
+  hydrated: false,
   login: async () => {},
   logout: async () => {},
+  loginWithGoogle: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | undefined>(undefined);
+  const [hydrated, setHydrated] = useState(false);
 
-  // Evita múltiples logouts concurrentes (por varios 401 a la vez)
-  const loggingOutRef = useRef(false);
-
-  // Cargar token al iniciar
+  // Rehidratar token una sola vez
   useEffect(() => {
     (async () => {
       try {
-        const saved = await AsyncStorage.getItem('ct_token');
-        if (saved) {
-          setToken(saved);
-          setApiToken(saved);
-        } else {
-          setApiToken(null);
+        const t = await AsyncStorage.getItem('auth_token');
+        if (t) {
+          setToken(t);
+          api.defaults.headers.common.Authorization = `Bearer ${t}`;
         }
       } finally {
-        setLoading(false);
+        setHydrated(true);
       }
     })();
   }, []);
 
-  // Registrar handler global para 401 -> logout silencioso
-  useEffect(() => {
-    setUnauthorizedHandler(() => {
-      // Evitar loops: si ya estamos cerrando sesión, no repetimos
-      if (loggingOutRef.current) return;
-      logout(true);
-    });
-    // No necesita cleanup especial; si el provider se desmonta, la app se cierra
-  }, []);
-
   const login = useCallback(async (t: string) => {
     setToken(t);
-    setApiToken(t);
-    await AsyncStorage.setItem('ct_token', t);
+    api.defaults.headers.common.Authorization = `Bearer ${t}`;
+    await AsyncStorage.setItem('auth_token', t);
   }, []);
 
-  const logout = useCallback(async (silent?: boolean) => {
-    if (loggingOutRef.current) return;
-    loggingOutRef.current = true;
-    try {
-      setToken(null);
-      setApiToken(null);
-      await AsyncStorage.removeItem('ct_token');
-      // Nota: RootNavigator ya observa "token"; al quedar en null cambia a Login.
-      // Puedes mostrar un toast si quieres, aquí lo dejamos silencioso cuando viene de 401.
-      // if (!silent) Alert.alert('Sesión cerrada');
-    } finally {
-      // Pequeño retraso para evitar ráfagas de 401 encadenados
-      setTimeout(() => { loggingOutRef.current = false; }, 300);
-    }
+  const logout = useCallback(async () => {
+    setToken(undefined);
+    delete api.defaults.headers.common.Authorization;
+    await AsyncStorage.multiRemove(['auth_token', 'needs_onboarding']); // limpia también el flag
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ token, loading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
+  // ======= Google =======
+  const CLIENT_ID = Platform.select({
+    ios: 'TU_IOS_CLIENT_ID.apps.googleusercontent.com',
+    android: 'TU_ANDROID_CLIENT_ID.apps.googleusercontent.com',
+    web: 'TU_WEBO_ID.apps.googleusercontent.com',
+    default: 'TU_EXPO_CLIENT_ID.apps.googleusercontent.com',
+  })!;
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: CLIENT_ID,
+    scopes: ['openid', 'email', 'profile'],
+    responseType: 'token', // para poder pedir /userinfo
+  });
+
+  const loginWithGoogle = useCallback(
+    async (opts?: { onOnboarding?: () => void; onSuccess?: () => void }) => {
+      const res = await promptAsync();
+      if (res.type !== 'success') return;
+
+      const accessToken =
+        res.authentication?.accessToken ?? (res as any)?.params?.access_token;
+      if (!accessToken) throw new Error('No se obtuvo accessToken de Google');
+
+      const uiResp = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const info = await uiResp.json();
+      // info: { sub, email, name, picture, ... }
+
+      const payload = {
+        email: info.email,
+        subject: info.sub,
+        name: info.name,
+        pictureUrl: info.picture,
+      };
+
+      const back = await authApi.googleSignIn(payload);
+      const { token, onboardingRequired } = back.data as {
+        token: string;
+        onboardingRequired?: boolean;
+      };
+
+      await login(token);
+
+      if (onboardingRequired) {
+        await AsyncStorage.setItem('needs_onboarding', '1');
+        opts?.onOnboarding?.();
+      } else {
+        await AsyncStorage.removeItem('needs_onboarding');
+        opts?.onSuccess?.();
+      }
+    },
+    [promptAsync, login]
   );
+
+  const value = useMemo(
+    () => ({ token, hydrated, login, logout, loginWithGoogle }),
+    [token, hydrated, login, logout, loginWithGoogle]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

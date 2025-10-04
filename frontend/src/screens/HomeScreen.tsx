@@ -489,6 +489,21 @@ const PromoBanner: React.FC<{ onPress: () => void; hidden?: boolean }> = ({ onPr
   );
 };
 
+const HeaderChips: React.FC<{ children: React.ReactNode; isNarrow?: boolean }> = ({ children, isNarrow }) => {
+  if (!isNarrow) {
+    return <View style={styles.headerBtnsWrap}>{children}</View>;
+  }
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.headerBtnsScrollContent}
+      style={styles.headerBtnsScroll}
+    >
+      {children}
+    </ScrollView>
+  );
+};
 
 
 // ---------------- Pantalla ----------------
@@ -916,45 +931,43 @@ Estado: ${context}`;
           <View style={[styles.container, styles.containerMax]}>
             <View style={[styles.headerInner, isNarrow && { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
               <View style={[styles.headerLeft, { minWidth: 0 }]}>
-                <Text style={styles.title}>Contadito</Text>
-                <Text style={styles.meta}>
-                  Empresa: <Text style={[styles.bold]}>{dashboard?.tenantName ?? '—'}</Text>
-                  {'  '}·{'  '}
-                  Plan: <Text style={[styles.bold, styles.planPill, planColor(dashboard?.plan)]}>{dashboard?.plan ?? '—'}</Text>
-                </Text>
+                <View style={[styles.headerLeft, { minWidth: 0 }]}>
+                  <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">Contadito</Text>
+                  <Text style={styles.meta} numberOfLines={1} ellipsizeMode="tail">
+                    Empresa: <Text style={[styles.bold]}>{dashboard?.tenantName ?? '—'}</Text>
+                    {'  '}·{'  '}
+                    Plan: <Text style={[styles.bold, styles.planPill, planColor(dashboard?.plan)]}>{dashboard?.plan ?? '—'}</Text>
+                  </Text>
+                </View>
+
               </View>
 
-              <View style={[styles.headerBtnsWrap, isNarrow && styles.headerBtnsWrapNarrow]}>
-                {!panelPinned && (
-                  <View ref={btnPanelRef} style={{ flexShrink: 0 }}>
-                    <SmallBtn title={panelOpen ? 'Cerrar panel' : 'Abrir panel'} onPress={() => { setPanelOpen(p => !p); setTimeout(measureAll, 200); }} />
-                  </View>
-                )}
-                <SmallBtn title="Usuario" onPress={() => navigation.navigate('UserScreen')} />
-                <SmallBtn title="Chat IA" onPress={() => navigation.navigate('OllamaChat')} />
-                <SmallBtn title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
-                <SmallBtn
-                  title="Simulación y pronóstico"
-                  onPress={() =>
-                    navigation.navigate('SalesForecast', {
-                      snapshot: dashboard,                  // <-- pasa los datos que ya recibes en Home
-                      ollamaBase: OLLAMA_BASE,              // <-- tu config local
-                      ollamaModel: OLLAMA_MODEL,
-                    })
-                  }
-                />
-                <SmallBtn title="Rentabilidad & competitividad"
-                  onPress={() => navigation.navigate('ProfitCompetitiveness')}
-                />
-                <SmallBtn title="Reportes" onPress={() => navigation.navigate('Reports')} />
+              <HeaderChips isNarrow={isNarrow}>
+              {!panelPinned && (
+                <View ref={btnPanelRef} style={{ flexShrink: 0 }}>
+                  <SmallBtn title={panelOpen ? 'Cerrar panel' : 'Abrir panel'} onPress={() => { setPanelOpen(p => !p); setTimeout(measureAll, 200); }} />
+                </View>
+              )}
+              <SmallBtn title="Usuario" onPress={() => navigation.navigate('UserScreen')} />
+              <SmallBtn title="Chat IA" onPress={() => navigation.navigate('OllamaChat')} />
+              <SmallBtn title="Cambiar empresa" onPress={() => navigation.navigate('TenantSwitch')} />
+              <SmallBtn
+                title="Simulación y pronóstico"
+                onPress={() =>
+                  navigation.navigate('SalesForecast', {
+                    snapshot: dashboard,
+                    ollamaBase: OLLAMA_BASE,
+                    ollamaModel: OLLAMA_MODEL,
+                  })
+                }
+              />
+              <SmallBtn title="Rentabilidad & competitividad" onPress={() => navigation.navigate('ProfitCompetitiveness')} />
+              <SmallBtn title="Reportes" onPress={() => navigation.navigate('Reports')} />
+              <SmallBtn title="Costo unitario" onPress={() => navigation.navigate('UnitCost')} />
+              <SmallBtn title="Tutorial" onPress={() => { setShowTutorial(true); setTimeout(measureAll, 200); }} />
+              <SmallBtn title="Cerrar sesión" onPress={logout} danger />
+            </HeaderChips>
 
-                <SmallBtn
-                  title="Costo unitario"
-                  onPress={() => navigation.navigate('UnitCost')}
-                />
-                <SmallBtn title="Tutorial" onPress={() => { setShowTutorial(true); setTimeout(measureAll, 200); }} />
-                <SmallBtn title="Cerrar sesión" onPress={logout} danger />
-              </View>
             </View>
             {dashboard?.lastSync && (
               <Text style={styles.syncHint}>Sincronizado {timeAgo(dashboard.lastSync)} • {dashboard.lastSync}</Text>
@@ -1469,17 +1482,34 @@ const styles = StyleSheet.create({
 
   // HEADER
   headerWrap: { paddingTop: 12, paddingBottom: 8, backgroundColor: BRAND.surfacePanel, borderBottomColor: BRAND.borderSoft, borderBottomWidth: 1 },
+  // HEADER
   headerInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
-  headerLeft: { flex: 1, minWidth: 0 },
-
-  headerBtnsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, minWidth: 0, alignItems: 'center' },
-  headerBtnsWrapNarrow: { width: '100%' },
-
+  headerLeft: { flex: 1, minWidth: 0, flexShrink: 1 }, // <-- importante para truncar
   title: { ...F, fontSize: 24, marginBottom: 4, color: BRAND.hanBlue },
   meta:  { ...F, color: '#6f7b94' },
+
+  headerBtnsWrap: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 8,
+  minWidth: 0,
+  alignItems: 'center',
+  flexShrink: 0,
+  maxWidth: '100%',
+  },
+  headerBtnsWrapNarrow: { width: '100%' },
+
   bold:  { ...F },
   planPill: { ...F, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   syncHint: { ...F, color: '#9aa7c2', marginTop: 4 },
+
+  // Scroll horizontal (solo narrow)
+  headerBtnsScroll: { maxWidth: '100%' },
+  headerBtnsScrollContent: {
+    paddingVertical: 2,
+    columnGap: 8,
+    rowGap: 0,
+  },
 
   // STICKY
   sectionSticky: {

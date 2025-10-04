@@ -1,65 +1,92 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, Pressable, ActivityIndicator, Alert } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { api } from '../../api';
-import { useCart } from '../../providers/CartContext';
+// src/providers/CartContext.tsx
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function ProductDetail() {
-  const nav = useNavigation<any>();
-  const route = useRoute<any>();
-  const slug: string = route.params?.slug;
-  const key: string = route.params?.key;
+export type CartItem = {
+  lineId: string;
+  productId: number;
+  name: string;
+  price: number;
+  qty: number;
+  image?: string | null;
+};
 
-  const { add } = useCart();
-  const [loading, setLoading] = useState(true);
-  const [p, setP] = useState<any>(null);
-  const [stock, setStock] = useState<number>(0);
-  const [images, setImages] = useState<string[]>([]);
+type Ctx = {
+  items: CartItem[];
+  total: number;
+  add: (item: Omit<CartItem, 'lineId' | 'qty'>, qty?: number) => void;
+  remove: (productId: number) => void;
+  setQty: (productId: number, qty: number) => void;
+  clear: (slug?: string) => void; // slug opcional: lo usas en CheckoutScreen
+};
 
-  const load = async () => {
+const CartContext = createContext<Ctx>({
+  items: [],
+  total: 0,
+  add: () => {},
+  remove: () => {},
+  setQty: () => {},
+  clear: () => {},
+});
+
+const STORAGE_KEY = 'cart:v1';
+
+export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [items, setItems] = useState<CartItem[]>([]);
+
+  // cargar carrito persistido
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) setItems(JSON.parse(raw));
+      } catch {}
+    })();
+  }, []);
+
+  // persist helper
+  const persist = async (next: CartItem[]) => {
+    setItems(next);
     try {
-      setLoading(true);
-      const { data } = await api.get(`/store/${slug}/products/${key}`);
-      setP(data.p); setStock(data.stock); setImages(data.images || []);
-    } catch (e: any) {
-      Alert.alert('Error', String(e?.response?.data || e?.message || 'No se pudo cargar'));
-      nav.goBack();
-    } finally {
-      setLoading(false);
-    }
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {}
   };
 
-  useEffect(() => { load(); }, []);
-
-  if (loading || !p) return (<View style={styles.root}><ActivityIndicator /></View>);
-
-  return (
-    <View style={styles.root}>
-      {images[0] ? <Image source={{ uri: images[0] }} style={styles.img} /> : <View style={[styles.img, styles.ph]}><Text>Sin imagen</Text></View>}
-      <Text style={styles.name}>{p.name}</Text>
-      <Text style={styles.price}>C$ {(p.price ?? 0).toFixed(2)}</Text>
-      <Text style={styles.stock}>{stock > 0 ? `Stock: ${stock}` : 'Agotado'}</Text>
-      {!!p.publicDescription && <Text style={styles.desc}>{p.publicDescription}</Text>}
-
-      <Pressable
-        onPress={() => add({ productId: p.id, name: p.name, price: p.price ?? 0, image: images[0] ?? null }, 1)}
-        style={[styles.btn, stock <= 0 && { opacity: 0.6 }]}
-        disabled={stock <= 0}
-      >
-        <Text style={styles.btnText}>Agregar al carrito</Text>
-      </Pressable>
-    </View>
+  const total = useMemo(
+    () => items.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.qty) || 0), 0),
+    [items]
   );
-}
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor:'#fff', padding: 16, gap: 8 },
-  img: { width: '100%', height: 240, borderRadius: 12, backgroundColor: '#f1f5f9' },
-  ph: { alignItems:'center', justifyContent:'center' },
-  name: { fontWeight: '900', color:'#0f172a', fontSize: 18 },
-  price: { fontWeight: '800', color:'#0f172a', fontSize: 16 },
-  stock: { color:'#64748b' },
-  desc: { color:'#0f172a', marginTop: 8 },
-  btn: { marginTop: 12, padding: 12, borderRadius: 10, borderWidth: 1, borderColor:'#e5e7eb', backgroundColor:'#0ea5e9', alignItems:'center' },
-  btnText: { color:'#fff', fontWeight:'900' },
-});
+  const add: Ctx['add'] = (item, qty = 1) => {
+    persist(
+      ((prev) => {
+        const idx = prev.findIndex((i) => i.productId === item.productId);
+        if (idx >= 0) {
+          const copy = [...prev];
+          copy[idx] = { ...copy[idx], qty: copy[idx].qty + qty };
+          return copy;
+        }
+        const lineId = `${item.productId}-${Date.now()}`;
+        return [...prev, { ...item, qty, lineId }];
+      })(items)
+    );
+  };
+
+  const remove: Ctx['remove'] = (productId) => persist(items.filter((i) => i.productId !== productId));
+
+  const setQty: Ctx['setQty'] = (productId, qty) => {
+    if (qty <= 0) return remove(productId);
+    persist(items.map((i) => (i.productId === productId ? { ...i, qty } : i)));
+  };
+
+  const clear: Ctx['clear'] = (_slug) => {
+    // Si quisieras un carrito por tienda, aquí podrías usar _slug para elegir otra KEY.
+    persist([]);
+  };
+
+  const value = useMemo(() => ({ items, total, add, remove, setQty, clear }), [items, total]);
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+};
+
+export const useCart = () => useContext(CartContext);

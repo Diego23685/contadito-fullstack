@@ -222,7 +222,7 @@ export default function SalesForecastScreen() {
                 { value: kCon,  label: 'Cons.', frontColor: '#EF4444' },
               ]}
               showValuesAsTopLabel
-              topLabelComponent={(item: any) => <TopLabel value={item.value} />}
+              //topLabelComponent={(item: any) => <TopLabel value={item.value} />}
               renderTooltip={(item: any) => (
                 <View style={styles.tooltip}>
                   <Text style={styles.tooltipTitle}>{item.label}</Text>

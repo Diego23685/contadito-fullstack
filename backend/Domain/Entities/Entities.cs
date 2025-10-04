@@ -14,7 +14,13 @@ namespace Contadito.Api.Domain.Entities
 
         [MaxLength(160)] [Column("legal_name")] public string? LegalName { get; set; }
         [MaxLength(64)]  [Column("tax_id")]    public string? TaxId { get; set; }
+
+        // País (ya lo tenías). Mantén 2 letras ISO-3166-1 alfa-2.
         [MaxLength(2)]   [Column("country")]   public string? Country { get; set; } = "NI";
+
+        // 💡 NUEVO: Moneda (3 letras ISO-4217). Opcional.
+        [MaxLength(8)]   [Column("currency")]  public string? Currency { get; set; } = "NIO";
+
         [MaxLength(32)]  [Column("phone")]     public string? Phone { get; set; }
         [MaxLength(160)] [Column("email")]     public string? Email { get; set; }
         [MaxLength(16)]  [Column("plan")]      public string? Plan { get; set; } = "free";
@@ -44,7 +50,7 @@ namespace Contadito.Api.Domain.Entities
         [MaxLength(16)] [Column("role")]   public string Role { get; set; } = "viewer";
         [MaxLength(16)] [Column("status")] public string Status { get; set; } = "active";
 
-        [Column("email_verified_at")] public DateTime? EmailVerifiedAt { get; set; }  // 👈 NUEVO
+        [Column("email_verified_at")] public DateTime? EmailVerifiedAt { get; set; }
 
         [Column("last_login_at")] public DateTime? LastLoginAt { get; set; }
         [Column("created_at")]    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

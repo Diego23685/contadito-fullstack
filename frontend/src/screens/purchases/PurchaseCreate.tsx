@@ -524,4 +524,12 @@ const styles = StyleSheet.create({
   btnTextDark: { ...F, color: BRAND.slate900 },
   btnTextWeight: { fontWeight: Platform.OS === 'ios' ? '700' : 'bold' },
   btnDisabled: { opacity: 0.5 },
+
+    lineTitle: {
+    ...F,
+    fontSize: 14,
+    color: BRAND.slate900,
+    fontWeight: Platform.OS === 'ios' ? '600' : 'bold',
+  },
+
 });

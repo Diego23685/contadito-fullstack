@@ -27,9 +27,16 @@ else
         opt.UseInMemoryDatabase("contadito"));
 }
 
+builder.Services.Configure<GoogleAuthOptions>(
+    builder.Configuration.GetSection("GoogleAuth")
+);
+
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection("GoogleAuth"));
 
 // JWT
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));

@@ -18,6 +18,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useCart } from '../../providers/CartContext';
 import { api } from '../../api';
 import { useFonts } from 'expo-font';
+import type { StyleProp, ViewStyle, TextStyle } from 'react-native';
 
 // ===== Paleta de marca (misma que las demás screens) =====
 const BRAND = {
@@ -60,16 +61,17 @@ const AButton = ({
   disabled?: boolean;
   style?: any;
 }) => {
-  let vStyle = styles.btnPrimary;
-  if (variant === 'secondary') vStyle = styles.btnSecondary;
-  else if (variant === 'ghost') vStyle = styles.btnGhost;
-  else if (variant === 'danger') vStyle = styles.btnDanger;
-  else if (variant === 'whatsapp') vStyle = styles.btnWhatsApp;
+  // 👇 Forzamos tipos anchos para evitar literales
+  let vStyle: StyleProp<ViewStyle> = styles.btnPrimary as ViewStyle;
+  if (variant === 'secondary') vStyle = styles.btnSecondary as ViewStyle;
+  else if (variant === 'ghost') vStyle = styles.btnGhost as ViewStyle;
+  else if (variant === 'danger') vStyle = styles.btnDanger as ViewStyle;
+  else if (variant === 'whatsapp') vStyle = styles.btnWhatsApp as ViewStyle;
 
-  const tStyle =
+  const tStyle: StyleProp<TextStyle> =
     variant === 'secondary' || variant === 'ghost'
-      ? styles.btnTextDark
-      : styles.btnTextLight;
+      ? (styles.btnTextDark as TextStyle)
+      : (styles.btnTextLight as TextStyle);
 
   return (
     <Pressable
