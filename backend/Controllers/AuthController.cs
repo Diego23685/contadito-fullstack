@@ -67,22 +67,21 @@ namespace Contadito.Api.Controllers
                 user = new User
                 {
                     Email = payload.Email,
-                    Name = payload.Name ?? payload.Email,              // ✅ evita CS8601
+                    Name = payload.Name ?? payload.Email,              
                     TenantId = tenant.Id,
                     Role = "owner",
-                    Status = "onboarding",                             // <= 16 chars
+                    Status = "onboarding",                           
                     EmailVerifiedAt = now,
                     LastLoginAt = now,
                     CreatedAt = now,
                     UpdatedAt = now,
 
-                    // ✅ password_hash es [Required]: guarda un hash aleatorio
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"))
                 };
                 _db.Users.Add(user);
                 await _db.SaveChangesAsync();
 
-                // 3) Enlaza external_login google
+                // Enlaza external_login google
                 _db.ExternalLogins.Add(new ExternalLogin
                 {
                     TenantId = tenant.Id,
@@ -159,10 +158,8 @@ namespace Contadito.Api.Controllers
 
             tenant.Name = dto.TenantName.Trim();
 
-            // Tu entidad usa 'country' => asigna desde dto.CountryCode
             if (!string.IsNullOrWhiteSpace(dto.CountryCode)) tenant.Country = dto.CountryCode;
 
-            // Moneda (agregada en la entidad Tenant arriba)
             if (!string.IsNullOrWhiteSpace(dto.Currency)) tenant.Currency = dto.Currency;
 
             if (!string.IsNullOrWhiteSpace(dto.Password))
@@ -277,7 +274,7 @@ namespace Contadito.Api.Controllers
             if (!BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
                 return Unauthorized("Invalid credentials");
 
-            // 🔒 bloquear login si no está verificado
+            // bloquear login si no está verificado
             if (user.EmailVerifiedAt == null)
                 return Unauthorized("Email not verified");
 
