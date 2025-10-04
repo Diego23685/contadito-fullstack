@@ -389,7 +389,7 @@ Sugerencias para arrancar:
                 return Unauthorized("Invalid code");
             }
 
-            // OK
+            // OK → marca verificado y activa
             ev.ConsumedAt = DateTime.UtcNow;
             user.EmailVerifiedAt = DateTime.UtcNow;
             user.Status = "active";
@@ -397,9 +397,17 @@ Sugerencias para arrancar:
 
             await _db.SaveChangesAsync();
 
+            // 👇 Enviar bienvenida después de verificar email (idempotente)
+            if (user.WelcomeEmailSentAt == null)
+            {
+                var tenant = await _db.Tenants.FirstAsync(t => t.Id == user.TenantId);
+                await SendWelcomeEmailAsync(user, tenant);
+            }
+
             var token = GenerateToken(user);
             return Ok(new AuthResponse(token, _jwt.ExpiresMinutes * 60));
         }
+
 
         [HttpPost("login")]
         public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest req)
